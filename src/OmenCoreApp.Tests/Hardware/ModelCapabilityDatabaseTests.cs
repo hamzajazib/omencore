@@ -335,6 +335,21 @@ namespace OmenCoreApp.Tests.Hardware
         }
 
         [Fact]
+        public void GetCapabilities_8E10_Db1xxx_UsesExactV1WmiProfile()
+        {
+            // GitHub #130: was resolving via OMEN17 family fallback ("Model not in database").
+            var caps = ModelCapabilityDatabase.GetCapabilities("8E10");
+
+            caps.ProductId.Should().Be("8E10");
+            caps.ModelName.Should().Contain("17-db1");
+            caps.SupportsFanControlWmi.Should().BeTrue();
+            caps.SupportsFanControlEc.Should().BeFalse();
+            caps.SupportsFanCurves.Should().BeTrue();
+            caps.FanZoneCount.Should().Be(2);
+            caps.SupportsUndervolt.Should().BeFalse();
+        }
+
+        [Fact]
         public void GetCapabilities_8D26_Ap0xxxAmd_UsesExactV1WmiProfile()
         {
             // GitHub #188: was falling back to 8D24 via model-name pattern match; this confirms

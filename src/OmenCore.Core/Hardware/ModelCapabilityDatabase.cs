@@ -1399,6 +1399,34 @@ namespace OmenCore.Hardware
                 Notes = "GitHub #134/#144 — WMI V1 control with worker-backed CPU temperature; fan-level fallback is estimated telemetry, not physical RPM. Direct EC remains unverified."
             });
 
+            // OMEN 17-db1xxx (2025), GitHub #130 — HP OMEN Gaming Laptop 17-db1180ng, AMD Ryzen
+            // AI 7 350 + RTX 5070, BIOS F.20. Reporter's own log confirmed the real ProductId
+            // (8E10) directly ("Model not in database - using OMEN17 family defaults"), and
+            // supplied a fan-calibration-wizard-verified config export. Same V1 WMI ColorTable
+            // keyboard/fan generation as the 16-ap0xxx AMD boards (8D24/8D26/8E35) - dynamic RGB
+            // scene streaming (Rainbow/Wave) not working is this protocol's own static-color-only
+            // limitation, not specific to this board or something a database entry changes.
+            AddModel(new ModelCapabilities
+            {
+                ProductId = "8E10",
+                ModelName = "OMEN 17-db1xxx (2025)",
+                ModelNamePattern = "17-db1",
+                ModelYear = 2025,
+                Family = OmenModelFamily.OMEN17,
+                SupportsFanControlWmi = true,
+                SupportsFanControlEc = false,
+                SupportsFanCurves = true,
+                SupportsIndependentFanCurves = false,
+                FanZoneCount = 2,
+                MaxFanLevel = 55,
+                HasMuxSwitch = true,
+                SupportsGpuPowerBoost = true,
+                HasFourZoneRgb = true,
+                SupportsUndervolt = false,
+                UserVerified = false,
+                Notes = "GitHub #130 - OMEN Gaming Laptop 17-db1180ng / ProductId 8E10 (Ryzen AI 7 350 + RTX 5070), BIOS F.20. Reporter ran the Fan Calibration Wizard successfully (95.1% WMI reliability on F.20) and confirmed the ProductId via omencore.log. Same conservative V1 WMI profile as the 16-ap0xxx AMD siblings; direct EC and independent curves remain unverified."
+            });
+
             // GitHub #125: HP Victus 15-fa1xxx i5-12450H / RTX 2050, exact ProductId 8C3F.
             // Misidentified as 8BB1 (OMEN 17 / Victus 15 ambiguous shared ID) causing a 10-minute
             // delay on fan speed changes. Direct entry eliminates the ambiguous-ID lookup path.

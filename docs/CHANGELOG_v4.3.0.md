@@ -29,6 +29,10 @@ Found while investigating [#127](https://github.com/theantipopau/omencore/issues
 
 Reordered the reason-selection to check the actual contributing flags (`hasEcAccess` → fan target files → fan output files) and dropped the irrelevant hwmon branch from this reason chain entirely. Pure diagnostic-text correctness fix — no capability classification or control behavior changed, only which sentence explains it. 2 new regression tests (`LinuxCapabilityClassifierTests.cs`); Linux suite: 30/30 (up from 28).
 
+### New Model Database Entry: HP OMEN 17-db1xxx, ProductId `8E10`
+
+[#130](https://github.com/theantipopau/omencore/issues/130) — AMD Ryzen AI 7 350 + RTX 5070, BIOS F.20. Was resolving via OMEN17 family fallback with a "Model not in database" log warning; reporter's own log confirmed the real ProductId directly and supplied a fan-calibration-wizard-verified config export. Added with the same conservative V1 WMI profile as the 16-ap0xxx AMD siblings. The reporter's separate complaint about dynamic RGB scene streaming (Rainbow/Wave) not working is this board generation's own static-color-only ColorTable protocol limitation — not something a database entry changes.
+
 ### New Model Database Entry: HP OMEN 16-ap0xxx, ProductId `8D26`
 
 [#188](https://github.com/theantipopau/omencore/issues/188) — AMD Ryzen AI 7 350 + Radeon 860M iGPU + RTX 5070 Laptop GPU, BIOS F.13. Was resolving only via a fuzzy model-name pattern match to the `8D24` entry (Low confidence, "Model Not Yet Field-Confirmed" banner); reporter confirms the hardware already works correctly under that fallback. Added as its own exact-ProductId entry with the identical V1 WMI fan/capability profile `8D24`/`8E35` (the same board family's other known ProductId) already use, in both `ModelCapabilityDatabase` and `KeyboardModelDatabase`. Not a capability change — an identity fix for a board already confirmed working, matching the pattern used for `8BA9` and `8603` earlier this cycle.
