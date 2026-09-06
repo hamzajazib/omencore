@@ -351,36 +351,57 @@ namespace OmenCore.Services
             }
 
             _logging.Debug("Attempting to start WMI BIOS event watchers...");
-            
+
             // HP OMEN key fires via hpqBEvnt WMI event class
             // From OmenMon: eventData = 8613 AND eventId = 29
-            // 
-            // IMPORTANT: Only use queries that specifically target the OMEN key event.
-            // DO NOT use broad queries like "SELECT * FROM hpqBEvnt" as this catches
-            // ALL BIOS events (fan changes, thermal events, power state changes) and
-            // causes focus-stealing behavior where OmenCore repeatedly comes to front.
-            
-            // If the hook is active, listen only for the narrow Fn+P profile-cycle event. If the
-            // hook is unavailable, also listen for the legacy OMEN-key WMI event.
-            var wmiQuery = fnPEnabled && IsHookActive
-                ? "SELECT * FROM hpqBEvnt WHERE eventId = 29 AND eventData = 8614"
-                : fnPEnabled
-                    ? "SELECT * FROM hpqBEvnt WHERE eventId = 29 AND (eventData = 8613 OR eventData = 8614)"
-                    : "SELECT * FROM hpqBEvnt WHERE eventData = 8613 AND eventId = 29";
+            //
+            // The WQL WHERE clause used to filter server-side on the exact eventId/eventData
+            // values, on the theory that a broad "SELECT * FROM hpqBEvnt" would flood the handler
+            // with fan/thermal/power BIOS events and cause focus-stealing. That theory no longer
+            // matches what OnWmiEventArrived actually does below: it independently re-extracts and
+            // re-validates eventId/eventData itself, fails closed (returns, no side effect) on
+            // anything that doesn't match, and never takes any user-visible action until after
+            // that check passes - so a broader subscription cannot cause false triggers or
+            // focus-stealing regardless of what else hpqBEvnt happens to fire.
+            //
+            // GitHub #187 (Victus 16-e0054nl, board 88EE): the watcher registered with no error
+            // using this exact filtered query, but never received a single event across two full
+            // test sessions of physically pressing the OMEN key - while the reporter's own
+            // unfiltered "Register-WmiEvent -Class hpqBEvnt" (no WHERE clause at all) received the
+            // identical key press instantly and reliably every time, with EventID=29/EventData=8613
+            // exactly as expected once inspected client-side. That points at a server-side WQL
+            // numeric-literal match against this board/BIOS's hpqBEvnt schema silently failing to
+            // evaluate true - a plausible, previously undiagnosed case of the ACPI-WMI-mapped
+            // event class not reporting eventId/eventData with the exact CIM type WQL's literal
+            // comparison expects on every board, even though the values print correctly once an
+            // event instance is actually captured and its properties read in .NET/PowerShell.
+            //
+            // Fix: subscribe to the class only (no WHERE clause) - textually identical in scope to
+            // the reporter's own proven-reliable test - and rely entirely on the client-side
+            // eventId/eventData/fnP-mode filtering OnWmiEventArrived already does correctly.
+            var wmiQuery = "SELECT * FROM hpqBEvnt";
 
             var wmiSources = new[]
             {
                 (@"root\wmi", wmiQuery),
             };
-            
+
             foreach (var (ns, queryStr) in wmiSources)
             {
                 try
                 {
-                    var watcher = new ManagementEventWatcher(ns, queryStr);
+                    // EnablePrivileges: some WMI event classes (particularly ones backed by a
+                    // kernel/ACPI provider rather than a plain CIM repository class, which hpqBEvnt
+                    // is) only deliver events to a subscriber whose connection has this set, even
+                    // when subscribing doesn't throw without it. Costs nothing to set defensively
+                    // for a query that might not need it.
+                    var scope = new ManagementScope(ns, new ConnectionOptions { EnablePrivileges = true });
+                    scope.Connect();
+
+                    var watcher = new ManagementEventWatcher(scope, new EventQuery(queryStr));
                     watcher.EventArrived += OnWmiEventArrived;
                     watcher.Start();
-                    
+
                     _wmiEventWatcher = watcher;
                     var shortQuery = queryStr.Length > 50 ? queryStr.Substring(0, 50) + "..." : queryStr;
                     _logging.Info($"✓ WMI event watcher started: {ns} - {shortQuery}");

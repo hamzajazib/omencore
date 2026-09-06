@@ -358,6 +358,17 @@ namespace OmenCore.Services.KeyboardLighting
                 Notes = "Discord RC1 report - ProductId 8E35 / SKU 1H85430PWY, Ryzen AI 9 365 + RTX 5060 - V1 WMI keyboard interface"
             });
 
+            AddModel(new KeyboardModelConfig
+            {
+                ProductId = "8D26",
+                ModelName = "OMEN 16-ap0xxx (2025) AMD",
+                KeyboardType = KeyboardType.FourZone,
+                PreferredMethod = KeyboardMethod.ColorTable2020,
+                FallbackMethods = new[] { KeyboardMethod.NewWmi2023, KeyboardMethod.EcDirect },
+                ModelYear = 2025,
+                Notes = "GitHub #188 - ProductId 8D26 / SKU 5CD5399MYY, Ryzen AI 7 350 + RTX 5070 - same V1 WMI keyboard interface as 8D24"
+            });
+
             // OMEN Transcend 14 (2024) - fb1xxx series
             AddModel(new KeyboardModelConfig
             {

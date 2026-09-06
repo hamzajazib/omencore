@@ -149,6 +149,19 @@ namespace OmenCoreApp.Tests.Services
         }
 
         [Fact]
+        public void GetConfig_ReturnsConfig_For_ProductId_8D26()
+        {
+            // GitHub #188
+            var cfg = KeyboardModelDatabase.GetConfig("8D26");
+
+            cfg.Should().NotBeNull();
+            cfg!.ModelName.Should().Contain("ap0xxx");
+            cfg.PreferredMethod.Should().Be(KeyboardMethod.ColorTable2020);
+            cfg.KeyboardType.Should().Be(KeyboardType.FourZone);
+            cfg.Notes.Should().Contain("5CD5399MYY");
+        }
+
+        [Fact]
         public void GetConfig_ReturnsConfig_For_ProductId_8BD4()
         {
             var cfg = KeyboardModelDatabase.GetConfig("8BD4");

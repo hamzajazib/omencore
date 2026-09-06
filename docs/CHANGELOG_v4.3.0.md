@@ -13,6 +13,30 @@ first.
 
 ## Fixed
 
+### Built-In "Night Mode"/"Work" RGB Scenes Silently Overrode Manually-Configured Lighting on a Schedule
+
+Reported via Discord ("snowfall hateall", board 8D87/88F7, OMEN MAX 16-ak003nr): "the rgb light bar randomly turned orange without any command from the user. It is configured to be off, yet randomly switched to orange without warning." The attached log showed the actual mechanism at the exact moment it happened: `[INFO] Scheduled time triggered scene 'Night Mode'` at 22:00:26, applying `#331100` (a dark amber/orange) to all 4 keyboard zones — not a hardware fault or random glitch.
+
+Both built-in "Night Mode" (`#331100` @ 30% brightness) and "Work" (`#FFFFFF` @ 80%, weekdays) scenes shipped with a baked-in `ScheduledTime`, and `RgbSceneService.CheckScheduledScenes()` fires any scene carrying one unconditionally, gated only by `IsSchedulingEnabled` — a property that defaults `true` and has **zero UI surface anywhere in the app**: no toggle to disable scheduling, no way to see a scene has a schedule, no editor to change or clear one. Every OmenCore user, out of the box, had their keyboard lighting silently changed to dim amber every night at 10PM and to white every weekday morning at 9AM, regardless of whatever they'd manually configured — including having explicitly turned lighting off.
+
+Fixed by removing the default `ScheduledTime`/`ScheduledDays` from both built-in scenes. Both remain fully selectable from the scene list exactly as before — only the silent, un-opt-out-able default schedule is gone. The scheduling engine itself (`CheckScheduledScenes`, `IsSchedulingEnabled`) is left in place for a future release that gives it a real UI. New regression test (`BuiltInScenes_NeverShipWithASilentDefaultSchedule`) asserts no built-in scene ships with a schedule. Full suite: 1408/1408.
+
+Not a field-validation item — this only removes an unrequested default write path; it adds no new one.
+
+### New Model Database Entry: HP OMEN 16-ap0xxx, ProductId `8D26`
+
+[#188](https://github.com/theantipopau/omencore/issues/188) — AMD Ryzen AI 7 350 + Radeon 860M iGPU + RTX 5070 Laptop GPU, BIOS F.13. Was resolving only via a fuzzy model-name pattern match to the `8D24` entry (Low confidence, "Model Not Yet Field-Confirmed" banner); reporter confirms the hardware already works correctly under that fallback. Added as its own exact-ProductId entry with the identical V1 WMI fan/capability profile `8D24`/`8E35` (the same board family's other known ProductId) already use, in both `ModelCapabilityDatabase` and `KeyboardModelDatabase`. Not a capability change — an identity fix for a board already confirmed working, matching the pattern used for `8BA9` and `8603` earlier this cycle.
+
+### Windows: OMEN Key WMI Watcher Could Register Successfully Yet Never Receive a Single Event
+
+**Report:** [#187](https://github.com/theantipopau/omencore/issues/187) — HP Victus 16-e0054nl, board `88EE`. Exceptionally well-isolated report: OmenCore's WMI event watcher logged a clean registration (`✓ WMI event watcher started`) and then never logged anything else across two full test sessions of physically pressing the OMEN key — while the reporter's own `Register-WmiEvent -Class hpqBEvnt` (identical event class, **no WHERE clause**) received the same key press instantly and reliably every time, printing exactly `EventID=29`/`EventData=8613` once captured.
+
+Root cause: `StartWmiEventWatcher` subscribed with a WQL `WHERE eventId = 29 AND eventData = 8613`-style server-side filter. `OnWmiEventArrived` *also* independently re-extracts and re-validates `eventId`/`eventData` itself and fails closed on anything that doesn't match exactly — the server-side WQL filter was fully redundant, and on this board's `hpqBEvnt` schema, the server-side numeric-literal WHERE-clause match was silently never evaluating true (a plausible ACPI-WMI-mapped-class type quirk), even though the same values read back correctly once an event instance was captured and inspected.
+
+Fixed by subscribing to the class only (`SELECT * FROM hpqBEvnt`, matching the reporter's own proven-working test exactly) and letting the existing, already-correct client-side filtering in `OnWmiEventArrived` do all the real work — safe because that handler takes no user-visible action on any BIOS event (fan/thermal/power included) until *after* its own `eventId==29`/`eventData==8613` check passes. Also added `EnablePrivileges = true` to the WMI connection scope defensively, in case a privilege gap rather than (or in addition to) a query-type mismatch was involved.
+
+Not field-validated against real hardware — this environment can't reproduce a physical OMEN key press. Framed as implemented-pending-confirmation; the failure mode if this theory is wrong is "still doesn't fire," not a regression, since the client-side safety net is unchanged.
+
 ### Linux: GPU Telemetry Never Queried NVML, So a Real NVIDIA GPU Read as 0°C/Unavailable
 
 **Report:** [#186](https://github.com/theantipopau/omencore/issues/186) — OMEN Max 16-ah0xxx (board `8D41`, RTX 5080). `omencore-cli status` reported `GPU Temperature: 0°C` / `GPU Telemetry: unavailable` and the GUI showed `0°`, `0% usage`, `Power: 0 W`, with the adapter shown by raw PCI ID (`NVIDIA GPU (0x2c59)`) — while `nvidia-smi` read the exact same GPU correctly (41°C, 24W) in the same second, unprivileged, no root needed.

@@ -125,7 +125,18 @@ namespace OmenCore.Services
                 TriggerOnPerformanceMode = "Performance"
             });
             
-            // Night Mode
+            // Night Mode - manually-selectable only. Previously shipped with
+            // ScheduledTime = "22:00", which CheckScheduledScenes() would fire unconditionally
+            // every day (IsSchedulingEnabled has no UI toggle and defaults true, and there is no
+            // UI anywhere to see, disable, or edit a scene's schedule) - meaning every user's
+            // keyboard lighting silently changed to this scene at 10pm regardless of whatever
+            // they'd manually configured, including having turned lighting off. Reported via
+            // Discord ("snowfall hateall", 8D87/88F7, OMEN MAX 16-ak003nr): "the rgb light bar
+            // randomly turned orange... It is configured to be off, yet randomly switched to
+            // orange without warning" - the log's "Scheduled time triggered scene 'Night Mode'"
+            // at 22:00:26, applying #331100 to all 4 zones, is this exact mechanism, not a
+            // hardware fault. The scene itself is unchanged and still selectable from the scene
+            // list; only the silent default schedule is removed.
             _scenes.Add(new RgbScene
             {
                 Id = "night",
@@ -134,11 +145,11 @@ namespace OmenCore.Services
                 Icon = "🌙",
                 Effect = RgbSceneEffect.Static,
                 PrimaryColor = "#331100",
-                Brightness = 30,
-                ScheduledTime = "22:00"
+                Brightness = 30
             });
-            
-            // Work Mode
+
+            // Work Mode - see the Night Mode comment above; same silent-default-schedule bug,
+            // same fix (schedule removed, scene still manually selectable).
             _scenes.Add(new RgbScene
             {
                 Id = "work",
@@ -147,9 +158,7 @@ namespace OmenCore.Services
                 Icon = "💼",
                 Effect = RgbSceneEffect.Static,
                 PrimaryColor = "#FFFFFF",
-                Brightness = 80,
-                ScheduledTime = "09:00",
-                ScheduledDays = new List<int> { 1, 2, 3, 4, 5 } // Mon-Fri
+                Brightness = 80
             });
             
             // Rainbow

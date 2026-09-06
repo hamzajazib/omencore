@@ -82,6 +82,24 @@ public class RgbSceneServiceTests
             scene.TriggerOnPerformanceMode == "Quiet");
     }
 
+    // Regression guard for a real field bug (Discord, "snowfall hateall", board 8D87/88F7,
+    // OMEN MAX 16-ak003nr): Night Mode and Work shipped with a baked-in ScheduledTime, and
+    // CheckScheduledScenes() fires any scene with one unconditionally - there is no UI anywhere
+    // to see, enable/disable, or edit scene scheduling (IsSchedulingEnabled has no setter call
+    // site outside this class and defaults true). That meant every user's keyboard lighting
+    // silently changed at 10pm/9am regardless of what they'd manually configured, including
+    // having turned lighting off entirely. Built-in scenes must never carry a schedule unless a
+    // real opt-in UI exists to surface and control it.
+    [Fact]
+    public void BuiltInScenes_NeverShipWithASilentDefaultSchedule()
+    {
+        Environment.SetEnvironmentVariable("OMENCORE_DISABLE_FILE_LOG", "1");
+        using var service = CreateService(new RecordingRgbProvider());
+
+        service.Scenes.Should().OnlyContain(scene => string.IsNullOrEmpty(scene.ScheduledTime),
+            "no built-in scene may auto-apply on a schedule with zero UI to see or disable it");
+    }
+
     [Fact]
     public async Task ApplySceneAsync_RoutesWaveScene_AsWaveEffect()
     {

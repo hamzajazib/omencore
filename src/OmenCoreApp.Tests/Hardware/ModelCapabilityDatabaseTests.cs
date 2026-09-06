@@ -335,6 +335,23 @@ namespace OmenCoreApp.Tests.Hardware
         }
 
         [Fact]
+        public void GetCapabilities_8D26_Ap0xxxAmd_UsesExactV1WmiProfile()
+        {
+            // GitHub #188: was falling back to 8D24 via model-name pattern match; this confirms
+            // the new exact-ProductId entry carries the same V1 WMI profile 8D24/8E35 already use.
+            var caps = ModelCapabilityDatabase.GetCapabilities("8D26");
+
+            caps.ProductId.Should().Be("8D26");
+            caps.ModelName.Should().Contain("ap0xxx");
+            caps.SupportsFanControlWmi.Should().BeTrue();
+            caps.SupportsFanControlEc.Should().BeFalse();
+            caps.SupportsFanCurves.Should().BeTrue();
+            caps.FanZoneCount.Should().Be(2);
+            caps.MaxFanLevel.Should().Be(55);
+            caps.SupportsUndervolt.Should().BeFalse();
+        }
+
+        [Fact]
         public void GetCapabilities_8BD4_Victus16S0xxx_UsesExactConservativeProfile()
         {
             var caps = ModelCapabilityDatabase.GetPreferredCapabilities("8BD4", "Victus by HP Gaming Laptop 16-s0xxx");

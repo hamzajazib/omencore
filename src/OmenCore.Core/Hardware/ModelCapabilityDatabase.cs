@@ -860,6 +860,34 @@ namespace OmenCore.Hardware
                 Notes = "Discord RC1 report - OMEN Gaming Laptop 16-ap0xxx / ProductId 8E35 / SKU 1H85430PWY (Ryzen AI 9 365 + RTX 5060). Same WMI V1 fan profile as 8D24; EC direct remains disabled until validated."
             });
 
+            // OMEN 16 (2025) - ap0xxx AMD, lower CPU/GPU tier of the same board family.
+            // GitHub Issue #188: ProductId 8D26, SKU 5CD5399MYY, AMD Ryzen AI 7 350 + Radeon 860M
+            // iGPU + RTX 5070 Laptop dGPU, BIOS F.13. Was falling back to 8D24 via model-name
+            // pattern match (Low confidence, "Model Not Yet Field-Confirmed" banner); reporter
+            // confirms hardware already works correctly under that fallback, so this gives it an
+            // exact-match entry with the same capabilities rather than continuing to rely on the
+            // fuzzy family/name-pattern fallback for a board that's now been identified directly.
+            AddModel(new ModelCapabilities
+            {
+                ProductId = "8D26",
+                ModelName = "OMEN 16 (2025) ap0xxx AMD",
+                ModelNamePattern = "16-ap0",
+                ModelYear = 2025,
+                Family = OmenModelFamily.OMEN16,
+                SupportsFanControlWmi = true,
+                SupportsFanControlEc = false,
+                SupportsFanCurves = true,
+                FanZoneCount = 2,
+                MaxFanLevel = 55,
+                SupportsPerformanceModes = true,
+                HasMuxSwitch = true,
+                SupportsGpuPowerBoost = true,
+                HasFourZoneRgb = true,
+                SupportsUndervolt = false,
+                UserVerified = false,
+                Notes = "GitHub #188 - OMEN Gaming Laptop 16-ap0xxx / ProductId 8D26 / SKU 5CD5399MYY (Ryzen AI 7 350 + Radeon 860M iGPU + RTX 5070). Same WMI V1 fan profile as 8D24; reporter confirms hardware already works correctly under that fallback. EC direct remains disabled until validated."
+            });
+
             // OMEN 16 (2024) - am0xxx series (AMD Ryzen 7/8xxx + discrete GPU)
             // GitHub Issue #111: ProductId 8D2F, WMI model "OMEN Gaming Laptop 16-am0xxx"
             // Falls back to OMEN16 family defaults without a specific entry — add to give accurate capabilities.
