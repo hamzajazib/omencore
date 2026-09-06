@@ -104,6 +104,31 @@ public class LinuxCapabilityClassifierTests
         assessment.Reason.Should().Contain("legacy EC access");
     }
 
+    // GitHub #127: reporter's own `omencore-cli diagnose` output showed EC diagnostics positive
+    // (ec_io present, ec_sys loaded with write support) yet the FullControl reason text named
+    // "hp-wmi hwmon pwm/fan targets" - because hasHwmonFanAccess, an independent signal that
+    // never contributes to hasManualFanControl becoming true, was checked first regardless of
+    // which actual condition caused it. The reason must name the real mechanism.
+    [Fact]
+    public void EcAccess_WithHwmonAlsoPresent_ReasonStillNamesLegacyEcAccess()
+    {
+        var assessment = Assess(hasEcAccess: true, hasHwmonFanAccess: true, boardId: "8D41");
+
+        assessment.CapabilityClass.Should().Be(LinuxCapabilityClass.FullControl);
+        assessment.Reason.Should().Contain("legacy EC access")
+            .And.NotContain("hwmon pwm/fan targets");
+    }
+
+    [Fact]
+    public void FanTargetAccess_WithHwmonAlsoPresent_ReasonNamesFanTargetFiles_NotEc()
+    {
+        var assessment = Assess(hasFan1Target: true, hasHwmonFanAccess: true, boardId: "8D41");
+
+        assessment.CapabilityClass.Should().Be(LinuxCapabilityClass.FullControl);
+        assessment.Reason.Should().Contain("hp-wmi hwmon fan target files")
+            .And.NotContain("legacy EC access");
+    }
+
     [Fact]
     public void ThermalProfileOnly_NoManualFanControl_IsProfileOnly()
     {

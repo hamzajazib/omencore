@@ -53,6 +53,24 @@ carries the whole cycle; the two were merged from what were briefly separate v4.
 
 ---
 
+### Linux: Capability Classifier's "Full Control" Reason Text Could Name the Wrong Mechanism
+
+**Report:** [#127](https://github.com/theantipopau/omencore/issues/127) — HP OMEN Laptop 16-ap0xxx, board `8D26`, OmenCore v3.6.0. "It indicates that the system should be supported and that full control should be available, but it doesn't detect it... I can't control anything." The bundled `omencore-cli diagnose` output shows `ec_io: ✓ present`, `ec_sys: ✓ loaded`, `ec_sys ws: Y` (EC access diagnostics all positive) alongside `Capability: full-control` with the stated reason **"Manual fan control is available through hp-wmi hwmon pwm/fan targets"** — naming hwmon, not EC, as the mechanism.
+
+**Traced in `LinuxCapabilityClassifier.Assess`:** `hasManualFanControl = hasEcAccess || hasFan1Output || hasFan2Output || hasFan1Target || hasFan2Target` — note `hasHwmonFanAccess` is **not** one of these terms; it's a fully independent signal that (per the method's own existing comment and a dedicated existing test, `HwmonPwmEnableAlone_WithoutAPerFanTarget_IsProfileOnly_NotFullControl`) only ever grants `ProfileOnly` on its own, never `FullControl`. But the `FullControl` branch's reason-selection ternary checked `hasHwmonFanAccess` **first**, regardless of which of the five actual `hasManualFanControl` terms was true — so a board where `hasEcAccess` is what actually drove the `FullControl` classification, but which also happens to have `hasHwmonFanAccess` true (unrelated, independent), gets a reason naming hwmon instead of the real mechanism (legacy EC access). This is exactly the mismatch #127's own diagnose output shows.
+
+**Not confirmed as the root cause of "can't control anything"** — the two diagnostic captures pasted in the issue are internally inconsistent (the ASCII `diagnose` table shows `ec_sys: ✓ loaded`/`ec_io: ✓ present`, while a separately-pasted markdown table from the same report says `ec_sys Module: ✗ Not Loaded`/`EC I/O Path: ✗ Missing` — almost certainly two captures taken at different points, e.g. before/after the report's own recommended `modprobe ec_sys write_support=1` step), and the report itself (v3.6.0, zero reporter follow-up in 4 months, several major versions behind current) doesn't carry enough unambiguous, current-version evidence to diagnose a specific control-write failure with confidence. This fix addresses a real, independently-confirmed text-accuracy bug found while investigating, not a confirmed fix for the reporter's full symptom.
+
+**Fix.** Reordered the `FullControl` reason-selection to check the actual contributing flags in a sensible priority (`hasEcAccess` → fan target files → fan output files), removing `hasHwmonFanAccess` from this specific reason chain entirely — it's never why this branch was reached, so it should never be named as the reason. `hasProfileControl`'s own separate reason chain (a few lines down) correctly includes `hasHwmonFanAccess`, since it genuinely is one of that OR-chain's real terms; that branch was not touched.
+
+**Tests.** Two new regression tests in `LinuxCapabilityClassifierTests.cs`: `EcAccess_WithHwmonAlsoPresent_ReasonStillNamesLegacyEcAccess` and `FanTargetAccess_WithHwmonAlsoPresent_ReasonNamesFanTargetFiles_NotEc` — both construct the exact "two independent signals both true" shape the existing test suite never covered (the existing `EcAccess_WithoutWmaaAbortBoard_IsFullControl` test only sets `hasEcAccess`, with `hasHwmonFanAccess` defaulting false, so it never exercised the priority-ordering bug). Linux suite: 30/30 (up from 28).
+
+**Not a field-validation item.** Pure diagnostic-text correctness — no capability classification changes (a board's `CapabilityClass` result is completely unchanged by this fix), no control/write path touched, only which sentence explains an already-correct classification.
+
+**Reply posted** asking the reporter for a fresh `omencore-cli diagnose`/diagnostics export on the current release (three major versions ahead of the one reported on, with genuine Linux EC/fan-control fixes landed since — including the #183 Auto-mode-leaves-fans-dead fix for a board in a similar "no legacy EC, ACPI-hwmon-only" configuration class) before spending more time on this without current-version evidence.
+
+---
+
 ### New Model Database Entry — HP OMEN 16-ap0xxx, ProductId `8D26`
 
 **Report:** [#188](https://github.com/theantipopau/omencore/issues/188) — HP OMEN Gaming Laptop 16-ap0xxx, AMD Ryzen AI 7 350 + Radeon 860M iGPU + NVIDIA RTX 5070 Laptop GPU, 32GB RAM, BIOS F.13, SKU `5CD5399MYY`. Resolved only via `ModelNamePattern` fuzzy match to the existing `8D24` entry (Low confidence, "Model Not Yet Field-Confirmed" banner) — the reporter's own summary confirms the hardware works correctly under that fallback, just wants the exact board identified rather than continuing to rely on the pattern match.

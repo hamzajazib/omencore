@@ -72,13 +72,19 @@ public static class LinuxCapabilityClassifier
 
         if (hasManualFanControl)
         {
-            var reason = hasHwmonFanAccess
-                ? "Manual fan control is available through hp-wmi hwmon pwm/fan targets."
+            // Priority here must match the actual terms of hasManualFanControl's OR-chain above -
+            // hasHwmonFanAccess is deliberately NOT one of them (see the hasProfileControl comment:
+            // hwmon pwm_enable alone is coarse policy control, not manual control), so it must never
+            // be checked here. It previously was checked first, which meant a board with both
+            // hasEcAccess and hasHwmonFanAccess true (an independent, unrelated signal) got told
+            // "hp-wmi hwmon pwm/fan targets" instead of the real reason, legacy EC access - a
+            // confirmed mismatch surfaced by GitHub #127's own diagnose output, which showed the
+            // hwmon-worded reason while its EC diagnostics were also positive.
+            var reason = hasEcAccess
+                ? "Manual fan control is available through legacy EC access."
                 : hasFan1Target || hasFan2Target
                     ? "Manual fan control is available through hp-wmi hwmon fan target files."
-                    : hasFan1Output || hasFan2Output
-                        ? "Manual fan control is available through hp-wmi fan output files."
-                        : "Manual fan control is available through legacy EC access.";
+                    : "Manual fan control is available through hp-wmi fan output files.";
 
             if (!isRoot)
             {

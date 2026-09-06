@@ -23,6 +23,12 @@ Fixed by removing the default `ScheduledTime`/`ScheduledDays` from both built-in
 
 Not a field-validation item — this only removes an unrequested default write path; it adds no new one.
 
+### Linux: Capability Classifier Could Name the Wrong Control Mechanism in Its "Full Control" Reason Text
+
+Found while investigating [#127](https://github.com/theantipopau/omencore/issues/127) (board `8D26`, "can't control anything despite full-control classification"): `LinuxCapabilityClassifier`'s reason text for `FullControl` checked `hasHwmonFanAccess` first — but that flag never contributes to `hasManualFanControl` becoming true at all (it's an independent, hwmon-only signal that on its own only grants `ProfileOnly`, per the class's own existing design and tests). A board where `hasEcAccess` is what actually made the classification `FullControl`, but which also happens to expose `hasHwmonFanAccess` (an unrelated, independent flag), got told "Manual fan control is available through hp-wmi hwmon pwm/fan targets" instead of the true reason, "...through legacy EC access" — exactly the mismatch #127's own `diagnose` output shows.
+
+Reordered the reason-selection to check the actual contributing flags (`hasEcAccess` → fan target files → fan output files) and dropped the irrelevant hwmon branch from this reason chain entirely. Pure diagnostic-text correctness fix — no capability classification or control behavior changed, only which sentence explains it. 2 new regression tests (`LinuxCapabilityClassifierTests.cs`); Linux suite: 30/30 (up from 28).
+
 ### New Model Database Entry: HP OMEN 16-ap0xxx, ProductId `8D26`
 
 [#188](https://github.com/theantipopau/omencore/issues/188) — AMD Ryzen AI 7 350 + Radeon 860M iGPU + RTX 5070 Laptop GPU, BIOS F.13. Was resolving only via a fuzzy model-name pattern match to the `8D24` entry (Low confidence, "Model Not Yet Field-Confirmed" banner); reporter confirms the hardware already works correctly under that fallback. Added as its own exact-ProductId entry with the identical V1 WMI fan/capability profile `8D24`/`8E35` (the same board family's other known ProductId) already use, in both `ModelCapabilityDatabase` and `KeyboardModelDatabase`. Not a capability change — an identity fix for a board already confirmed working, matching the pattern used for `8BA9` and `8603` earlier this cycle.
