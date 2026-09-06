@@ -71,6 +71,14 @@ carries the whole cycle; the two were merged from what were briefly separate v4.
 
 ---
 
+### GitHub #146 — Second Report on Board `88D2`, Already Given an Entry From #132
+
+**Report:** [#146](https://github.com/theantipopau/omencore/issues/146) (fans stuck at 100% until an OmenCore restart, plus a separate standby/thermal-shutdown incident already resolved in an earlier release per the reporter's own follow-up) — same board, `88D2` (OMEN 15z-en100), as [#132](https://github.com/theantipopau/omencore/issues/132) (fan hunting/oscillating), which already has its own conservative entry from an earlier session (`GetPreferredCapabilities_88D2_Omen15zEn100_UsesConservativeLegacyProfile` in `ModelCapabilityDatabaseTests.cs` confirms it). Caught before duplicating: this pass initially added a second, conflicting `88D2` entry without checking for an existing one first — the full test suite's failure on the resulting duplicate ProductId caught it immediately (`SupportsFanCurves` disagreed between the two entries). Reverted the duplicate; updated the existing entry's `Notes` to cite `#146` alongside `#132` instead.
+
+**Not a fix for either reported anomaly.** The existing entry's capability flags were already reasoned through for #132 specifically and are unrelated to what #146 reports — giving this board an identity doesn't explain why its fans hunt or stick at max. Both reports lack a diagnostics export capturing the actual misbehavior (#132 has only the identity summary; #146's attached log was captured *after* the incident, during diagnostics export itself, not during the stuck-fan state). Replied to both asking for a fresh export taken while the symptom is actually happening — for #146 specifically, that a restart (not reboot) clears it points at stuck in-process state (a monitor loop or hysteresis timer not resetting) rather than firmware, but confirming which piece needs the actual moment captured.
+
+---
+
 ### New Model Database Entry — HP OMEN 16-ap0xxx, ProductId `8D26`
 
 **Report:** [#188](https://github.com/theantipopau/omencore/issues/188) — HP OMEN Gaming Laptop 16-ap0xxx, AMD Ryzen AI 7 350 + Radeon 860M iGPU + NVIDIA RTX 5070 Laptop GPU, 32GB RAM, BIOS F.13, SKU `5CD5399MYY`. Resolved only via `ModelNamePattern` fuzzy match to the existing `8D24` entry (Low confidence, "Model Not Yet Field-Confirmed" banner) — the reporter's own summary confirms the hardware works correctly under that fallback, just wants the exact board identified rather than continuing to rely on the pattern match.

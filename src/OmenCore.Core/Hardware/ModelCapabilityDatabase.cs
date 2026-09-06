@@ -505,7 +505,7 @@ namespace OmenCore.Hardware
                 HasFourZoneRgb = true,
                 SupportsUndervolt = false,
                 UserVerified = false,
-                Notes = "GitHub #132 - ProductId 88D2 / 15z-en100. Conservative legacy WMI V1 profile; direct EC writes disabled and independent curves held off pending field verification."
+                Notes = "GitHub #132/#146 - ProductId 88D2 / 15z-en100. Conservative legacy WMI V1 profile; direct EC writes disabled and independent curves held off pending field verification. #146 separately reports fans stuck at 100% until an OmenCore restart clears it - not a capability-flag issue, needs a diagnostics export captured during the actual stuck state to trace further."
             });
             
             AddModel(new ModelCapabilities
