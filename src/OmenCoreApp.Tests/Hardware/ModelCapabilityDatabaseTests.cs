@@ -590,6 +590,21 @@ namespace OmenCoreApp.Tests.Hardware
             caps.HasKeyboardBacklight.Should().BeTrue("keyboard backlight expected");
         }
 
+        // Follow-up diagnostics on #128 confirmed live in the field: "Performance mode 'Balanced':
+        // nothing was applied (Direct EC writes disabled for model 'HP Victus 16-e0xxx')". 88EC
+        // never got the AllowDecoupledWmiThermalPolicyFallback flag that 8DCD/8C30/878C/8600 all
+        // already have, so PerformanceModeService had no fallback path once Direct EC was
+        // (correctly) disabled - switching modes silently did nothing at all.
+        [Fact]
+        public void GetCapabilities_88EC_AllowsDecoupledWmiThermalPolicyFallback()
+        {
+            var caps = ModelCapabilityDatabase.GetCapabilities("88EC");
+
+            caps.Should().NotBeNull();
+            caps!.AllowDecoupledWmiThermalPolicyFallback.Should().BeTrue(
+                "Direct EC writes are disabled on this board, so performance mode switches need the WMI thermal-policy fallback to have any effect at all");
+        }
+
         [Fact]
         public void GetPreferredCapabilities_88EE_ResolvesToExactVictusE0194nwMapping()
         {

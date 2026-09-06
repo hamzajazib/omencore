@@ -1939,8 +1939,9 @@ namespace OmenCore.Hardware
                 SupportsUndervolt = false,
                 HasFourZoneRgb = false,
                 HasKeyboardBacklight = true,
+                AllowDecoupledWmiThermalPolicyFallback = true,
                 UserVerified = false,
-                Notes = "Issue #128 — explicit Victus 16-e0xxx mapping (88EC) to avoid low-confidence family fallback; feature flags intentionally conservative pending field verification"
+                Notes = "Issue #128 — explicit Victus 16-e0xxx mapping (88EC) to avoid low-confidence family fallback; feature flags intentionally conservative pending field verification. A follow-up diagnostics export confirmed 'Performance mode Balanced: nothing was applied (Direct EC writes disabled)' live in the field - this board never got the AllowDecoupledWmiThermalPolicyFallback fix already applied to 8DCD/8C30/878C/8600, so switching modes had no effect at all since Direct EC is (correctly) disabled here and no fallback path was enabled to compensate."
             });
             
             // ═══════════════════════════════════════════════════════════════════════════════════
