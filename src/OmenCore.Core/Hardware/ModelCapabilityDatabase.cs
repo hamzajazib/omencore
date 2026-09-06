@@ -1399,13 +1399,35 @@ namespace OmenCore.Hardware
                 Notes = "GitHub #134/#144 — WMI V1 control with worker-backed CPU temperature; fan-level fallback is estimated telemetry, not physical RPM. Direct EC remains unverified."
             });
 
-            // OMEN 17-db1xxx (2025), GitHub #130 — HP OMEN Gaming Laptop 17-db1180ng, AMD Ryzen
-            // AI 7 350 + RTX 5070, BIOS F.20. Reporter's own log confirmed the real ProductId
-            // (8E10) directly ("Model not in database - using OMEN17 family defaults"), and
-            // supplied a fan-calibration-wizard-verified config export. Same V1 WMI ColorTable
-            // keyboard/fan generation as the 16-ap0xxx AMD boards (8D24/8D26/8E35) - dynamic RGB
-            // scene streaming (Rainbow/Wave) not working is this protocol's own static-color-only
-            // limitation, not specific to this board or something a database entry changes.
+            // OMEN 17-db1xxx (2025), ProductId 8E10 - AMD Ryzen AI 7 350 + RTX 5070/5060, BIOS
+            // F.20. Two independent reports on this exact board: GitHub #130 (17-db1180ng,
+            // RTX 5070 - Fan Calibration Wizard ran successfully, basic keyboard color control
+            // confirmed working, dynamic scene streaming not working - a static-color-only
+            // ColorTable protocol limitation shared by the whole 16-ap0xxx/17-db1xxx AMD
+            // generation, not board-specific) and GitHub #171 (17-db1012nt, RTX 5060 - Guided
+            // Fan Verification: 4/6 tests passed, 71/100, WMI backend, RPM estimated not
+            // tachometer).
+            //
+            // MaxFanLevel is deliberately 45, not the nominal-looking 55 used by sibling AMD
+            // boards: #171's own Guided Fan Verification measured this board's real Max-hold
+            // level settling at 45 in practice ("expected level 55, got level 45" - the nominal
+            // value the family template assumes is unreachable here). Setting the nominal 55
+            // instead would make WmiFanController's Max-mode floor check
+            // (MaxFanLevel * MaxModeAbsoluteLevelFloorRatio) permanently unwinnable on this
+            // board, producing the exact endless "external reset suspected" reassert-loop
+            // already tracked as a real, tracked stutter-causing bug on other real-max-below-
+            // nominal-max boards - this would have introduced that same bug here, not merely
+            // misreported a number.
+            //
+            // HasMuxSwitch and SupportsGpuPowerBoost are conservatively false, not inherited
+            // from the 16-ap0xxx siblings (8D24/8D26/8E35) despite sharing a CPU generation -
+            // #171's own maintainer reply explicitly declined to add an entry for this exact
+            // board "before promoting... we like to have explicit confirmation of things like
+            // RGB control actually working" for MUX/GPU-boost specifically, and neither report
+            // confirms either. This is a different physical chassis (17" vs the siblings' 16")
+            // and inheriting an unconfirmed advanced-feature flag from a same-CPU-generation
+            // board is exactly the family-template-inheritance mistake #182's fallback fix
+            // (see "Model Capability Fallbacks Were Optimistic" above) already corrected once.
             AddModel(new ModelCapabilities
             {
                 ProductId = "8E10",
@@ -1418,13 +1440,13 @@ namespace OmenCore.Hardware
                 SupportsFanCurves = true,
                 SupportsIndependentFanCurves = false,
                 FanZoneCount = 2,
-                MaxFanLevel = 55,
-                HasMuxSwitch = true,
-                SupportsGpuPowerBoost = true,
+                MaxFanLevel = 45,
+                HasMuxSwitch = false,
+                SupportsGpuPowerBoost = false,
                 HasFourZoneRgb = true,
                 SupportsUndervolt = false,
                 UserVerified = false,
-                Notes = "GitHub #130 - OMEN Gaming Laptop 17-db1180ng / ProductId 8E10 (Ryzen AI 7 350 + RTX 5070), BIOS F.20. Reporter ran the Fan Calibration Wizard successfully (95.1% WMI reliability on F.20) and confirmed the ProductId via omencore.log. Same conservative V1 WMI profile as the 16-ap0xxx AMD siblings; direct EC and independent curves remain unverified."
+                Notes = "GitHub #130/#171 - OMEN Gaming Laptop 17-db1xxx / ProductId 8E10 (Ryzen AI 7 350 + RTX 5070/5060), BIOS F.20. MaxFanLevel=45 per #171's Guided Fan Verification (real Max-hold ceiling, not the nominal 55 - using 55 would produce an unreachable Max-mode floor and an endless reassert loop on this board). MUX switch and GPU Power Boost conservatively false pending confirmation, not inherited from the 16-ap0xxx siblings' CPU-generation match. Direct EC and independent curves remain unverified."
             });
 
             // GitHub #125: HP Victus 15-fa1xxx i5-12450H / RTX 2050, exact ProductId 8C3F.

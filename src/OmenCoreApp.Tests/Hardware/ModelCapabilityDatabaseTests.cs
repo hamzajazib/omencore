@@ -334,10 +334,16 @@ namespace OmenCoreApp.Tests.Hardware
             caps.SupportsUndervolt.Should().BeFalse();
         }
 
+        // GitHub #130/#171: was resolving via OMEN17 family fallback ("Model not in database").
+        // MaxFanLevel is pinned at 45 (not the sibling boards' nominal 55) because #171's own
+        // Guided Fan Verification measured this exact board's real Max-hold ceiling at 45 -
+        // using 55 would make WmiFanController's Max-mode floor check permanently unwinnable on
+        // this board and produce an endless reassert loop, a real regression, not just a wrong
+        // number. MuxSwitch/GpuPowerBoost are conservatively false, not inherited from the
+        // 16-ap0xxx siblings' shared CPU generation, since neither is confirmed on this chassis.
         [Fact]
         public void GetCapabilities_8E10_Db1xxx_UsesExactV1WmiProfile()
         {
-            // GitHub #130: was resolving via OMEN17 family fallback ("Model not in database").
             var caps = ModelCapabilityDatabase.GetCapabilities("8E10");
 
             caps.ProductId.Should().Be("8E10");
@@ -347,6 +353,24 @@ namespace OmenCoreApp.Tests.Hardware
             caps.SupportsFanCurves.Should().BeTrue();
             caps.FanZoneCount.Should().Be(2);
             caps.SupportsUndervolt.Should().BeFalse();
+        }
+
+        [Fact]
+        public void GetCapabilities_8E10_MaxFanLevel_MatchesFieldConfirmedRealCeiling_NotNominal()
+        {
+            var caps = ModelCapabilityDatabase.GetCapabilities("8E10");
+
+            caps.MaxFanLevel.Should().Be(45,
+                "GitHub #171's Guided Fan Verification measured the real Max-hold ceiling at 45 - the nominal 55 used by sibling boards is unreachable on this board and would make the Max-mode floor check permanently unwinnable, producing an endless reassert loop");
+        }
+
+        [Fact]
+        public void GetCapabilities_8E10_DoesNotClaimUnconfirmedMuxOrGpuPowerBoost()
+        {
+            var caps = ModelCapabilityDatabase.GetCapabilities("8E10");
+
+            caps.HasMuxSwitch.Should().BeFalse("not confirmed on this board - do not inherit from the 16-ap0xxx siblings' shared CPU generation");
+            caps.SupportsGpuPowerBoost.Should().BeFalse("not confirmed on this board - do not inherit from the 16-ap0xxx siblings' shared CPU generation");
         }
 
         [Fact]
