@@ -55,9 +55,16 @@ It runs without ads, account prompts, cloud telemetry, or OMEN Gaming Hub. Hardw
 ## Current Release
 
 **Version:** 4.3.0<br>
-**Status:** Code-complete, test-verified (1414/1414 tests, 0 build warnings). Started as a v4.2.1 patch cycle for five field reports (#178-182) and grew into extracting `OmenCore.Core` out of the WPF app plus the first slice of a Windows CLI. The Windows CLI's six hardware-touching commands and several Linux fixes are implemented and build-verified but not yet confirmed against real hardware from this environment — see the roadmap for what's implemented-pending-confirmation versus field-proven.<br>
+**Released:** 2026-09-07<br>
+**Status:** Test-verified (1414/1414 tests, 0 build warnings). Started as a v4.2.1 patch cycle for five field reports (#178-182) and grew into extracting `OmenCore.Core` out of the WPF app plus the first slice of a Windows CLI. The Windows CLI's six hardware-touching commands and several Linux fixes are implemented and build-verified but not yet confirmed against real hardware from this environment — see the roadmap for what's implemented-pending-confirmation versus field-proven.<br>
 **Release notes:** [docs/CHANGELOG_v4.3.0.md](docs/CHANGELOG_v4.3.0.md)<br>
 **Roadmap:** [docs/ROADMAP_v4.3.0.md](docs/ROADMAP_v4.3.0.md)
+
+| Artifact | SHA256 |
+|---|---|
+| `OmenCoreSetup-4.3.0.exe` | `6F1AE6AB29F07C55B27BFE59FFAA2828131177735281119480FE8A47C1B4C6B8` |
+| `OmenCore-4.3.0-win-x64.zip` | `14116B8C542B7FB77DB08C06F5889660D344CD3B2925FAA3D4E6E8DE4A0053F6` |
+| `OmenCore-4.3.0-linux-x64.zip` | `E75DA1A26C0C087D5432555D0937274F33F85585190478CAF74D4557D6FE087A` |
 
 v4.3.0 started as a patch cycle and grew into a feature release. Two real safety bugs stand out: the Quiet Safety Monitor's "Max fan, power mode retained" guarantee was silently undone whenever Fan/Performance linking was on, cascading into an unwanted performance-mode switch on a transient thermal spike; and on Linux, switching from Max back to Auto under load could leave both fans at 0 RPM indefinitely on a board with degraded ACPI, ending in a real thermal shutdown — now caught by a post-write RPM check that falls back to the known-working Max path. A recurring in-process crash (`AccessViolationException` in the AMD ADL telemetry path on hybrid AMD+NVIDIA hardware, killing 3 of 4 full test runs) is also fixed. Model-capability fallback logic — used whenever a board isn't in the database — defaulted to optimistic instead of conservative; both fallback paths now assume nothing beyond WMI fan control and performance profiles until a real entry confirms more, matching the discipline already used everywhere else in the capability database. The `OmenCore.Core` extraction (194 files moved out of the WPF assembly) unblocks a new Windows CLI, a future local HTTP/named-pipe API, and eventual headless operation.
 

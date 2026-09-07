@@ -1,6 +1,6 @@
 # OmenCore v4.3.0
 
-**Release Date:** TBD — code-complete as of 2026-09-07. Version bumped across the app/CLI/installer/build config (`VERSION.txt`, every `.csproj`, the installer script), full test suite green (1414/1414, 0 build warnings).
+**Release Date:** 2026-09-07.
 **Release Status:** Everything in this changelog is either evidence-based from a real field report or a pure architecture/display-honesty change that doesn't need field validation under this project's evidence-gate convention. Two categories remain genuinely unconfirmed against real hardware and should be treated as implemented-pending-confirmation, not done: the Windows CLI's six hardware-touching commands (`status`/`fan`/`performance`/`keyboard`/`monitor`/`daemon --profile`), and three Linux fixes (`#183`'s Auto-mode safety fallback, `#186`'s NVML telemetry, `#187`'s OMEN-key watcher) — all build/test-verified with no Linux/OMEN hardware available in this environment to run them on.
 **Type:** Feature release. Started as a v4.2.1 patch cycle (field-report fixes from GitHub issues
 opened after v4.2.0, #178–#182) that grew into the `OmenCore.Core` extraction and the first slice
@@ -11,6 +11,20 @@ first.
 
 **Fixed, by area:** [Fan, Performance & Thermal Safety](#fan-performance--thermal-safety) · [RGB & Keyboard Lighting](#rgb--keyboard-lighting) · [Linux](#linux) · [Windows Stability & Core](#windows-stability--core) · [Model Database & Hardware Identity](#model-database--hardware-identity) · [GitHub Backlog Housekeeping](#github-backlog-housekeeping)
 **Added:** [Automation Rules Engine](#automation-rules-engine) · [Architecture & Tooling](#architecture--tooling)
+
+---
+
+## Release Artifacts
+
+Built locally via `build-installer.ps1` (Windows) and `build-linux-package.ps1` (Linux), Release configuration, self-contained single-file publishes. Verify a download by hashing it yourself and comparing against the value below — on Windows, `certutil -hashfile <file> SHA256`; on Linux/macOS, `sha256sum <file>`.
+
+| Artifact | SHA256 |
+|---|---|
+| `OmenCoreSetup-4.3.0.exe` | `6F1AE6AB29F07C55B27BFE59FFAA2828131177735281119480FE8A47C1B4C6B8` |
+| `OmenCore-4.3.0-win-x64.zip` | `14116B8C542B7FB77DB08C06F5889660D344CD3B2925FAA3D4E6E8DE4A0053F6` |
+| `OmenCore-4.3.0-linux-x64.zip` | `E75DA1A26C0C087D5432555D0937274F33F85585190478CAF74D4557D6FE087A` |
+
+Combined checksum file: `artifacts/SHA256SUMS-4.3.0.txt` (same convention as every prior release back to 3.4.1).
 
 ---
 
