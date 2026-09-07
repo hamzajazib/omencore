@@ -7,7 +7,7 @@
 ### Lightweight local control for HP OMEN and Victus gaming laptops
 
 [![Website](https://img.shields.io/badge/omencore.info-Visit-0aa1dd.svg?style=for-the-badge)](https://omencore.info)
-[![Version](https://img.shields.io/badge/version-4.2.0-red.svg?style=for-the-badge)](docs/CHANGELOG_v4.2.0.md)
+[![Version](https://img.shields.io/badge/version-4.3.0-red.svg?style=for-the-badge)](docs/CHANGELOG_v4.3.0.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg?style=for-the-badge)](https://dotnet.microsoft.com/download/dotnet/8.0)
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/9WhJdabGk8)
@@ -54,14 +54,35 @@ It runs without ads, account prompts, cloud telemetry, or OMEN Gaming Hub. Hardw
 
 ## Current Release
 
-**Version:** 4.2.0<br>
-**Status:** Code-complete, test-verified (1372/1372 tests, 0 build warnings). Latest portable-build round (tab-switch fade animation, title-bar chrome icons, tray context menu cleanup) tester-confirmed with no further issues. Two items remain open before tagging: [PR #176](https://github.com/theantipopau/omencore/pull/176)'s merge decision, and the Phase D/E hardware-gated items in the roadmap, both awaiting field validation/owner sign-off this environment can't provide.<br>
-**Release notes:** [docs/CHANGELOG_v4.2.0.md](docs/CHANGELOG_v4.2.0.md)<br>
-**Roadmap:** [docs/ROADMAP_v4.2.0.md](docs/ROADMAP_v4.2.0.md)
+**Version:** 4.3.0<br>
+**Status:** Code-complete, test-verified (1414/1414 tests, 0 build warnings). Started as a v4.2.1 patch cycle for five field reports (#178-182) and grew into extracting `OmenCore.Core` out of the WPF app plus the first slice of a Windows CLI. The Windows CLI's six hardware-touching commands and several Linux fixes are implemented and build-verified but not yet confirmed against real hardware from this environment — see the roadmap for what's implemented-pending-confirmation versus field-proven.<br>
+**Release notes:** [docs/CHANGELOG_v4.3.0.md](docs/CHANGELOG_v4.3.0.md)<br>
+**Roadmap:** [docs/ROADMAP_v4.3.0.md](docs/ROADMAP_v4.3.0.md)
 
-v4.2.0 centers on three pillars: sensor-truth/fan-control accuracy, perceived UI performance, and a navigation redesign — plus field-report bug fixes absorbed as they arrived. The most significant fix: on boards exposing several ACPI thermal zones, OmenCore could latch onto whichever zone WMI enumerated first and keep it for the whole session — often a chassis/ambient sensor sitting far below the real CPU temperature. Fan curves consume that value, so it was a fan-control bug, not just a display one; selection is now unit-tested and re-evaluated every poll instead of latched. Navigation moved from a horizontal tab strip (which scrolled out of view below a certain window width) to a vertical rail, then redesigned twice more after a real-hardware tester found it read as two separate boxes, squeezed the tab list on a shorter window, and needed more visual distinction between sections. AMD CPU undervolt status stopped claiming an independent hardware "readback" the AMD SMU path doesn't actually have. Two RGB detection false positives were found and fixed from the same field testing: a false "OMEN Keyboard" badge shown on hardware that has none, and iCUE not being detected despite running.
+v4.3.0 started as a patch cycle and grew into a feature release. Two real safety bugs stand out: the Quiet Safety Monitor's "Max fan, power mode retained" guarantee was silently undone whenever Fan/Performance linking was on, cascading into an unwanted performance-mode switch on a transient thermal spike; and on Linux, switching from Max back to Auto under load could leave both fans at 0 RPM indefinitely on a board with degraded ACPI, ending in a real thermal shutdown — now caught by a post-write RPM check that falls back to the known-working Max path. A recurring in-process crash (`AccessViolationException` in the AMD ADL telemetry path on hybrid AMD+NVIDIA hardware, killing 3 of 4 full test runs) is also fixed. Model-capability fallback logic — used whenever a board isn't in the database — defaulted to optimistic instead of conservative; both fallback paths now assume nothing beyond WMI fan control and performance profiles until a real entry confirms more, matching the discipline already used everywhere else in the capability database. The `OmenCore.Core` extraction (194 files moved out of the WPF assembly) unblocks a new Windows CLI, a future local HTTP/named-pipe API, and eventual headless operation.
 
-### v4.2.0 Highlights
+### v4.3.0 Highlights
+
+- **Fixed (safety):** the Quiet Safety Monitor's "power mode retained" guarantee during a Max-fan safety override was silently undone by Fan/Performance linking, cascading into an unwanted performance-mode switch on a transient CPU spike ([#181](https://github.com/theantipopau/omencore/issues/181)). Fixed with an explicit suppress-linked-sync flag threaded through the one caller that needs it; every user-initiated Max Fan trigger is unaffected.
+- **Fixed (Linux, high-severity safety):** switching Max → Auto under load could leave both fans at 0 RPM indefinitely on a board with degraded ACPI, ending in a real thermal shutdown ([#183](https://github.com/theantipopau/omencore/issues/183)). Now polls RPM after the write and falls back to the board's own confirmed-working Max path if both fans are still dead above a conservative safety bar.
+- **Fixed (stability):** a recurring native `AccessViolationException` in the AMD ADL telemetry path on hybrid AMD+NVIDIA hardware — killed 3 of 4 full test runs before being traced and quarantined the same way the out-of-process hardware worker already protects itself.
+- **Fixed:** Power Automation force-applied the configured AC/Battery preset on every startup regardless of whether the power source had actually changed, silently discarding a manual mid-session profile choice. Now compares against the last-confirmed power state and no-ops when nothing changed.
+- **Fixed:** built-in "Night Mode"/"Work" RGB scenes shipped with a baked-in, un-opt-out-able daily schedule and zero UI to see or disable it — every install silently changed keyboard lighting at 10PM/9AM regardless of what the user had manually set, including explicitly off. The default schedule is removed; both scenes remain manually selectable.
+- **Fixed:** model-capability fallback logic (used for any board without an exact database entry) defaulted to optimistic instead of conservative, claiming GPU Power Boost, independent fan curves, undervolt, and more as "Supported" on hardware never confirmed to have them ([#182](https://github.com/theantipopau/omencore/issues/182)). Both fallback paths now assume nothing beyond WMI fan control and performance profiles by default.
+- **Fixed (Linux):** GPU telemetry never queried NVML, so a real, working NVIDIA GPU read as 0°C/unavailable in both the CLI and GUI ([#186](https://github.com/theantipopau/omencore/issues/186)) — fixed in three independent places that all had the same gap, plus GPU name/power/utilization now shown.
+- **Fixed (Linux):** the OMEN key WMI watcher could register cleanly and then never receive a single event on some boards ([#187](https://github.com/theantipopau/omencore/issues/187)) — traced to a server-side WQL filter silently never matching on affected `hpqBEvnt` schemas; the existing client-side validation already made a broader subscription safe.
+- **Fixed:** `88EC` (HP Victus 16-e0xxx) performance-mode switches did nothing at all — missing the same one-flag WMI-fallback fix already shipped for four sibling boards ([#128](https://github.com/theantipopau/omencore/issues/128) follow-up).
+- **Fixed:** a Corsair DPI-editor write could show a confirmation dialog and update saved state for a write that silently never reached the mouse, plus a fabricated 100% battery reading; GPU Power Boost's wattage badge was hardcoded regardless of level, now level-aware with a firmware-ceiling caveat.
+- **Fixed:** capability classifier's "Full Control" reason text could name the wrong control mechanism on Linux ([#127](https://github.com/theantipopau/omencore/issues/127), [#126](https://github.com/theantipopau/omencore/issues/126)) — diagnostic-text only, no classification change.
+- **Added:** four more automation trigger types promoted to the Settings UI (Temperature, Idle, Process, WiFi SSID — two of which had real bugs fixed as part of promoting them) plus a new Lid-close trigger, completing all seven backend trigger types shipped.
+- **Added:** `OmenCore.Core` — the hardware/service layer (194 files) extracted out of the WPF application into its own class library, unblocking a Windows CLI, a future local HTTP/named-pipe API, and headless operation.
+- **Added:** a Windows CLI (`omencore-cli`) — `status`, `fan`, `performance`, `keyboard`, `monitor`, `config`, and foreground `daemon` commands built directly on `OmenCore.Core`, no duplicated hardware logic.
+- **Model database:** corrected fallback logic plus new/fixed exact entries for boards `8E10`, `8D26`, `8E5E`, `8603`, `8BA9`, and updated notes for `88D2` — all from real field reports, one (`8E10`'s `MaxFanLevel`) a self-caught correction before it shipped, documented in full in the roadmap.
+- **GitHub backlog:** audited older open issues against the current codebase and closed 10 that already had an unconditional fix shipped in an earlier cycle but were never replied-to or closed; six more given evidence-based replies without a code change.
+
+Full detail on every item in [docs/CHANGELOG_v4.3.0.md](docs/CHANGELOG_v4.3.0.md).
+
+### v4.2.0 Highlights (previous release)
 
 - **Fixed:** CPU temperature could report a chassis sensor instead of the CPU on boards with multiple ACPI thermal zones — affects fan control, not just the display. Selection is now a pure, unit-tested function re-evaluated every poll rather than latched once per session.
 - **Added:** the CPU temperature source (WMI BIOS / ACPI / LibreHardwareMonitor fallback) is now visible as a Dashboard tooltip and in the diagnostics export, plus a new Diagnostics-tab card comparing all three sources side by side on demand.
@@ -187,20 +208,18 @@ Older release notes ([v3.8.0](docs/CHANGELOG_v3.8.0.md) and earlier) are kept in
 
 ## Current Development Focus
 
-**v4.1.7 grew from an originally-scoped v4.1.6 patch into the largest release yet**, after a second and third wave of field reports and community contributions kept landing before anything was tagged — see "Versioning note" below. Started with GitHub #159 (an exceptionally detailed field report) and a Discord report from board `8DCD`: `PerformanceModeService` was attempting CPU/GPU EC power-limit writes to register addresses the code's own header comment documents as unconfirmed ("EXAMPLE - varies by model!", explicit hardware-damage warning) by default, on any board that didn't opt out — a new, dedicated flag now defaults this off everywhere until a model's addresses are field-confirmed. `WmiFanController.SetPerformanceMode` cleared its internal Max-mode tracking without releasing the real BIOS `SetFanMax` latch, leaving fans stuck at maximum until the app was closed — now fixed. From there, GitHub #163 (board `8BCA` AMD/Intel misidentification) led to a much larger community contribution from `tempestnano` — board `8D87` support, per-key and eventually per-LED RGB for every supported board, an AMD SMU transport fix, and an experimental, explicitly-disclosed adapter-power-override feature — followed by a fan-diagnostic RPM display bug found and fixed directly from that same reporter's own session logs.
+**v4.3.0 started as an originally-scoped v4.2.1 patch cycle** for five field reports that landed within hours of v4.2.0 going live (GitHub #178-182) — a mix of new-model requests, a Linux keyboard-lighting report, and two deeper capability/behavior bugs. Triaging #182's "family fallback" complaint surfaced a systemic capability-honesty bug affecting every unrecognized board, not just that one. While scoping what else could land alongside those fixes, extracting `OmenCore.Core` — the hardware/service layer — out of the WPF application surfaced as the gating item for a Windows CLI, a local HTTP/named-pipe API, and any future headless operation; it grew into real work the same session, unblocking the first slice of the Windows CLI. Given the scope had grown past "patch release," everything was folded into one v4.3.0 release rather than shipping a separate v4.2.1 patch first.
 
-**Versioning note:** v4.1.6 was never tagged or released — a real code fix landed after its artifacts were already built and hashed, so everything was rolled into v4.1.7 instead of shipping something already stale.
-
-**What's intentionally *not* in this release:** the larger architectural items from 4.1.0 — privilege separation, a real RGB provider architecture, i18n, Linux tray/config persistence — remain scoped in the roadmap but not started. `SystemControlViewModel`'s EC-based GPU-boost fallback path (a different, still-ungated EC write of the same risk class as the one fixed above) was found in an earlier pass but not touched — logged for a dedicated fix.
+**What's intentionally *not* in this release:** localization/i18n (the single most persistently-requested item across the project's history, still zero infrastructure), the `MainViewModel` feature-scoped extraction (6,247 lines, deferred again), the local HTTP/named-pipe control API (unblocked by the Core extraction but not started), and the Linux `omencore-gui` tray icon all remain scoped in the roadmap but not started. A new opt-in software fan-curve controller for boards where firmware Auto under-cools ([#189](https://github.com/theantipopau/omencore/issues/189), exceptionally well-researched) is recorded for a dedicated future design pass rather than rushed into this cycle.
 
 The active work is tracked in:
 
-- [docs/CHANGELOG_v4.2.0.md](docs/CHANGELOG_v4.2.0.md) - the current release notes.
-- [docs/ROADMAP_v4.2.0.md](docs/ROADMAP_v4.2.0.md) - the full scope, phase ordering, and execution checklist this cycle worked through, plus rejected options and evidence trails.
+- [docs/CHANGELOG_v4.3.0.md](docs/CHANGELOG_v4.3.0.md) - the current release notes.
+- [docs/ROADMAP_v4.3.0.md](docs/ROADMAP_v4.3.0.md) - the full scope, phase ordering, and execution checklist this cycle worked through, plus rejected options and evidence trails.
 
 Prior-release work is kept for historical reference:
 
-- [docs/CHANGELOG_v4.1.7.md](docs/CHANGELOG_v4.1.7.md), [docs/CHANGELOG_v4.1.5.md](docs/CHANGELOG_v4.1.5.md) - the two prior releases' notes and validation status.
+- [docs/CHANGELOG_v4.2.0.md](docs/CHANGELOG_v4.2.0.md), [docs/CHANGELOG_v4.1.7.md](docs/CHANGELOG_v4.1.7.md), [docs/CHANGELOG_v4.1.5.md](docs/CHANGELOG_v4.1.5.md) - the three prior releases' notes and validation status.
 - [docs/CHANGELOG_v3.9.0.md](docs/CHANGELOG_v3.9.0.md), [docs/CHANGELOG_v3.8.2.md](docs/CHANGELOG_v3.8.2.md), [docs/CHANGELOG_v3.8.1.md](docs/CHANGELOG_v3.8.1.md), [docs/CHANGELOG_v3.8.0.md](docs/CHANGELOG_v3.8.0.md) - field fixes, UI polish, diagnostics, and validation status for each release.
 - [docs/3.8.1-BUG-REPORTS.md](docs/3.8.1-BUG-REPORTS.md), [docs/3.8.0-BUG-REPORTS.md](docs/3.8.0-BUG-REPORTS.md) - tracked model reports and issue follow-up.
 
@@ -212,9 +231,9 @@ Release artifacts are published on the [GitHub Releases](https://github.com/thea
 
 | Artifact | Platform | Recommended For |
 |---|---|---|
-| `OmenCoreSetup-4.2.0.exe` | Windows | Most users. Installs app and can install PawnIO. |
-| `OmenCore-4.2.0-win-x64.zip` | Windows | Portable use, testing, or no installer preference. |
-| `OmenCore-4.2.0-linux-x64.zip` | Linux | CLI plus Avalonia GUI, self-contained runtime. |
+| `OmenCoreSetup-4.3.0.exe` | Windows | Most users. Installs app and can install PawnIO. |
+| `OmenCore-4.3.0-win-x64.zip` | Windows | Portable use, testing, or no installer preference. |
+| `OmenCore-4.3.0-linux-x64.zip` | Linux | CLI plus Avalonia GUI, self-contained runtime. |
 
 Final GitHub release notes must include SHA256 hashes for every artifact. The in-app updater requires release hashes before it will install an update.
 
@@ -222,20 +241,20 @@ Final GitHub release notes must include SHA256 hashes for every artifact. The in
 
 ### Windows
 
-1. Download `OmenCoreSetup-4.2.0.exe` from [Releases](https://github.com/theantipopau/omencore/releases/latest).
+1. Download `OmenCoreSetup-4.3.0.exe` from [Releases](https://github.com/theantipopau/omencore/releases/latest).
 2. Verify the SHA256 hash from the release notes.
 3. Run the installer as Administrator.
 4. Keep PawnIO selected unless you only want monitoring and WMI-only features.
 5. Launch OmenCore from the Start Menu.
 
-Portable users can download `OmenCore-4.2.0-win-x64.zip`, extract it to a normal folder, and run `OmenCore.exe` as Administrator.
+Portable users can download `OmenCore-4.3.0-win-x64.zip`, extract it to a normal folder, and run `OmenCore.exe` as Administrator.
 
 See [INSTALL.md](INSTALL.md) for the full Windows guide.
 
 ### Linux
 
 ```bash
-VERSION=4.2.0
+VERSION=4.3.0
 wget "https://github.com/theantipopau/omencore/releases/download/v${VERSION}/OmenCore-${VERSION}-linux-x64.zip"
 mkdir -p OmenCore-linux-x64
 unzip "OmenCore-${VERSION}-linux-x64.zip" -d OmenCore-linux-x64
@@ -356,9 +375,9 @@ Linux control normally follows available sysfs/hwmon capability:
 
 ## Known Limits
 
-Carried forward from 4.1.7 (none of this touched by 4.2.0's work — all still gated on field evidence):
+Carried forward from 4.1.7/4.2.0 (untouched by 4.3.0's work unless noted — all still gated on field evidence):
 
-- **Max Fan Mode can trigger a repeating background re-assert loop on some boards — with a workaround.** On boards whose real fan level under a BIOS Max hold settles well below the level OmenCore computes as the expected floor (confirmed on `8A18`, `8A25`, `8E10`, `8D41`), the Max-mode health check reads a genuinely-applied Max hold as "unhealthy" and re-sends the Max command roughly every 20 seconds for as long as Max Fan Mode stays engaged. A full multi-day log from board `8E10` (OMEN 17-db1xxx) confirms this runs continuously rather than as a one-off, and that reporter separately described near-constant in-game stutter. That connection is **plausible but not proven** — no single once-per-second write was found in the log; what is confirmed is real, overlapping EC/WMI hardware I/O for the whole session. **Workaround:** use a custom fan curve or the Performance/Gaming preset instead of literal Max Fan Mode while gaming — those use a different reapply path that has no floor health check and no such loop. The underlying bug is deliberately unfixed: it needs a board-relative redesign across two separate code paths, and the one narrower mitigation considered (backing off after repeated identical readings) was rejected because it cannot be distinguished from a genuinely-reverting fan without risking under-cooling a different board.
+- **Max Fan Mode can trigger a repeating background re-assert loop on some boards — with a workaround.** On boards whose real fan level under a BIOS Max hold settles well below the level OmenCore computes as the expected floor (confirmed on `8A18`, `8A25`, `8D41`), the Max-mode health check reads a genuinely-applied Max hold as "unhealthy" and re-sends the Max command roughly every 20 seconds for as long as Max Fan Mode stays engaged. `8E10` was also on this list; its `MaxFanLevel` database value is corrected in 4.3.0 to the field-confirmed real ceiling (was a nominal, too-high value that would have made its own floor check unwinnable), which should resolve this board's instance of the loop specifically — the underlying architectural bug for any other board with the same real-vs-nominal mismatch is unchanged. A full multi-day log from board `8E10` (OMEN 17-db1xxx) confirms this runs continuously rather than as a one-off, and that reporter separately described near-constant in-game stutter. That connection is **plausible but not proven** — no single once-per-second write was found in the log; what is confirmed is real, overlapping EC/WMI hardware I/O for the whole session. **Workaround:** use a custom fan curve or the Performance/Gaming preset instead of literal Max Fan Mode while gaming — those use a different reapply path that has no floor health check and no such loop. The underlying bug is deliberately unfixed: it needs a board-relative redesign across two separate code paths, and the one narrower mitigation considered (backing off after repeated identical readings) was rejected because it cannot be distinguished from a genuinely-reverting fan without risking under-cooling a different board.
 - The same wrong assumption also makes the guided fan diagnostic report `evidence: None` for the 100% test on these boards even when the fans audibly ramp — a false negative in reporting only, not a fan-control failure.
 - **Linux (`omencore-gui`) fan control on `pwm_enable`-only boards** is fixed in this release but confirmed only by code review and a clean build — there is no automated test project for either Linux target and no Linux/OMEN hardware in the development environment. The reporter on board `8BCA` (OMEN 16-xf0xxx), whose report came with a real overheat/shutdown incident, still needs to confirm fans actually respond now.
 - **Linux keyboard RGB's three new sysfs backends** and the `hp_omen::` brightness fix are likewise additive-and-build-verified only, not confirmed on a board that exposes those interfaces.
@@ -391,13 +410,20 @@ Carried forward from 4.0.0 / 3.9.0 (untouched by this cycle's work):
 
 ## Active Validation Targets
 
-New this cycle (4.2.0), from real-hardware portable-build testing:
+New this cycle (4.3.0), needing real-hardware confirmation this environment can't provide:
+
+- The Windows CLI's six hardware-touching commands (`status`/`fan`/`performance`/`keyboard`/`monitor`/`daemon --profile`) — command parsing and non-hardware paths are verified for real, but nothing has run elevated against actual hardware yet.
+- The Linux OMEN-key WMI watcher fix (#187) and NVML GPU telemetry (#186) — both build-verified only; no Linux/OMEN hardware with an NVIDIA GPU in this environment to confirm against.
+- The Linux Max→Auto safety fallback (#183) — the post-write RPM check and Max-mode fallback logic are unit-tested, but confirming it actually prevents a repeat thermal shutdown needs the reporter's board under the same sustained load.
+- Board `8E10`'s corrected `MaxFanLevel` (see Known Limits above) — needs confirmation the reassert loop is actually gone on this board now, not just mathematically resolved.
+
+Carried forward from 4.2.0, from real-hardware portable-build testing:
 
 - The nav-rail/sidebar redesign (merged rail+sidebar panel, Quick Actions relocated to a top bar, colored group separators, auto-fit scaling on short windows) has been through several rounds of real-hardware screenshots and fixes but hasn't had a final confirming pass on the latest build.
 - Confirm the "OMEN Keyboard" badge no longer shows on non-HP hardware, and that iCUE is now correctly detected when running — both fixed from a single field report, neither re-tested yet.
 - The AMD Curve Optimizer "degraded" undervolt warning's exact trigger is still unidentified — needs the literal warning text from a repeat occurrence to pin down.
 
-Carried forward from 4.1.7 (still awaiting confirmation, untouched by 4.2.0's work):
+Carried forward from 4.1.7 (still awaiting confirmation):
 
 - Board `8BCA` (OMEN 16-xf0xxx, Linux): confirm `omencore-gui` now actually drives the fans after the `pwm_enable` fallback fix — this board previously had completely non-functional GUI fan control, reported alongside a real overheat/shutdown incident.
 - Any Linux board exposing `hp-wmi/rgb_zones/`, `hp-wmi/keyboardleds`, or `hp_omen::kbd_backlight`: confirm keyboard RGB (and brightness, for the `hp_omen::` variant) now applies.
@@ -452,7 +478,7 @@ dotnet build OmenCore.sln --configuration Release
 dotnet test OmenCore.sln
 ```
 
-**What "N/N tests passing" actually means:** the suite is a real xUnit test project (`src/OmenCoreApp.Tests`, 1367+ tests as of v4.2.0) that runs in CI on every push (`.github/workflows/ci.yml`) and locally before every release. It exercises hardware-abstraction logic in isolation — capability-database resolution (which model resolves to which `ProductId`/`ModelNamePattern` entry), fan-curve and safety-clamp math, the diagnostics-export pipeline, view-model state transitions, and regression tests pinned to specific field-reported bugs (reflection-driven against private methods/fields where the codebase's existing pattern calls for it, real mock SDK interfaces like `ICorsairSdkProvider` where one exists). **What it does not do:** verify that a given real board's EC/WMI actually responds the way the code assumes — that's a structurally different problem no unit test can cover, which is why this project has a separate, explicit "evidence-gate" convention (see the roadmap and changelogs) requiring field confirmation from real hardware before shipping any fan/thermal/OC/UV *behavior* change, independent of what the test suite says. A green test suite means the logic is provably self-consistent and regression-free; it is not a substitute for a real user confirming a fix works on their actual laptop, and this project's own docs never claim otherwise.
+**What "N/N tests passing" actually means:** the suite is a real xUnit test project (`src/OmenCoreApp.Tests`, 1414+ tests as of v4.3.0) that runs in CI on every push (`.github/workflows/ci.yml`) and locally before every release. It exercises hardware-abstraction logic in isolation — capability-database resolution (which model resolves to which `ProductId`/`ModelNamePattern` entry), fan-curve and safety-clamp math, the diagnostics-export pipeline, view-model state transitions, and regression tests pinned to specific field-reported bugs (reflection-driven against private methods/fields where the codebase's existing pattern calls for it, real mock SDK interfaces like `ICorsairSdkProvider` where one exists). **What it does not do:** verify that a given real board's EC/WMI actually responds the way the code assumes — that's a structurally different problem no unit test can cover, which is why this project has a separate, explicit "evidence-gate" convention (see the roadmap and changelogs) requiring field confirmation from real hardware before shipping any fan/thermal/OC/UV *behavior* change, independent of what the test suite says. A green test suite means the logic is provably self-consistent and regression-free; it is not a substitute for a real user confirming a fix works on their actual laptop, and this project's own docs never claim otherwise.
 
 ### Build Windows Artifacts
 
@@ -462,9 +488,9 @@ pwsh ./build-installer.ps1
 
 Expected outputs:
 
-- `artifacts/OmenCoreSetup-4.2.0.exe`
-- `artifacts/OmenCore-4.2.0-win-x64.zip`
-- `artifacts/SHA256SUMS-4.2.0.txt`
+- `artifacts/OmenCoreSetup-4.3.0.exe`
+- `artifacts/OmenCore-4.3.0-win-x64.zip`
+- `artifacts/SHA256SUMS-4.3.0.txt`
 
 ### Build Linux Artifact
 
@@ -474,10 +500,10 @@ pwsh ./build-linux-package.ps1
 
 Expected outputs:
 
-- `artifacts/OmenCore-4.2.0-linux-x64.zip`
-- `artifacts/OmenCore-4.2.0-linux-x64.zip.sha256`
+- `artifacts/OmenCore-4.3.0-linux-x64.zip`
+- `artifacts/OmenCore-4.3.0-linux-x64.zip.sha256`
 - `artifacts/version.json`
-- `artifacts/linux-version-verification-4.2.0-linux-x64.json`
+- `artifacts/linux-version-verification-4.3.0-linux-x64.json`
 
 ## Release Checklist
 
@@ -512,9 +538,10 @@ Windows logs are stored under `%LOCALAPPDATA%\OmenCore\`. Linux diagnostics can 
 ## Documentation
 
 - [INSTALL.md](INSTALL.md) - installation, upgrade, portable use, Linux setup, uninstall.
-- [docs/CHANGELOG_v4.2.0.md](docs/CHANGELOG_v4.2.0.md) - current release notes.
-- [docs/ROADMAP_v4.2.0.md](docs/ROADMAP_v4.2.0.md) - current roadmap, scope, and execution checklist.
-- [docs/CHANGELOG_v4.1.7.md](docs/CHANGELOG_v4.1.7.md) - previous release notes.
+- [docs/CHANGELOG_v4.3.0.md](docs/CHANGELOG_v4.3.0.md) - current release notes.
+- [docs/ROADMAP_v4.3.0.md](docs/ROADMAP_v4.3.0.md) - current roadmap, scope, and execution checklist.
+- [docs/CHANGELOG_v4.2.0.md](docs/CHANGELOG_v4.2.0.md) - previous release notes.
+- [docs/CHANGELOG_v4.1.7.md](docs/CHANGELOG_v4.1.7.md) - earlier release notes.
 - [docs/CHANGELOG_v4.1.5.md](docs/CHANGELOG_v4.1.5.md) - earlier release notes.
 - [docs/CHANGELOG_v3.9.0.md](docs/CHANGELOG_v3.9.0.md) - earlier release notes.
 - [docs/3.8.1-BUG-REPORTS.md](docs/3.8.1-BUG-REPORTS.md) - active field report tracking (covers GitHub #141-#146 and Discord reports through v3.8.2).
@@ -535,6 +562,7 @@ Windows logs are stored under `%LOCALAPPDATA%\OmenCore\`. Linux diagnostics can 
 
 | Version | Summary |
 |---|---|
+| 4.3.0 | Feature release, started as a v4.2.1 patch cycle for five field reports (#178-182) and grew into extracting `OmenCore.Core` (194 files) out of the WPF app plus a first Windows CLI slice. Two safety bugs fixed: the Quiet Safety Monitor's power-mode-retained guarantee was undone by Fan/Performance linking on a transient thermal spike (#181); Linux Max→Auto under load could leave both fans dead and cause a real thermal shutdown on a board with degraded ACPI (#183). Also fixed: a hybrid AMD+NVIDIA `AccessViolationException` crashing 3 of 4 test runs; Power Automation silently overwriting manual profile choices on every startup; built-in RGB scenes silently overriding manual lighting on an undiscoverable schedule; model-capability fallback logic defaulting to optimistic instead of conservative (#182); Linux NVML GPU telemetry (#186) and OMEN-key WMI watcher (#187) fixes; four more automation trigger types promoted plus a new lid-close trigger; new/corrected model-database entries for six boards; 10 old GitHub issues closed. 1414/1414 tests. |
 | 4.2.0 | Minor release, three pillars: CPU temperature could latch onto a chassis sensor instead of the real CPU zone on multi-zone boards, now unit-tested and re-evaluated every poll (fan-control-affecting, not just display); navigation moved from a horizontal tab strip to a vertical rail, redesigned three more times after real-hardware feedback (sidebar merge, Quick Actions relocated, colored group separators, auto-fit scaling); AMD CPU undervolt status stopped claiming a hardware "readback" the SMU path doesn't have; two RGB detection false positives fixed (a false "OMEN Keyboard" badge on non-HP hardware, iCUE not detected due to a stale process-name check); Games tab virtualization fix; Tuning tab accessibility labeling completed; fan curve share codes; Roboto Condensed font consolidation (the actual font switch was attempted, found non-deterministic in testing, and reverted); five GitHub issues triaged and three community projects reviewed. 1367/1367 tests. |
 | 4.1.7 | Patch release (v4.1.6 never tagged/released, rolled forward): unconfirmed EC power-limit register writes now blocked by default (safety-relevant, GitHub #159); fans stuck at maximum after switching Performance Mode away from an active Max fan hold now correctly release the BIOS latch (board `8DCD`); GPU Power Boost EC fallback no longer falsely claims "Extended" applied; locale-dependent number formatting fixed at the source; Spotify bloatware false-positive and board `8BCA` AMD/Intel misidentification fixed (GitHub #163); a guided fan-diagnostic RPM display bug fixed from a community member's own logs; sixteen community-contributed PRs/branches reviewed and merged (`tempestnano`) — board `8D87` support, a gated AMD SMU transport fix, a sleeping-dGPU polling fix, per-key and per-LED RGB for every supported board that also fixed reactive lighting being inert for every user, an experimental adapter-power-override feature (explicitly disclosed, off by default), and several process-lifecycle fixes including a real BSOD incident; three UI-responsiveness passes for a standing "laggy UI" complaint; a CPU-family misidentification fix (GitHub #171); a new RAM Smart Clean feature (GitHub #173); a model-identity fix preventing a name-pattern fallback from crossing CPU vendor lines (GitHub #172); a tuning-subsystems honesty/consolidation pass covering GPU Power Boost, GPU OC/UV, and CPU OC/UV. 1288/1288 tests. |
 | 4.1.5 | Patch release: GPU Power Boost enabled on Victus board `8A25`, a locked fan-curve tooltip reworded to stop implying it's about verification status, `ApplyMaxCooling()` fixed to stop reporting success when the hardware write actually failed (including in the thermal-critical safety-override path), matching silent-write-failure bugs fixed in Razer and Corsair RGB, a `MainWindow` banner conflating "unsupported" with "unverified" split into two correctly-gated banners, and `SettingsView.xaml` accessibility labeling completed (156/156 controls). 1000/1000 tests. |

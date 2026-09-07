@@ -1,6 +1,6 @@
 # OmenCore v4.3.0 Roadmap
 
-**Status:** In progress. Opened 2026-08-30, the day v4.2.0 went live on GitHub.
+**Status:** Code-complete as of 2026-09-07. Opened 2026-08-30, the day v4.2.0 went live on GitHub. Version bumped everywhere (`VERSION.txt`, every `.csproj`, the installer script — three of these had been missed on a first pass and were caught during a final pre-release audit), full suite green (1414/1414). Remaining gaps before this is fully field-proven: an actual elevated run of the Windows CLI against real hardware, and real-hardware confirmation of the Linux `#183`/`#186`/`#187` fixes — all build/test-verified only, see the changelog header for the full list.
 **Base version:** v4.2.0
 **Predecessor doc:** `docs/ROADMAP_v4.2.0.md` — carried the 4.1.7 → 4.2.0 cycle. That document is now historical record.
 

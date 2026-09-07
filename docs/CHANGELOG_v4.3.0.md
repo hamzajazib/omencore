@@ -1,7 +1,7 @@
 # OmenCore v4.3.0
 
-**Release Date:** TBD — rolling changelog, updated as work lands.
-**Release Status:** In progress. Started 2026-08-30, immediately after v4.2.0 shipped.
+**Release Date:** TBD — code-complete as of 2026-09-07. Version bumped across the app/CLI/installer/build config (`VERSION.txt`, every `.csproj`, the installer script), full test suite green (1414/1414, 0 build warnings).
+**Release Status:** Everything in this changelog is either evidence-based from a real field report or a pure architecture/display-honesty change that doesn't need field validation under this project's evidence-gate convention. Two categories remain genuinely unconfirmed against real hardware and should be treated as implemented-pending-confirmation, not done: the Windows CLI's six hardware-touching commands (`status`/`fan`/`performance`/`keyboard`/`monitor`/`daemon --profile`), and three Linux fixes (`#183`'s Auto-mode safety fallback, `#186`'s NVML telemetry, `#187`'s OMEN-key watcher) — all build/test-verified with no Linux/OMEN hardware available in this environment to run them on.
 **Type:** Feature release. Started as a v4.2.1 patch cycle (field-report fixes from GitHub issues
 opened after v4.2.0, #178–#182) that grew into the `OmenCore.Core` extraction and the first slice
 of a Windows CLI — folded together into one v4.3.0 release rather than shipping a separate patch
