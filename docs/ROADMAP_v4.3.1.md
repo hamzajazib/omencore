@@ -88,6 +88,70 @@ actually landing on this exact board before ruling that out as a contributing fa
 
 ---
 
+### PR #147 Reviewed: One Real Fix, Two Regressions Found Before Merge
+
+[PR #147](https://github.com/theantipopau/omencore/pull/147) ("perf(ui): reduce unnecessary
+UI-thread work") targets [#133](https://github.com/theantipopau/omencore/issues/133)'s long-open
+"horrible UI performance" complaint with three changes. Fetched the branch and read the full
+files (not just the diff) before considering a merge, same discipline as PR #176 earlier this
+project.
+
+**The log-buffer change is correct and worth keeping.** Replacing `string.Join("\n", _logLines)`
+(an O(n) rebuild every single log line) with an appended `StringBuilder` that only gets rebuilt
+from scratch when the queue actually overflows its 200-line cap is a real, sound improvement.
+
+**Two bugs found in the other two changes, both the same shape** — code that looks like it adds a
+pause/resume or change-detection gate, but only actually implements the "off"/"unchanged" half:
+
+1. `TrayIconService.UpdateTrayDisplay`'s new change-detection cache (`_lastCpuTempC` etc.) is only
+   ever written inside the single narrow branch for "temp display disabled and icon already at
+   base state." With `TrayTempDisplayEnabled` at its default `true`, those fields stay at their
+   initial `NaN`/`-1` forever, so the new `valuesChanged` early-return is `true` on literally every
+   tick in the default configuration — the optimization the PR is built around never actually
+   engages for most users.
+2. `DashboardViewModel.SetUptimeTimerEnabled(true)`'s "timer already stopped, start it" branch was
+   left as an empty block with only a comment claiming the start call was "deferred to
+   `SetUptimeTimerEnabled`" — but that comment sits inside `SetUptimeTimerEnabled` itself, and the
+   actual `.Start()` call was deleted, not moved. Once the timer stops once (dashboard hidden), it
+   can never restart — `SessionUptime`/`LastSampleAge` freeze for the rest of the session.
+
+Both bugs only show up on the *second* half of a change/no-change or hide/show cycle, which is
+likely why the PR's own manual-testing notes didn't catch them — a single one-directional pass
+looks correct either way.
+
+**Not merged.** Posted a specific, line-referenced review comment on the PR explaining both bugs
+and what a repeat-cycle test would need to show to confirm a fix, same as the PR #176 precedent —
+decision to merge is the contributor's/owner's once addressed, not made here.
+
+---
+
+### GitHub #142 Follow-Up: New Hardware Data on an Unresolved 2026 Flagship Board
+
+[#142](https://github.com/theantipopau/omencore/issues/142) — HyperX OMEN MAX Gaming Laptop
+16t-ah100, board `8E9A`, brand-new 2026 flagship (reported CPU "290HX Plus", RTX 5090, BIOS F.05,
+300W combined platform TDP). Resolves via Family fallback only; a prior reply had asked for specs
+and confirmed-working features, and the reporter came back with real (if inconsistent) usage data:
+fan control "hit or miss" (sometimes ramps for no reason, sometimes doesn't ramp at all), RGB
+limited to a single static red or off (no zones, no other colors), and GPU Power Boost working but
+CPU power not scaling with it under combined load.
+
+**Not enough yet to add a database entry** — the fan behavior is inconsistent even on the
+reporter's own machine, which points at either a real board-specific WMI command mismatch or a
+normal-but-alarming-looking reassert/thermal-authority-switching pattern; can't tell which without
+an actual diagnostics export or session log from when it happens. The RGB report is a real, useful
+signal on its own (suggests a narrower keyboard interface than the generic OMEN16 4-zone fallback
+assumes), and the CPU/GPU power-balancing observation is very plausibly firmware-side platform
+behavior on a new 300W-combined-TDP chassis, the same class of "relative boost request to shared
+firmware" behavior already documented for GPU Power Boost's wattage ceiling elsewhere.
+
+**Replied** asking for a diagnostics export or session log captured during the erratic fan
+behavior, physical confirmation of the keyboard's real zone/color capability, and whether the
+CPU/GPU power imbalance also shows up under OMEN Gaming Hub as a baseline comparison. Recorded here
+since this is a brand-new flagship platform likely to get more reports before it's well
+understood — worth checking back on rather than letting it go quiet.
+
+---
+
 ### GitHub #186 Follow-Up: v4.3.0 Is Live, Asked Reporter to Confirm the NVML Fix
 
 [#186](https://github.com/theantipopau/omencore/issues/186)'s reporter (RobRobM, RTX 5080 Laptop,
