@@ -1623,6 +1623,19 @@ namespace OmenCore.ViewModels
             ? "Linked: fan follows performance"
             : "Decoupled: fan independent";
 
+        /// <summary>
+        /// Re-applies the Settings > Notifications toggles to the live NotificationService.
+        /// Needed because that service only reads AppConfig.Monitoring once, at construction —
+        /// without this, flipping a toggle had no effect until the app was restarted (GitHub #191).
+        /// </summary>
+        public void RefreshNotificationPreferences()
+        {
+            _notificationService.IsEnabled = _config.Monitoring.NotificationsEnabled;
+            _notificationService.ShowGameNotifications = _config.Monitoring.GameNotificationsEnabled;
+            _notificationService.ShowModeChangeNotifications = _config.Monitoring.ModeChangeNotificationsEnabled;
+            _notificationService.ShowTemperatureWarnings = _config.Monitoring.TemperatureWarningsEnabled;
+        }
+
         public void RefreshLinkFanState()
         {
             var linked = _config.LinkFanToPerformanceMode;
@@ -2536,7 +2549,18 @@ namespace OmenCore.ViewModels
             
             // Create notification service early (before FanService which needs it)
             _notificationService = notificationService ?? new NotificationService(_logging);
-            
+
+            // Wire the Settings > Notifications toggles into the real service. These four
+            // AppConfig.Monitoring flags round-trip correctly through SettingsViewModel's
+            // load/save, but nothing ever applied them to NotificationService itself — every
+            // toggle in that Settings section (including "Temperature warnings") was a no-op,
+            // since NotificationService's properties only ever held their own hardcoded
+            // defaults (all true). See GitHub #191.
+            _notificationService.IsEnabled = _config.Monitoring.NotificationsEnabled;
+            _notificationService.ShowGameNotifications = _config.Monitoring.GameNotificationsEnabled;
+            _notificationService.ShowModeChangeNotifications = _config.Monitoring.ModeChangeNotificationsEnabled;
+            _notificationService.ShowTemperatureWarnings = _config.Monitoring.TemperatureWarningsEnabled;
+
             // Thermal alert service — fires Windows toast notifications on CPU/GPU/SSD overtemperature
             _thermalMonitoringService = thermalMonitoringService ?? new ThermalMonitoringService(_logging, _notificationService);
             var ta = _config.ThermalAlerts;

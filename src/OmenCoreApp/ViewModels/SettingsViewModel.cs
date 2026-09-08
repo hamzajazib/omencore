@@ -1059,6 +1059,7 @@ namespace OmenCore.ViewModels
                     _notificationsEnabled = value;
                     OnPropertyChanged();
                     SaveSettings();
+                    RefreshNotificationPreferences();
                 }
             }
         }
@@ -1073,6 +1074,7 @@ namespace OmenCore.ViewModels
                     _gameNotificationsEnabled = value;
                     OnPropertyChanged();
                     SaveSettings();
+                    RefreshNotificationPreferences();
                 }
             }
         }
@@ -1087,6 +1089,7 @@ namespace OmenCore.ViewModels
                     _modeChangeNotificationsEnabled = value;
                     OnPropertyChanged();
                     SaveSettings();
+                    RefreshNotificationPreferences();
                 }
             }
         }
@@ -1101,7 +1104,19 @@ namespace OmenCore.ViewModels
                     _temperatureWarningsEnabled = value;
                     OnPropertyChanged();
                     SaveSettings();
+                    RefreshNotificationPreferences();
                 }
+            }
+        }
+
+        // Keep the live NotificationService in sync immediately; do not require a restart.
+        // SettingsViewModel has no direct NotificationService reference, so this reaches
+        // MainViewModel the same way RefreshLinkFanState() does elsewhere in this file.
+        private static void RefreshNotificationPreferences()
+        {
+            if (Application.Current?.MainWindow?.DataContext is MainViewModel mainViewModel)
+            {
+                mainViewModel.RefreshNotificationPreferences();
             }
         }
 

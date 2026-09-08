@@ -46,6 +46,48 @@ namespace OmenCoreApp.Tests.ViewModels
         }
 
         [Fact]
+        public void RefreshNotificationPreferences_AppliesConfigTogglesToLiveNotificationService()
+        {
+            // GitHub #191: the Settings > Notifications toggles (Notifications, Game profile,
+            // Mode change, Temperature warnings) round-tripped correctly through config load/save
+            // but were never applied to the real NotificationService instance — every toggle,
+            // including "Temperature warnings", was a no-op even after restarting the app.
+            using var vm = new MainViewModel();
+
+            var configField = typeof(MainViewModel).GetField("_config", BindingFlags.Instance | BindingFlags.NonPublic);
+            var notificationField = typeof(MainViewModel).GetField("_notificationService", BindingFlags.Instance | BindingFlags.NonPublic);
+            configField.Should().NotBeNull();
+            notificationField.Should().NotBeNull();
+
+            var config = (AppConfig)configField!.GetValue(vm)!;
+            var notificationService = (NotificationService)notificationField!.GetValue(vm)!;
+
+            config.Monitoring.NotificationsEnabled = false;
+            config.Monitoring.GameNotificationsEnabled = false;
+            config.Monitoring.ModeChangeNotificationsEnabled = false;
+            config.Monitoring.TemperatureWarningsEnabled = false;
+
+            vm.RefreshNotificationPreferences();
+
+            notificationService.IsEnabled.Should().BeFalse("the master notification toggle must actually reach NotificationService");
+            notificationService.ShowGameNotifications.Should().BeFalse();
+            notificationService.ShowModeChangeNotifications.Should().BeFalse();
+            notificationService.ShowTemperatureWarnings.Should().BeFalse("disabling this in Settings must actually suppress temperature-warning toasts, not just look like it does");
+
+            config.Monitoring.NotificationsEnabled = true;
+            config.Monitoring.GameNotificationsEnabled = true;
+            config.Monitoring.ModeChangeNotificationsEnabled = true;
+            config.Monitoring.TemperatureWarningsEnabled = true;
+
+            vm.RefreshNotificationPreferences();
+
+            notificationService.IsEnabled.Should().BeTrue();
+            notificationService.ShowGameNotifications.Should().BeTrue();
+            notificationService.ShowModeChangeNotifications.Should().BeTrue();
+            notificationService.ShowTemperatureWarnings.Should().BeTrue();
+        }
+
+        [Fact]
         public void ExportTelemetryCommand_InvokesService_AndLogs()
         {
             // nothing throws during viewmodel construction, so just build one
