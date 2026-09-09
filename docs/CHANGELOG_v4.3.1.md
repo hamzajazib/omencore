@@ -24,6 +24,20 @@ dead code. Net: `MainViewModel.cs` 6,275 → 5,636 lines. Pure structural refact
 write path touched. 8 new tests; full suite 1423/1423. See the roadmap for the full trace and why
 the GPU power-limit/adapter-clamp cluster was deliberately left for its own follow-up pass.
 
+### Architecture: MainViewModel Decomposition, Step 2
+
+The follow-up from step 1: extracted the GPU power-limit / adapter power-override clamp cluster
+(~970 lines — reading the GPU's actual power limit, the power-adapter verdict/explanation, the
+adapter override that restarts the GPU driver for a fresh verdict, the related AMD CPU power
+clamp, and the automatic clamp-lift watcher) into a new `GpuClampViewModel`, wired in as an
+eagerly-constructed `MainViewModel.GpuClamp` property. `DiagnosticsView`'s Power Adapter panel
+bindings and its two code-behind hard-casts were repointed one level deeper rather than retargeting
+the whole page. Also fixed a pre-existing bug found while mapping the cluster: three event
+subscriptions were never unsubscribed anywhere in `Dispose()` — fixed as part of this work, not
+left for later. Net: `MainViewModel.cs` 5,636 → 4,665 lines (6,275 → 4,665 combined across both
+steps, -26%). Pure structural refactor plus a lifecycle-cleanup fix, no fan/EC/thermal write
+*behavior* touched. 2 new tests, 6 migrated; full suite 1425/1425.
+
 ---
 
 ## Fixed
@@ -54,6 +68,5 @@ warnings" (now that it actually works) does not disable that safety protection.
 - **[PR #147](https://github.com/theantipopau/omencore/pull/147)** — reviewed in full before considering a merge. The log-buffer `StringBuilder` change is correct and worth keeping, but two bugs found in the other two changes: the tray-icon change-detection cache never actually populates in the default configuration (so the optimization never engages for most users), and the dashboard uptime timer can never restart once paused once (a hard freeze of `SessionUptime`/`LastSampleAge` for the rest of the session). Posted a specific review comment; not merged as-is.
 - **Board `8C9C`** (HP OMEN, AMD Ryzen 7 8845HS + RTX 4070) — not yet in the model database, resolving via Family fallback. Waiting on a fuller diagnostics export before adding an entry.
 - **`ThermalMonitoringService`'s 85°C default CPU/GPU warning threshold** — arguably low relative to `FanService`'s own 90°C ramp-start point and its documented "85°C is normal" conclusion. Not changed on the strength of one report; see roadmap.
-- **The GPU power-limit/adapter-clamp cluster in `MainViewModel`** (~800 lines) — scoped as a decomposition follow-up, deliberately not attempted alongside the smaller `UpdateViewModel` extraction above; see roadmap.
 
 ---

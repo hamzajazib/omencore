@@ -72,7 +72,45 @@ two hard-casts to `MainViewModel` in `DiagnosticsView.xaml.cs` code-behind) — 
 found much bigger and more entangled than the update cluster, with two services
 (`AdapterPowerOverrideService`, `ApuPowerClampService`) that aren't currently DI-injectable.
 Deserves its own dedicated pass once this smaller pattern has had time to prove out; recorded here
-rather than attempted blind in the same session.
+rather than attempted blind in the same session. **Done as a follow-up in the same cycle — see
+below.**
+
+### Architecture: MainViewModel Decomposition, Step 2 — Extract `GpuClampViewModel`
+
+The cluster deferred above turned out to be exactly as entangled as expected once actually mapped
+(three parallel Explore agents plus a Plan agent, same rigor as step 1): ~963 contiguous lines,
+two hard-casts to `MainViewModel` in `DiagnosticsView.xaml.cs`, and two services
+(`AdapterPowerOverrideService`, `ApuPowerClampService`) with no existing DI seam on `MainViewModel`.
+Extracted anyway, following the exact investigate-then-plan-then-approve process from step 1.
+
+**Shipped:** `GpuClampViewModel` (new file), exposed as an eagerly-constructed
+`MainViewModel.GpuClamp` property — covers the GPU power-limit reading, the power-adapter
+verdict/explanation, the adapter override (GPU driver restart), the AMD CPU power clamp
+(STAPM/APU wattage), and the automatic clamp-lift watcher. `DiagnosticsView.xaml`'s 29 bindings and
+`DiagnosticsView.xaml.cs`'s two hard-casts were repointed one level deeper (`vm.GpuClamp.X`)
+rather than retargeting the whole page's `DataContext`, since the page has four other unrelated
+sections that would otherwise need their bindings redone for no benefit.
+
+**Also fixed, confirmed by the user first:** a pre-existing bug found while mapping the cluster —
+three event subscriptions (`SystemSuspending`, `SystemResuming`, `PowerStateChanged`) were
+subscribed in `MainViewModel`'s constructor but never unsubscribed anywhere in `Dispose()`. The
+`PowerStateChanged` subscription now lives inside `GpuClampViewModel` itself (its handler did
+nothing but forward into this cluster's own `RunAutomaticClampLiftAsync`); the other two stay on
+`MainViewModel`, now correctly unsubscribed.
+
+**Net effect:** `MainViewModel.cs` 5,636 → 4,665 lines (-971, on top of step 1's 6,275 → 5,636 —
+combined, 6,275 → 4,665, a 26% reduction across both steps). Full test suite green (1425/1425, up
+from 1423 — six existing tests migrated to reach through `vm.GpuClamp`, plus two new: an
+eager-construction check and a `Dispose()`-doesn't-throw regression guard for the fixed leak).
+Verified the app still launches cleanly on real hardware post-change.
+
+**Not a field-validation item.** Pure structural refactor plus a lifecycle-cleanup fix — no
+fan/EC/thermal/OC/UV write *behavior* changed, only where the existing code lives and whether its
+event subscriptions get cleaned up.
+
+**Not attempted:** any further MainViewModel decomposition beyond this cluster. Remaining content
+(tray quick actions, hotkey handlers, game profiles, RGB scene application, cleanup/restore-point
+flows) is left for a future pass if warranted.
 
 ### GitHub #191 Follow-Up: The Entire "Notifications" Settings Section Was Non-Functional
 
