@@ -23,6 +23,62 @@ disconnected from the running app — see below.
 
 ## Done
 
+### Custom Settings Silently Reverting After Restart — Multiple Stale `AppConfig` Snapshots Clobbering Each Other's Saves
+
+**Report:** Two independent users, same underlying symptom. Discord (AlthegarOP, board `8BAD`,
+HP OMEN 17 CK-2013nl): "If I create and save a custom fan curve, the profile is no longer displayed
+after closing and reopening the app... as if it had never been saved... The fan mode also resets to
+AUTO after closing and reopening OmenCore." A comment on
+[#191](https://github.com/theantipopau/omencore/issues/191) (RaulMARK17, board `8C9C`, different
+user, different board): "the setting I showed you... Custom AMD CPU Power Limit... is never saved,
+or at least, I am not really sure how to save it, every time the system is restarted or the app is
+restarted, my config is lost... before I had problems with custom fan curves, they got lost too
+after a restart."
+
+**Traced, not guessed — this took a dedicated investigation pass to find.** `ConfigurationService.Load()`
+deserialized `config.json` into a brand-new, detached `AppConfig` object on *every single call* and
+never touched the `Config` property. Because of this, at least three independent,
+never-synchronized `AppConfig` references stayed alive for the life of the process:
+`ConfigurationService.Config` itself (read directly by `SystemControlViewModel` and
+`SettingsViewModel`), `MainViewModel._config` (a *second*, separately-`Load()`-ed object, shared by
+reference into `GpuClampViewModel` and `UpdateViewModel`), and `FanControlViewModel`'s
+save-time-only fresh loads (accidentally self-healing, since it always re-reads immediately before
+writing — the other two paths are not). Any save through the first two paths did a **whole-file
+overwrite** using whatever stale snapshot that path had been holding since it was last read,
+silently reverting every field a *different* path had changed in the meantime. This explains why
+the symptom looked feature-agnostic to both reporters: it doesn't matter which setting you save
+first — any subsequent, completely unrelated save from a different tab clobbers it.
+
+**Fix.** `ConfigurationService.Load()` now merges freshly-deserialized disk data onto the *existing*
+`Config` object in place (via reflection over `AppConfig`'s 83 top-level properties — far too many
+to hand-list and keep in sync as the model grows) instead of manufacturing a new detached object,
+and always returns that same shared reference. Every current and future holder of a `Load()`/`Config`
+reference converges onto one always-current object automatically — **zero changes needed at any of
+the ~15+ individual read/save call sites** across `SettingsViewModel`, `SystemControlViewModel`,
+`MainViewModel`, `GpuClampViewModel`, `UpdateViewModel`, or `FanControlViewModel`. A lock guards the
+merge and the serialize step in `Save()`, since `PowerAutomationService`'s
+`SystemEvents.PowerModeChanged` handler genuinely runs on a background thread and calls `Load()` —
+a real concurrent-writer case, not a hypothetical one.
+
+**Confirmed dead code, left alone:** `ConfigurationService.Replace()`/`ResetToDefaults()` both
+reassign `Config` to a new reference (which would reintroduce the orphaned-reference problem) —
+`Replace()` has zero production callers (only used by three test files as a setup helper);
+`ResetToDefaults()` has zero callers at all. Not touched in this pass; low-priority follow-up if
+either is ever wired up for real.
+
+**Tests.** Four new tests in `ConfigurationServiceTests.cs`, including one built as a direct
+regression test for the reported pattern (two independently-held config snapshots each saving an
+unrelated field) — manually verified by reverting the fix and re-running: it fails on the old code
+(the second save wipes the first's field back to null, reproducing the exact "vanishes after doing
+something unrelated" report) and passes on the fixed code. Full suite: 1430/1430.
+
+**Not a field-validation item.** Pure application-state/persistence logic — no fan/EC/thermal write
+path touched, and the fix makes existing writes reach disk correctly rather than changing what gets
+written.
+
+**Reply posted** on #191. No direct reply channel for the Discord report; summarized for the user
+in conversation.
+
 ### GitHub #192 Follow-Up: Auto-Update's SHA256 Extraction Never Actually Matched Our Own Release Notes
 
 **Report:** [#192](https://github.com/theantipopau/omencore/issues/192) — updating 4.2.0 → 4.3.0

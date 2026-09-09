@@ -42,6 +42,19 @@ steps, -26%). Pure structural refactor plus a lifecycle-cleanup fix, no fan/EC/t
 
 ## Fixed
 
+### Custom Settings Silently Reverting After Restart — A Real Config-Persistence Bug
+
+Two independent users (Discord, board `8BAD`; a comment on
+[#191](https://github.com/theantipopau/omencore/issues/191), board `8C9C`) reported saved settings
+— a custom fan curve, a custom AMD CPU Power Limit — vanishing after doing something unrelated
+elsewhere in the app, "as if it had never been saved." Traced to `ConfigurationService` handing out
+a brand-new, detached copy of the config on every load instead of a shared instance — at least
+three parts of the app (Settings, System Control/tuning, the main window group) each held their own
+stale snapshot, and whichever saved last silently overwrote every field a *different* part had just
+changed. Fixed by making config loads merge onto one shared, always-current object instead of
+forking a new one each time — no other file needed to change. 4 new tests, including a direct
+regression test verified to fail on the old code and pass on the fix. 1430/1430 tests.
+
 ### Auto-Update's SHA256 Check Never Actually Matched Our Own Release Notes
 
 Reported via [#192](https://github.com/theantipopau/omencore/issues/192): checking for updates
@@ -92,6 +105,5 @@ warnings" (now that it actually works) does not disable that safety protection.
 - **`ThermalMonitoringService`'s 85°C default CPU/GPU warning threshold** — arguably low relative to `FanService`'s own 90°C ramp-start point and its documented "85°C is normal" conclusion. Not changed on the strength of one report; see roadmap.
 - **[#192](https://github.com/theantipopau/omencore/issues/192)** — the SmartScreen/Error 4551 install block (separate from the SHA256 bug fixed above) is likely a Windows AppLocker/CodeIntegrity policy or third-party AV reacting to the unsigned installer, not something in the installer script itself. Asked the reporter to check Event Viewer and try the portable ZIP as a workaround.
 - **[#193](https://github.com/theantipopau/omencore/issues/193)** — OMEN key produces no response on an HP OMEN 16-am0000. The attached log shows the v4.3.0/#187 WMI watcher registering cleanly with no errors, but zero further activity across a 90-minute session — inconclusive from an INFO-level log alone. Asked for a diagnostics export's `LastOmenKeyCandidate` field and whether other global hotkeys work, to isolate whether this is OMEN-key-specific.
-- **Discord (AlthegarOP)** — HP OMEN 17 CK-2013nl, board `8BAD`: custom fan curves and a custom AMD CPU Power Limit both appear to not survive an app/system restart. Independently corroborated by a separate comment on #191 (different board, `8C9C`) describing the identical symptom for both features. Under active investigation — see roadmap once traced.
 
 ---
