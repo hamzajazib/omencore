@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using OmenCore.Models;
 
@@ -9,11 +11,23 @@ namespace OmenCore.Services
     {
         private readonly string _configDirectory;
         private readonly string _configPath;
+        private readonly object _syncRoot = new();
         private readonly JsonSerializerOptions _jsonOptions = new()
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             WriteIndented = true
         };
+
+        // AppConfig's own public, readable+writable, non-indexer properties - cached once.
+        // Used to merge a freshly-deserialized AppConfig onto the long-lived Config singleton
+        // in place, rather than handing callers a brand-new detached object every call. Every
+        // ViewModel that stashes a Load()/Config reference in its own field then keeps seeing
+        // the same, always-current object instead of silently diverging from it - see GitHub
+        // #191 and the "custom settings vanish after restart" reports it traces back to.
+        private static readonly PropertyInfo[] _mergeableProperties = typeof(AppConfig)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.CanRead && p.CanWrite && p.GetIndexParameters().Length == 0)
+            .ToArray();
 
         public AppConfig Config { get; private set; }
 
@@ -36,32 +50,66 @@ namespace OmenCore.Services
 
         public AppConfig Load()
         {
+            AppConfig loaded;
+
             if (!File.Exists(_configPath))
             {
-                var defaults = DefaultConfiguration.Create();
-                Save(defaults);
-                return defaults;
+                loaded = DefaultConfiguration.Create();
+                Save(loaded);
             }
-
-            try
+            else
             {
-                var json = File.ReadAllText(_configPath);
-                var config = JsonSerializer.Deserialize<AppConfig>(json, _jsonOptions);
-                
-                if (config == null)
+                try
                 {
-                    AppHost.Logging.Warn("Config file is invalid, using defaults");
-                    return DefaultConfiguration.Create();
-                }
+                    var json = File.ReadAllText(_configPath);
+                    var config = JsonSerializer.Deserialize<AppConfig>(json, _jsonOptions);
 
-                // Validate and apply defaults for missing properties
-                config = ValidateAndRepair(config);
-                return config;
+                    if (config == null)
+                    {
+                        AppHost.Logging.Warn("Config file is invalid, using defaults");
+                        loaded = DefaultConfiguration.Create();
+                    }
+                    else
+                    {
+                        // Validate/repair the temporary deserialized object before it ever
+                        // touches the shared Config singleton, so Config never transiently
+                        // holds un-repaired data.
+                        loaded = ValidateAndRepair(config);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppHost.Logging.Error($"Failed to load config, using defaults: {ex.Message}");
+                    loaded = DefaultConfiguration.Create();
+                }
             }
-            catch (Exception ex)
+
+            lock (_syncRoot)
             {
-                AppHost.Logging.Error($"Failed to load config, using defaults: {ex.Message}");
-                return DefaultConfiguration.Create();
+                if (Config == null)
+                {
+                    // Bootstrap case: called from the constructor, Config doesn't exist yet.
+                    Config = loaded;
+                }
+                else if (!ReferenceEquals(Config, loaded))
+                {
+                    // Merge onto the same object every existing holder already has a
+                    // reference to - ConfigurationService.Config readers AND anyone who
+                    // stashed an earlier Load() result in their own field (MainViewModel._config,
+                    // etc.) - instead of handing out a fresh detached object that silently
+                    // diverges from then on.
+                    MergeInto(loaded, Config);
+                }
+            }
+
+            return Config;
+        }
+
+        private static void MergeInto(AppConfig source, AppConfig target)
+        {
+            foreach (var property in _mergeableProperties)
+            {
+                property.SetValue(target, property.GetValue(source));
             }
         }
 
@@ -109,7 +157,11 @@ namespace OmenCore.Services
 
         public void Save(AppConfig config)
         {
-            var json = JsonSerializer.Serialize(config, _jsonOptions);
+            string json;
+            lock (_syncRoot)
+            {
+                json = JsonSerializer.Serialize(config, _jsonOptions);
+            }
 
             // Write to a temp file then atomically replace to reduce chance of file lock/contention
             var tmpPath = _configPath + "." + Guid.NewGuid().ToString() + ".tmp";
