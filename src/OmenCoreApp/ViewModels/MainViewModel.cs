@@ -2372,13 +2372,9 @@ namespace OmenCore.ViewModels
 
         private void ReloadConfiguration()
         {
-            var cfg = _configService.Load();
-            _config.FanPresets = cfg.FanPresets;
-            _config.PerformanceModes = cfg.PerformanceModes;
-            _config.SystemToggles = cfg.SystemToggles;
-            _config.LightingProfiles = cfg.LightingProfiles;
-            _config.CorsairLightingPresets = cfg.CorsairLightingPresets;
-            _config.MacroProfiles = cfg.MacroProfiles;
+            // Load() merges disk changes onto the same shared Config object _config already
+            // points at (see ConfigurationService), so no manual field-by-field copy is needed.
+            _configService.Load();
             HydrateCollections();
             PushEvent("Configuration reloaded");
         }

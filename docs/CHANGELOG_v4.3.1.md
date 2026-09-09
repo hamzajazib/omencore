@@ -102,6 +102,13 @@ toggle. Added a dismissible hint, gated on the same `StartupRestorePolicy` check
 app already uses for this decision, that tells the user exactly which Settings toggle governs it.
 4 new tests.
 
+### Cleanup: Redundant Manual Field Copy Removed From Config Reload
+
+A small follow-up to the config-persistence fix above: `MainViewModel.ReloadConfiguration()`
+manually copied six fields from a fresh `Load()` onto `_config` — now dead weight, since `Load()`
+merges onto the same shared object `_config` already points at. Removed; no behavior change. 1 new
+test.
+
 ---
 
 ## Investigated, Not Yet Actioned

@@ -84,6 +84,31 @@ namespace OmenCoreApp.Tests.ViewModels
         }
 
         [Fact]
+        public void ReloadConfigCommand_DoesNotThrow_AndConfigStaysTheSharedInstance()
+        {
+            // ReloadConfiguration() used to manually copy 6 fields from a fresh Load() onto
+            // _config; after the ConfigurationService fix (Load() merges onto the same shared
+            // Config object _config already points at) that copy was pure self-assignment and was
+            // removed. Locks in the invariant the simplification relies on: _config stays
+            // reference-equal to whatever ConfigurationService.Load() returns, so a bare Load()
+            // call is sufficient to pick up disk-side changes without any manual field copy.
+            using var vm = new MainViewModel();
+
+            var configServiceField = typeof(MainViewModel).GetField("_configService", BindingFlags.Instance | BindingFlags.NonPublic);
+            var configField = typeof(MainViewModel).GetField("_config", BindingFlags.Instance | BindingFlags.NonPublic);
+            configServiceField.Should().NotBeNull();
+            configField.Should().NotBeNull();
+
+            var configService = (ConfigurationService)configServiceField!.GetValue(vm)!;
+            var config = (AppConfig)configField!.GetValue(vm)!;
+
+            var act = () => vm.ReloadConfigCommand.Execute(null);
+
+            act.Should().NotThrow();
+            configService.Load().Should().BeSameAs(config);
+        }
+
+        [Fact]
         public void RefreshNotificationPreferences_AppliesConfigTogglesToLiveNotificationService()
         {
             // GitHub #191: the Settings > Notifications toggles (Notifications, Game profile,

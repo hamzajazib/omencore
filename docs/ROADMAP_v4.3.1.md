@@ -399,6 +399,17 @@ banner pattern (`FanControlViewModel.cs`) exactly: a new `DismissedStartupRestor
 `AppConfig`, a `ShowStartupRestoreHint` gated property, and a `DismissStartupRestoreHintCommand`
 that persists the dismissal. 4 new tests. 1434/1434.
 
+### Cleanup: `MainViewModel.ReloadConfiguration()`'s Manual Field Copy Was Dead Weight
+
+Flagged as a safe, deliberately-deferred follow-up during the config-persistence fix above:
+`ReloadConfiguration()` manually copied six collection fields (`FanPresets`, `PerformanceModes`,
+`SystemToggles`, `LightingProfiles`, `CorsairLightingPresets`, `MacroProfiles`) from a fresh
+`Load()` result onto `_config`. Now that `Load()` merges onto the same shared object `_config`
+already points at, `cfg` and `_config` are reference-equal by the time that code ran — the six
+lines were self-assignment, doing nothing. Removed; `ReloadConfiguration()` now just calls
+`Load()` for its merge side effect and re-hydrates the UI collections. 1 new test, asserting the
+reference-equality invariant the simplification depends on. 1435/1435.
+
 ---
 
 ## Investigated, Not Yet Actioned
