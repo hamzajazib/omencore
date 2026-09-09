@@ -583,7 +583,26 @@
                             <TextBlock Text="Export" FontSize="10"/>
                         </Button>
                     </WrapPanel>
-                    
+
+                    <!-- Startup Restore Discoverability Hint -->
+                    <Border Style="{StaticResource PremiumInfoBannerCard}" Padding="12" Margin="0,10,0,0"
+                            Visibility="{Binding ShowStartupRestoreHint, Converter={StaticResource BoolToVisibility}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="This won't survive a restart yet" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                <TextBlock Text="{Binding StartupRestoreHintText}" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Command="{Binding DismissStartupRestoreHintCommand}" Style="{StaticResource OutlineButtonSmall}" Padding="10,6" Margin="12,0,0,0"
+                                    AutomationProperties.Name="Dismiss startup restore hint">
+                                <TextBlock Text="Dismiss" FontSize="10"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+
                     <!-- Advanced Settings - Compact -->
                     <Border Background="#0D0D0F" CornerRadius="8" Padding="12,8" Margin="0,10,0,0">
                         <StackPanel>

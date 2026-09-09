@@ -114,6 +114,12 @@ namespace OmenCore.Models
         public bool DismissedFanPerformanceDecouplingNotice { get; set; } = false;
 
         /// <summary>
+        /// Hides the Fan Control page's explainer that a saved preset/curve will not reapply at
+        /// startup unless Startup Hardware Restore (and its Fans category) is enabled in Settings.
+        /// </summary>
+        public bool DismissedStartupRestoreHint { get; set; } = false;
+
+        /// <summary>
         /// Enables beginner-friendly Lite Mode by hiding advanced tabs and controls.
         /// </summary>
         public bool LiteModeEnabled { get; set; } = false;

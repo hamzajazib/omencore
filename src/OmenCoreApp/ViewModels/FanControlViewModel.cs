@@ -785,7 +785,22 @@ namespace OmenCore.ViewModels
         public bool ShowFanPerformanceInfoBanner => !IsFanPerformanceLinked && !_configService.Config.DismissedFanPerformanceDecouplingNotice;
 
         public ICommand DismissFanPerformanceInfoBannerCommand { get; }
-        
+
+        /// <summary>
+        /// Whether a saved fan preset/curve will actually reapply itself at startup. Saving a
+        /// preset never implies startup authorization on its own - that's a separate, disabled-by-
+        /// default toggle in Settings.
+        /// </summary>
+        public bool WillFanStateReapplyAtStartup => StartupRestorePolicy.IsEnabled(_configService.Config, StartupRestoreCategory.Fans);
+
+        public bool ShowStartupRestoreHint => !WillFanStateReapplyAtStartup && !_configService.Config.DismissedStartupRestoreHint;
+
+        public string StartupRestoreHintText => !_configService.Config.EnableStartupHardwareRestore
+            ? "Startup Hardware Restore is off in Settings, so this preset/curve won't be reapplied automatically after a restart - you'll need to reselect it, or turn that on."
+            : "The Fans category of Startup Hardware Restore is off in Settings, so this preset/curve won't be reapplied automatically after a restart - you'll need to reselect it, or turn that category back on.";
+
+        public ICommand DismissStartupRestoreHintCommand { get; }
+
         /// <summary>
         /// Whether to show the RPM sanity warning banner (zero RPM with active duty cycle for >30s).
         /// </summary>
@@ -870,6 +885,7 @@ namespace OmenCore.ViewModels
             ReapplySavedPresetCommand = new RelayCommand(async _ => await ReapplySavedPresetAsync());
             OpenFanCalibrationWizardCommand = new RelayCommand(_ => OpenFanCalibrationWizard(), _ => IsFanCalibrationAvailable);
             DismissFanPerformanceInfoBannerCommand = new RelayCommand(_ => DismissFanPerformanceInfoBanner());
+            DismissStartupRestoreHintCommand = new RelayCommand(_ => DismissStartupRestoreHint());
             DismissRpmSanityWarningCommand = new RelayCommand(_ => DismissRpmSanityWarning());
             
             // Subscribe to RPM sanity check events
@@ -1079,6 +1095,19 @@ namespace OmenCore.ViewModels
             config.DismissedFanPerformanceDecouplingNotice = true;
             _configService.Save(config);
             RefreshFanLinkState();
+        }
+
+        private void DismissStartupRestoreHint()
+        {
+            var config = _configService.Config;
+            if (config.DismissedStartupRestoreHint)
+            {
+                return;
+            }
+
+            config.DismissedStartupRestoreHint = true;
+            _configService.Save(config);
+            OnPropertyChanged(nameof(ShowStartupRestoreHint));
         }
 
         /// <summary>

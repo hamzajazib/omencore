@@ -189,6 +189,85 @@ namespace OmenCoreApp.Tests.ViewModels
         }
 
         [Fact]
+        public void ShowStartupRestoreHint_TrueByDefault_BecauseStartupHardwareRestoreIsOffByDefault()
+        {
+            var logging = new LoggingService();
+            logging.Initialize();
+            var configService = new ConfigurationService();
+            var hwMonitor = new OmenCore.Hardware.LibreHardwareMonitorImpl();
+            var thermalProvider = new OmenCore.Hardware.ThermalSensorProvider(hwMonitor);
+            var fanService = new FanService(new TestFanController(), thermalProvider, logging, new NotificationService(logging), 1000, new ResumeRecoveryDiagnosticsService());
+            var vm = new OmenCore.ViewModels.FanControlViewModel(fanService, configService, logging);
+
+            vm.WillFanStateReapplyAtStartup.Should().BeFalse();
+            vm.ShowStartupRestoreHint.Should().BeTrue();
+            vm.StartupRestoreHintText.Should().Contain("Startup Hardware Restore is off");
+
+            logging.Dispose();
+        }
+
+        [Fact]
+        public void ShowStartupRestoreHint_False_WhenStartupRestoreAndFansCategoryAreEnabled()
+        {
+            var logging = new LoggingService();
+            logging.Initialize();
+            var configService = new ConfigurationService();
+            configService.Config.EnableStartupHardwareRestore = true;
+            configService.Config.StartupRestoreFansEnabled = true;
+            configService.Save(configService.Config);
+            var hwMonitor = new OmenCore.Hardware.LibreHardwareMonitorImpl();
+            var thermalProvider = new OmenCore.Hardware.ThermalSensorProvider(hwMonitor);
+            var fanService = new FanService(new TestFanController(), thermalProvider, logging, new NotificationService(logging), 1000, new ResumeRecoveryDiagnosticsService());
+            var vm = new OmenCore.ViewModels.FanControlViewModel(fanService, configService, logging);
+
+            vm.WillFanStateReapplyAtStartup.Should().BeTrue();
+            vm.ShowStartupRestoreHint.Should().BeFalse();
+
+            logging.Dispose();
+        }
+
+        [Fact]
+        public void ShowStartupRestoreHint_False_WhenFansCategorySpecificallyDisabled()
+        {
+            var logging = new LoggingService();
+            logging.Initialize();
+            var configService = new ConfigurationService();
+            configService.Config.EnableStartupHardwareRestore = true;
+            configService.Config.StartupRestoreFansEnabled = false;
+            configService.Save(configService.Config);
+            var hwMonitor = new OmenCore.Hardware.LibreHardwareMonitorImpl();
+            var thermalProvider = new OmenCore.Hardware.ThermalSensorProvider(hwMonitor);
+            var fanService = new FanService(new TestFanController(), thermalProvider, logging, new NotificationService(logging), 1000, new ResumeRecoveryDiagnosticsService());
+            var vm = new OmenCore.ViewModels.FanControlViewModel(fanService, configService, logging);
+
+            vm.WillFanStateReapplyAtStartup.Should().BeFalse();
+            vm.ShowStartupRestoreHint.Should().BeTrue();
+            vm.StartupRestoreHintText.Should().Contain("Fans category");
+
+            logging.Dispose();
+        }
+
+        [Fact]
+        public void DismissStartupRestoreHintCommand_PersistsFlag_AndHidesBanner()
+        {
+            var logging = new LoggingService();
+            logging.Initialize();
+            var configService = new ConfigurationService();
+            var hwMonitor = new OmenCore.Hardware.LibreHardwareMonitorImpl();
+            var thermalProvider = new OmenCore.Hardware.ThermalSensorProvider(hwMonitor);
+            var fanService = new FanService(new TestFanController(), thermalProvider, logging, new NotificationService(logging), 1000, new ResumeRecoveryDiagnosticsService());
+            var vm = new OmenCore.ViewModels.FanControlViewModel(fanService, configService, logging);
+
+            vm.ShowStartupRestoreHint.Should().BeTrue();
+            vm.DismissStartupRestoreHintCommand.Execute(null);
+
+            vm.ShowStartupRestoreHint.Should().BeFalse();
+            configService.Load().DismissedStartupRestoreHint.Should().BeTrue();
+
+            logging.Dispose();
+        }
+
+        [Fact]
         public void FanOwnershipSummary_ExplainsCurrentFanOwner()
         {
             var vm = CreateViewModel();

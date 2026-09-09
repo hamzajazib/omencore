@@ -380,6 +380,27 @@ independent data point.
 
 ---
 
+### Discoverability: Fan Control Page Now Explains When a Preset Won't Survive a Restart
+
+Flagged during the config-persistence investigation above but deliberately not bundled into that
+fix: the Discord board-`8BAD` report also asked why fans aren't controlled before Windows login,
+which turned out to be expected, by-design behavior — `EnableStartupHardwareRestore` defaults off,
+so nothing reapplies at boot until the user opts in from Settings. That's a reasonable default, but
+the Fan Control page gave no indication a saved preset/curve wouldn't survive a restart, so the
+behavior read as a bug rather than an unset toggle.
+
+Added a dismissible hint banner to the Fan Control page's Saved Presets area, gated on
+`StartupRestorePolicy.IsEnabled(config, StartupRestoreCategory.Fans)` — the same composed
+broad-gate-plus-per-category check the rest of the app already uses for this decision, so the
+banner and the actual startup behavior can't drift apart. Text distinguishes whether the broad
+"Startup Hardware Restore" toggle is off versus just the Fans category, so the user knows exactly
+which Settings control to flip. Mirrors the existing `ShowFanPerformanceInfoBanner` dismissible-
+banner pattern (`FanControlViewModel.cs`) exactly: a new `DismissedStartupRestoreHint` flag on
+`AppConfig`, a `ShowStartupRestoreHint` gated property, and a `DismissStartupRestoreHintCommand`
+that persists the dismissal. 4 new tests. 1434/1434.
+
+---
+
 ## Investigated, Not Yet Actioned
 
 ### Possible Future Pass: `ThermalMonitoringService`'s CPU/GPU Warning-Threshold Defaults

@@ -93,6 +93,15 @@ thermal-protection logic that actually reacts to heat (`FanService`, default 90�
 emergency) — the fan behavior itself was not affected by this bug, and turning off "Temperature
 warnings" (now that it actually works) does not disable that safety protection.
 
+### Fan Control Page Now Explains When a Preset Won't Survive a Restart
+
+Also from the Discord board-`8BAD` report: fans not being controlled before Windows login is
+expected behavior (`EnableStartupHardwareRestore` defaults off), but nothing on the Fan Control
+page said so — a saved preset silently not reapplying at boot read as a bug rather than an unset
+toggle. Added a dismissible hint, gated on the same `StartupRestorePolicy` check the rest of the
+app already uses for this decision, that tells the user exactly which Settings toggle governs it.
+4 new tests.
+
 ---
 
 ## Investigated, Not Yet Actioned
