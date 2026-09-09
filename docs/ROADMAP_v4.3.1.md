@@ -23,6 +23,59 @@ disconnected from the running app — see below.
 
 ## Done
 
+### GitHub #192 Follow-Up: Auto-Update's SHA256 Extraction Never Actually Matched Our Own Release Notes
+
+**Report:** [#192](https://github.com/theantipopau/omencore/issues/192) — updating 4.2.0 → 4.3.0
+showed "Update requires manual download (missing SHA256 in release notes)" in-app, forcing a
+manual download that then hit a separate Windows SmartScreen/Error 4551 block during install.
+
+**Confirmed, not assumed.** Fetched the actual published v4.3.0 GitHub Release body and traced
+`AutoUpdateService.ExtractHashForAsset` against it line by line. The release notes genuinely
+contain the hash — as a two-column markdown table (`| Artifact | SHA256 |`, one row per file, both
+filename and hash wrapped in backticks) — but the extraction regex's separator character class
+(`[:\s]+`, then `[:\s*` + backtick`]+` for the fallback) only accounts for colons and whitespace.
+A markdown table cell boundary is `` ` | ` `` — backtick, pipe, space — none of which that class
+matches, so every regex path failed silently against every release since the table format was
+introduced, and the updater always fell back to "missing SHA256" regardless of what was actually
+in the notes. The existing test claiming to cover this (`ExtractHashFromBody_WithValidHash_ReturnsHash`)
+never actually invoked the method at all — it only asserted a substring existed in a hand-written
+string, so this had no real coverage.
+
+**Fix.** Extended both regexes' separator character classes to include backtick and pipe, so they
+match through a markdown table cell boundary. Replaced the non-test with two real ones that invoke
+`ExtractHashForAsset` via reflection against the plain-label format and, more importantly, against
+the *exact* real v4.3.0 release-notes table (three artifacts, confirming the per-asset match picks
+the right row's hash and not just the first one in the table).
+
+**Not a field-validation item** — pure text-parsing logic, no hardware write path touched, fully
+provable from the real release body without needing a reporter's hardware.
+
+**Doesn't retroactively fix #192's own upgrade** — the fix ships in the version *after* the one
+being checked from, so anyone still on 4.2.0 or earlier will need one more manual download to get
+onto a release with the fix; auto-update should work correctly from 4.3.0 onward. The SmartScreen
+Error 4551 block is a separate, likely Windows-policy-or-AV issue — not something in the installer
+script itself — flagged for the reporter to check Event Viewer's AppLocker/CodeIntegrity logs;
+recorded as still open below.
+
+### GitHub Discord Report — Board `8BAD`'s Capability Entry Misnamed a Real 17" Owner's Laptop as "OMEN 15"
+
+**Report:** Discord (AlthegarOP) — HP OMEN 17 CK-2013nl, resolving via Exact ProductId (`8BAD`,
+High confidence) as "OMEN 15 (2021) Intel." The capability profile itself resolves correctly and
+is already `UserVerified = true`; only the display name was wrong for a 17" owner.
+
+**Confirmed, not guessed.** `KeyboardModelDatabase.cs`'s own `8BAD` entry already names this board
+"OMEN 15/17 (2021-2023) Intel" — the keyboard database already knew this ProductId is shared
+across both chassis sizes. `ModelCapabilityDatabase.cs`'s `8BAD` entry just never got the same
+naming; it said only "OMEN 15 (2021) Intel." Confirmed no other open/closed issue mentions this
+ProductId before editing.
+
+**Fix.** Renamed the capability entry's `ModelName` to "OMEN 15/17 (2021) Intel" to match the
+keyboard database's existing, already-correct naming. No capability flags changed.
+
+**Not a field-validation item.** Pure display-honesty fix — the underlying capability profile
+(`SupportsFanControlWmi`, `SupportsFanCurves`, `HasFourZoneRgb`) is unchanged and was already
+`UserVerified`.
+
 ### Architecture: MainViewModel Decomposition, Step 1 — Dead-Code Deletion + `UpdateViewModel` Extraction
 
 `MainViewModel.cs` (6,275 lines) has been flagged across several roadmap cycles as "increasingly

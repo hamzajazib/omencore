@@ -42,6 +42,28 @@ steps, -26%). Pure structural refactor plus a lifecycle-cleanup fix, no fan/EC/t
 
 ## Fixed
 
+### Auto-Update's SHA256 Check Never Actually Matched Our Own Release Notes
+
+Reported via [#192](https://github.com/theantipopau/omencore/issues/192): checking for updates
+showed "missing SHA256 in release notes" and refused to auto-install, even though the hash was
+genuinely present. Confirmed by fetching the actual published v4.3.0 release body: the hash is
+there as a markdown table (`| Artifact | SHA256 |`), but the extraction regex's separator pattern
+only accounted for colons and whitespace, not a table cell's `` ` | ` `` boundary — so it silently
+matched nothing against every release since the table format was introduced, and the updater
+always fell back to manual-download-only regardless of content. Fixed the regex; replaced a test
+that claimed to cover this but never actually invoked the method with two that do, including one
+against the real three-artifact release-notes table. Doesn't retroactively fix the 4.2.0 → 4.3.0
+upgrade that prompted the report (the fix ships in the version after the one being checked from),
+but auto-update should work correctly from 4.3.0 onward.
+
+### Board `8BAD` Misnamed a Real 17" Owner's Laptop as "OMEN 15"
+
+A Discord report (OMEN 17 CK-2013nl) showed the app correctly resolving hardware via Exact
+ProductId but displaying "OMEN 15 (2021) Intel" — the capability database's `ModelName` never
+picked up the "15/17" shared-chassis naming `KeyboardModelDatabase`'s own entry for the same
+ProductId already used. Renamed to match; no capability flags changed, and the entry was already
+`UserVerified`.
+
 ### The Entire "Notifications" Settings Section Did Nothing
 
 Reported indirectly via [#191](https://github.com/theantipopau/omencore/issues/191) ("high
@@ -68,5 +90,8 @@ warnings" (now that it actually works) does not disable that safety protection.
 - **[PR #147](https://github.com/theantipopau/omencore/pull/147)** — reviewed in full before considering a merge. The log-buffer `StringBuilder` change is correct and worth keeping, but two bugs found in the other two changes: the tray-icon change-detection cache never actually populates in the default configuration (so the optimization never engages for most users), and the dashboard uptime timer can never restart once paused once (a hard freeze of `SessionUptime`/`LastSampleAge` for the rest of the session). Posted a specific review comment; not merged as-is.
 - **Board `8C9C`** (HP OMEN, AMD Ryzen 7 8845HS + RTX 4070) — not yet in the model database, resolving via Family fallback. Waiting on a fuller diagnostics export before adding an entry.
 - **`ThermalMonitoringService`'s 85°C default CPU/GPU warning threshold** — arguably low relative to `FanService`'s own 90°C ramp-start point and its documented "85°C is normal" conclusion. Not changed on the strength of one report; see roadmap.
+- **[#192](https://github.com/theantipopau/omencore/issues/192)** — the SmartScreen/Error 4551 install block (separate from the SHA256 bug fixed above) is likely a Windows AppLocker/CodeIntegrity policy or third-party AV reacting to the unsigned installer, not something in the installer script itself. Asked the reporter to check Event Viewer and try the portable ZIP as a workaround.
+- **[#193](https://github.com/theantipopau/omencore/issues/193)** — OMEN key produces no response on an HP OMEN 16-am0000. The attached log shows the v4.3.0/#187 WMI watcher registering cleanly with no errors, but zero further activity across a 90-minute session — inconclusive from an INFO-level log alone. Asked for a diagnostics export's `LastOmenKeyCandidate` field and whether other global hotkeys work, to isolate whether this is OMEN-key-specific.
+- **Discord (AlthegarOP)** — HP OMEN 17 CK-2013nl, board `8BAD`: custom fan curves and a custom AMD CPU Power Limit both appear to not survive an app/system restart. Independently corroborated by a separate comment on #191 (different board, `8C9C`) describing the identical symptom for both features. Under active investigation — see roadmap once traced.
 
 ---

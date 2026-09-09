@@ -55,24 +55,57 @@ namespace OmenCoreApp.Tests.Services
         }
 
         [Fact]
-        public void ExtractHashFromBody_WithValidHash_ReturnsHash()
+        public void ExtractHashForAsset_WithPlainLabelFormat_ReturnsHash()
         {
-            // Arrange
             var logging = new LoggingService();
-            var service = new AutoUpdateService(logging);
+            using var service = new AutoUpdateService(logging);
             var releaseBody = @"
 ## What's New
 - Feature 1
 - Feature 2
 
-SHA256: a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd
+SHA256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
 Download the installer above.
 ";
-            
-            // This tests the private method indirectly via CheckForUpdatesAsync
-            // In real implementation, hash extraction is tested through integration
-            releaseBody.Should().Contain("SHA256:", "release notes should include hash for verification");
+            var hash = InvokeExtractHashForAsset(service, releaseBody, "OmenCoreSetup-4.3.0.exe");
+
+            hash.Should().Be("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+        }
+
+        [Fact]
+        public void ExtractHashForAsset_WithMarkdownTableFormat_ReturnsHash()
+        {
+            // GitHub #192: every real release since 3.4.1 has shipped hashes as a two-column
+            // markdown table ("| Artifact | SHA256 |"), not the plain "name: hash" line the old
+            // regex assumed - it matched nothing against real release notes, so the auto-updater
+            // always reported "missing SHA256" and refused to install, even with a valid hash
+            // sitting right there in the table. This is the exact shape of a real release body.
+            var logging = new LoggingService();
+            using var service = new AutoUpdateService(logging);
+            var releaseBody = @"
+## Release Artifacts
+
+| Artifact | SHA256 |
+|---|---|
+| `OmenCoreSetup-4.3.0.exe` | `6F1AE6AB29F07C55B27BFE59FFAA2828131177735281119480FE8A47C1B4C6B8` |
+| `OmenCore-4.3.0-win-x64.zip` | `14116B8C542B7FB77DB08C06F5889660D344CD3B2925FAA3D4E6E8DE4A0053F6` |
+| `OmenCore-4.3.0-linux-x64.zip` | `E75DA1A26C0C087D5432555D0937274F33F85585190478CAF74D4557D6FE087A` |
+";
+            var exeHash = InvokeExtractHashForAsset(service, releaseBody, "OmenCoreSetup-4.3.0.exe");
+            var zipHash = InvokeExtractHashForAsset(service, releaseBody, "OmenCore-4.3.0-win-x64.zip");
+
+            exeHash.Should().Be("6F1AE6AB29F07C55B27BFE59FFAA2828131177735281119480FE8A47C1B4C6B8",
+                because: "the per-asset row must resolve to that asset's own hash, not the first one in the table");
+            zipHash.Should().Be("14116B8C542B7FB77DB08C06F5889660D344CD3B2925FAA3D4E6E8DE4A0053F6");
+        }
+
+        private static string? InvokeExtractHashForAsset(AutoUpdateService service, string body, string assetFileName)
+        {
+            var method = typeof(AutoUpdateService).GetMethod("ExtractHashForAsset", BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("Could not access ExtractHashForAsset method.");
+
+            return method.Invoke(service, new object?[] { body, assetFileName }) as string;
         }
 
         [Fact]

@@ -1066,13 +1066,20 @@ namespace OmenCore.Services
         {
             if (string.IsNullOrEmpty(body)) return null;
             
-            // 1. Try per-asset match: "filename: HASH" or "filename:    HASH"
+            // 1. Try per-asset match: "filename: HASH", "filename:    HASH", or a markdown table
+            //    row like "| `filename` | `HASH` |" — the separator between the filename and the
+            //    hash can include backticks and a pipe as well as whitespace/colon, since every
+            //    release since 3.4.1 has actually shipped hashes as a two-column markdown table
+            //    (`| Artifact | SHA256 |`), not the plain "name: hash" line this used to assume.
+            //    Confirmed via GitHub #192: this previously matched nothing against real release
+            //    notes, so the auto-updater always fell back to "missing SHA256" and refused to
+            //    install, even when a valid hash was right there in the table.
             if (!string.IsNullOrEmpty(assetFileName))
             {
                 var escapedName = System.Text.RegularExpressions.Regex.Escape(assetFileName);
                 var assetMatch = System.Text.RegularExpressions.Regex.Match(
                     body,
-                    escapedName + @"[:\s]+`?([a-fA-F0-9]{64})`?",
+                    escapedName + @"[`|:\s]+([a-fA-F0-9]{64})",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                 if (assetMatch.Success)
                 {
@@ -1080,11 +1087,12 @@ namespace OmenCore.Services
                     return assetMatch.Groups[1].Value;
                 }
             }
-            
-            // 2. Try "SHA256: HASH" with optional backticks, bold markers, hyphens
+
+            // 2. Try "SHA256: HASH" with optional backticks, bold markers, hyphens, or a pipe
+            //    (a markdown table's "| SHA256 |" header cell followed by a row separator)
             var shaMatch = System.Text.RegularExpressions.Regex.Match(
                 body,
-                @"SHA-?256[:\s*`]+([a-fA-F0-9]{64})",
+                @"SHA-?256[:\s*`|]+([a-fA-F0-9]{64})",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             if (shaMatch.Success)
             {

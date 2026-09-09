@@ -511,13 +511,14 @@ namespace OmenCore.Hardware
             AddModel(new ModelCapabilities
             {
                 ProductId = "8BAD",
-                ModelName = "OMEN 15 (2021) Intel",
+                ModelName = "OMEN 15/17 (2021) Intel",
                 ModelYear = 2021,
                 Family = OmenModelFamily.Legacy,
                 SupportsFanControlWmi = true,
                 SupportsFanCurves = true,
                 HasFourZoneRgb = true,
-                UserVerified = true
+                UserVerified = true,
+                Notes = "Discord report on an OMEN 17 CK-2013nl - this ProductId is shared across the 15\" and 17\" 2021 Intel chassis (KeyboardModelDatabase's own 8BAD entry already correctly says \"OMEN 15/17 (2021-2023) Intel\"; this capability entry's ModelName said only \"OMEN 15\", misidentifying a real 17\" owner's laptop). Renamed to match; no capability flags changed."
             });
             
             // ═══════════════════════════════════════════════════════════════════════════════════
