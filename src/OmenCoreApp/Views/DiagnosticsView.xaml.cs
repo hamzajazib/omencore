@@ -27,7 +27,7 @@ namespace OmenCore.Views
             // tab into a multi-second freeze on a machine with a degraded WMI repository. Let the tab
             // paint first.
             Dispatcher.InvokeAsync(
-                () => (DataContext as ViewModels.MainViewModel)?.RefreshPowerAdapterStatus(),
+                () => (DataContext as ViewModels.MainViewModel)?.GpuClamp.RefreshPowerAdapterStatus(),
                 System.Windows.Threading.DispatcherPriority.Background);
         }
 
@@ -44,8 +44,8 @@ namespace OmenCore.Views
             // visible while it happens. A dialog that mentioned only the GPU restart would be
             // asking consent for the part that is obvious and not for the part that writes to
             // the SMU every thirty seconds afterwards.
-            var cpuHalf = vm.CanOfferApuClampLift
-                ? $"It then raises the four CPU power limits to {vm.ApuClampTargetDescription}, and puts " +
+            var cpuHalf = vm.GpuClamp.CanOfferApuClampLift
+                ? $"It then raises the four CPU power limits to {vm.GpuClamp.ApuClampTargetDescription}, and puts " +
                   "them back after a resume or a change of supply - the events that take them away. " +
                   "OmenCore cannot read them back, so that half is what the SMU accepted rather than " +
                   "what it is running.\n\n"
@@ -71,9 +71,9 @@ namespace OmenCore.Views
 
             if (answer != System.Windows.MessageBoxResult.Yes) return;
 
-            if (vm.ApplyAdapterOverrideCommand.CanExecute(null))
+            if (vm.GpuClamp.ApplyAdapterOverrideCommand.CanExecute(null))
             {
-                vm.ApplyAdapterOverrideCommand.Execute(null);
+                vm.GpuClamp.ApplyAdapterOverrideCommand.Execute(null);
             }
         }
 

@@ -58,6 +58,32 @@ namespace OmenCoreApp.Tests.ViewModels
         }
 
         [Fact]
+        public void GpuClamp_IsConstructedEagerly()
+        {
+            // GpuClampViewModel is the second MainViewModel decomposition step; eager like Update,
+            // since it's touched from OS power-lifecycle handlers (resume, startup) as well as from
+            // the Diagnostics view.
+            using var vm = new MainViewModel();
+
+            vm.GpuClamp.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void Dispose_DoesNotThrow()
+        {
+            // Regression guard for a pre-existing bug found while extracting GpuClampViewModel:
+            // SystemSuspending/SystemResuming/PowerStateChanged were subscribed in the constructor
+            // but never unsubscribed anywhere in Dispose() - fixed as part of that extraction.
+            // Nothing previously covered this, since the bug was an absence of code, not a wrong
+            // behavior to assert against directly - this at least locks in that cleanup runs clean.
+            var vm = new MainViewModel();
+
+            var act = () => vm.Dispose();
+
+            act.Should().NotThrow();
+        }
+
+        [Fact]
         public void RefreshNotificationPreferences_AppliesConfigTogglesToLiveNotificationService()
         {
             // GitHub #191: the Settings > Notifications toggles (Notifications, Game profile,
@@ -711,9 +737,9 @@ namespace OmenCoreApp.Tests.ViewModels
             var decoded = HpWmiBios.DecodeAdapterData(reply);
             decoded.Should().NotBeNull(because: "the capture is a valid 4-byte reply");
 
-            typeof(MainViewModel)
+            typeof(GpuClampViewModel)
                 .GetField("_adapterInfo", BindingFlags.NonPublic | BindingFlags.Instance)!
-                .SetValue(vm, decoded);
+                .SetValue(vm.GpuClamp, decoded);
         }
 
         [Fact]
@@ -722,7 +748,7 @@ namespace OmenCoreApp.Tests.ViewModels
             using var vm = new MainViewModel();
             SetAdapterInfo(vm, new byte[] { 0x02, 0xC2, 0x00, 0x38 });   // 280 W, BelowRequirement
 
-            var text = vm.PowerAdapterExplanation;
+            var text = vm.GpuClamp.PowerAdapterExplanation;
 
             text.Should().NotBeNull();
             text.Should().Contain("280 W");
@@ -736,7 +762,7 @@ namespace OmenCoreApp.Tests.ViewModels
             using var vm = new MainViewModel();
             SetAdapterInfo(vm, new byte[] { 0x05, 0xC2, 0x00, 0x14 });   // 100 W dock, ConnectedTypeC
 
-            var text = vm.PowerAdapterExplanation;
+            var text = vm.GpuClamp.PowerAdapterExplanation;
 
             // The warning must still appear - HP's rule does call this supply under-rated, and the
             // GPU really is clamped - so the bug would be fixed just as wrongly by silencing it.
@@ -758,9 +784,9 @@ namespace OmenCoreApp.Tests.ViewModels
 
         private static void SetGpuPowerLimits(MainViewModel vm, double? enforced, double? standard)
         {
-            typeof(MainViewModel)
+            typeof(GpuClampViewModel)
                 .GetField("_gpuPowerLimits", BindingFlags.NonPublic | BindingFlags.Instance)!
-                .SetValue(vm, new AdapterPowerOverrideService.PowerLimits(enforced, standard));
+                .SetValue(vm.GpuClamp, new AdapterPowerOverrideService.PowerLimits(enforced, standard));
         }
 
         [Fact]
@@ -769,9 +795,9 @@ namespace OmenCoreApp.Tests.ViewModels
             using var vm = new MainViewModel();
             SetGpuPowerLimits(vm, 35.0, 80.0);
 
-            vm.HasGpuPowerLimitReading.Should().BeTrue();
-            vm.GpuPowerLimitSummary.Should().Contain("35 W");
-            vm.GpuPowerLimitSummary.Should().Contain("80 W",
+            vm.GpuClamp.HasGpuPowerLimitReading.Should().BeTrue();
+            vm.GpuClamp.GpuPowerLimitSummary.Should().Contain("35 W");
+            vm.GpuClamp.GpuPowerLimitSummary.Should().Contain("80 W",
                 because: "35 W alone says nothing; the gap to the card's own limit is the evidence");
         }
 
@@ -781,7 +807,7 @@ namespace OmenCoreApp.Tests.ViewModels
             using var vm = new MainViewModel();
             SetGpuPowerLimits(vm, 35.0, 80.0);
 
-            var text = vm.GpuPowerLimitAttribution;
+            var text = vm.GpuClamp.GpuPowerLimitAttribution;
 
             text.Should().Contain("45 W below", because: "the size of the gap is the finding");
             text.Should().Contain("clamp");
@@ -799,8 +825,8 @@ namespace OmenCoreApp.Tests.ViewModels
 
             // The state after a successful restart, and the state on a board that never clamps.
             // Someone reading this must not be left thinking a restart is still owed to them.
-            vm.GpuPowerLimitAttribution.Should().Contain("no clamp to discard");
-            vm.GpuPowerLimitAttribution.Should().NotContain("below its own limit");
+            vm.GpuClamp.GpuPowerLimitAttribution.Should().Contain("no clamp to discard");
+            vm.GpuClamp.GpuPowerLimitAttribution.Should().NotContain("below its own limit");
         }
 
         [Fact]
@@ -809,8 +835,8 @@ namespace OmenCoreApp.Tests.ViewModels
             using var vm = new MainViewModel();
             SetGpuPowerLimits(vm, 35.0, null);
 
-            vm.GpuPowerLimitSummary.Should().Contain("35 W");
-            vm.GpuPowerLimitAttribution.Should().Contain("cannot be told",
+            vm.GpuClamp.GpuPowerLimitSummary.Should().Contain("35 W");
+            vm.GpuClamp.GpuPowerLimitAttribution.Should().Contain("cannot be told",
                 because: "35 W is only low relative to something, and that something was not reported");
         }
     }
