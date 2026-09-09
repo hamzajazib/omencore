@@ -1,6 +1,4 @@
-using OmenCore.Corsair;
 using OmenCore.Hardware;
-using OmenCore.Logitech;
 using OmenCore.Models;
 using OmenCore.Services;
 using OmenCore.Services.Diagnostics;
@@ -61,7 +59,6 @@ namespace OmenCore.ViewModels
         private CorsairDeviceService? _corsairDeviceService;
         private LogitechDeviceService? _logitechDeviceService;
         private OmenCore.Razer.RazerService? _razerService;
-        private readonly MacroService _macroService = new();
         private readonly UndervoltService _undervoltService;
         private readonly HardwareMonitoringService _hardwareMonitoringService;
         public HardwareMonitoringService HardwareMonitoringService => _hardwareMonitoringService;
@@ -69,7 +66,6 @@ namespace OmenCore.ViewModels
         private readonly OmenGamingHubCleanupService _hubCleanupService;
         private readonly QuietSafetyMonitor _quietSafetyMonitor = new();
         private readonly SystemInfoService _systemInfoService;
-        private readonly AutoUpdateService _autoUpdateService;
         private readonly ProcessMonitoringService _processMonitoringService;
         private readonly ITelemetryService _telemetryService;
         private readonly GameProfileService _gameProfileService;
@@ -456,15 +452,7 @@ namespace OmenCore.ViewModels
         
         private readonly AsyncRelayCommand _createRestorePointCommand;
         private readonly AsyncRelayCommand _cleanupOmenHubCommand;
-        private readonly AsyncRelayCommand _installUpdateCommand;
-        private readonly AsyncRelayCommand _checkForUpdatesCommand;
-        private readonly RelayCommand _stopMacroRecordingInternalCommand;
-        private readonly RelayCommand _saveRecordedMacroInternalCommand;
-        private readonly AsyncRelayCommand _applyLogitechColorInternalCommand;
-        private readonly AsyncRelayCommand _syncCorsairThemeInternalCommand;
-        private readonly RelayCommand _openReleaseNotesCommand;
         private readonly RelayCommand _openGameProfileManagerCommand;
-        private readonly INotifyCollectionChanged? _macroBufferNotifier;
         private const int MaxUiLogLines = 200;
         private readonly Queue<string> _logLines = new();
         private string _logBufferText = string.Empty;
@@ -472,20 +460,12 @@ namespace OmenCore.ViewModels
         private FanPreset? _selectedPreset;
         private PerformanceMode? _selectedPerformanceMode;
         private LightingProfile? _selectedLightingProfile;
-        private CorsairDevice? _selectedCorsairDevice;
-        private CorsairLightingPreset? _selectedCorsairPreset;
-        private MacroProfile? _selectedMacroProfile;
-        private LogitechDevice? _selectedLogitechDevice;
         private string _customPresetName = "Custom";
         private bool _gamingModeActive;
         private bool _logsCollapsed = true;
         private MonitoringSample? _latestMonitoringSample;
         private bool _monitoringLowOverhead;
         private bool _monitoringInitialized;
-        private string _logitechColorHex = "#E6002E";
-        private int _logitechBrightness = 80;
-        private bool _isMacroRecording;
-        private string _newMacroName = "Recorded Macro";
         private bool _restorePointInProgress;
         private string _restorePointStatus = "No restore point created";
         private bool _cleanupInProgress;
@@ -498,14 +478,6 @@ namespace OmenCore.ViewModels
         private bool _cleanupKillProcesses = true;
         private bool _cleanupPreserveFirewall = true;
         private bool _cleanupDryRun;
-        private VersionInfo? _availableUpdate;
-        private bool _updateBannerVisible;
-        private string _updateBannerMessage = string.Empty;
-        private bool _updateDownloadInProgress;
-        private double _updateDownloadProgress;
-        private string _updateDownloadStatus = string.Empty;
-        private bool _updateInstallBlocked;
-        private string _appVersionLabel = "v0.0.0";
         private string _currentFanMode = "Auto";
         private string _currentPerformanceMode = "Balanced";
         private bool _isFanPerformanceLinked;
@@ -515,12 +487,6 @@ namespace OmenCore.ViewModels
         public ObservableCollection<PerformanceMode> PerformanceModes { get; } = new();
         public ObservableCollection<LightingProfile> LightingProfiles { get; } = new();
         public ObservableCollection<ServiceToggle> SystemToggles { get; } = new();
-        public ObservableCollection<CorsairDevice> CorsairDevices { get; } = new();
-        public ObservableCollection<CorsairLightingPreset> CorsairLightingPresets { get; } = new();
-        public ObservableCollection<CorsairDpiStage> EditableDpiStages { get; } = new();
-        public ObservableCollection<MacroProfile> MacroProfiles { get; } = new();
-        public ObservableCollection<LogitechDevice> LogitechDevices { get; } = new();
-        public ReadOnlyObservableCollection<MacroAction> RecordingBuffer => _macroService.Buffer;
         public ObservableCollection<string> RecentEvents { get; } = new();
         public ObservableCollection<string> OmenCleanupSteps { get; } = new();
         public ReadOnlyObservableCollection<GameProfile> GameProfiles => _gameProfileService.Profiles;
@@ -1551,19 +1517,6 @@ namespace OmenCore.ViewModels
         /// Exposed for Settings UI binding.
         /// </summary>
         public PowerAutomationService PowerAutomation => _powerAutomationService;
-        
-        public string AppVersionLabel
-        {
-            get => _appVersionLabel;
-            private set
-            {
-                if (_appVersionLabel != value)
-                {
-                    _appVersionLabel = value;
-                    OnPropertyChanged(nameof(AppVersionLabel));
-                }
-            }
-        }
 
         public string CurrentFanMode
         {
@@ -1678,70 +1631,6 @@ namespace OmenCore.ViewModels
                 {
                     _currentKeyboardBrightness = value;
                     OnPropertyChanged(nameof(CurrentKeyboardBrightness));
-                }
-            }
-        }
-
-        public bool UpdateBannerVisible
-        {
-            get => _updateBannerVisible;
-            private set
-            {
-                if (_updateBannerVisible != value)
-                {
-                    _updateBannerVisible = value;
-                    OnPropertyChanged(nameof(UpdateBannerVisible));
-                }
-            }
-        }
-        public string UpdateBannerMessage
-        {
-            get => _updateBannerMessage;
-            private set
-            {
-                if (_updateBannerMessage != value)
-                {
-                    _updateBannerMessage = value;
-                    OnPropertyChanged(nameof(UpdateBannerMessage));
-                }
-            }
-        }
-        
-        public bool UpdateDownloadInProgress
-        {
-            get => _updateDownloadInProgress;
-            private set
-            {
-                if (_updateDownloadInProgress != value)
-                {
-                    _updateDownloadInProgress = value;
-                    OnPropertyChanged(nameof(UpdateDownloadInProgress));
-                }
-            }
-        }
-        
-        public double UpdateDownloadProgress
-        {
-            get => _updateDownloadProgress;
-            private set
-            {
-                if (Math.Abs(_updateDownloadProgress - value) > 0.01)
-                {
-                    _updateDownloadProgress = value;
-                    OnPropertyChanged(nameof(UpdateDownloadProgress));
-                }
-            }
-        }
-        
-        public string UpdateDownloadStatus
-        {
-            get => _updateDownloadStatus;
-            private set
-            {
-                if (_updateDownloadStatus != value)
-                {
-                    _updateDownloadStatus = value;
-                    OnPropertyChanged(nameof(UpdateDownloadStatus));
                 }
             }
         }
@@ -2067,136 +1956,9 @@ namespace OmenCore.ViewModels
                 {
                     _selectedLightingProfile = value;
                     OnPropertyChanged(nameof(SelectedLightingProfile));
-                    _syncCorsairThemeInternalCommand?.RaiseCanExecuteChanged();
                 }
             }
         }
-
-        public CorsairDevice? SelectedCorsairDevice
-        {
-            get => _selectedCorsairDevice;
-            set
-            {
-                if (_selectedCorsairDevice != value)
-                {
-                    _selectedCorsairDevice = value;
-                    EditableDpiStages.Clear();
-                    if (value != null)
-                    {
-                        foreach (var stage in value.DpiStages)
-                        {
-                            EditableDpiStages.Add(new CorsairDpiStage { Name = stage.Name, Dpi = stage.Dpi, IsDefault = stage.IsDefault, AngleSnapping = stage.AngleSnapping, LiftOffDistanceMm = stage.LiftOffDistanceMm });
-                        }
-                    }
-                    OnPropertyChanged(nameof(SelectedCorsairDevice));
-                }
-            }
-        }
-
-        public CorsairLightingPreset? SelectedCorsairPreset
-        {
-            get => _selectedCorsairPreset;
-            set
-            {
-                if (_selectedCorsairPreset != value)
-                {
-                    _selectedCorsairPreset = value;
-                    OnPropertyChanged(nameof(SelectedCorsairPreset));
-                }
-            }
-        }
-
-        public MacroProfile? SelectedMacroProfile
-        {
-            get => _selectedMacroProfile;
-            set
-            {
-                if (_selectedMacroProfile != value)
-                {
-                    _selectedMacroProfile = value;
-                    OnPropertyChanged(nameof(SelectedMacroProfile));
-                }
-            }
-        }
-
-        public bool IsMacroRecording
-        {
-            get => _isMacroRecording;
-            private set
-            {
-                if (_isMacroRecording != value)
-                {
-                    _isMacroRecording = value;
-                    OnPropertyChanged(nameof(IsMacroRecording));
-                    _stopMacroRecordingInternalCommand?.RaiseCanExecuteChanged();
-                    _saveRecordedMacroInternalCommand?.RaiseCanExecuteChanged();
-                }
-            }
-        }
-
-        public string NewMacroName
-        {
-            get => _newMacroName;
-            set
-            {
-                if (_newMacroName != value)
-                {
-                    _newMacroName = value;
-                    OnPropertyChanged(nameof(NewMacroName));
-                    _saveRecordedMacroInternalCommand?.RaiseCanExecuteChanged();
-                }
-            }
-        }
-
-        public LogitechDevice? SelectedLogitechDevice
-        {
-            get => _selectedLogitechDevice;
-            set
-            {
-                if (_selectedLogitechDevice != value)
-                {
-                    _selectedLogitechDevice = value;
-                    if (value != null)
-                    {
-                        LogitechColorHex = value.CurrentColorHex;
-                        LogitechBrightness = value.Status.BrightnessPercent;
-                    }
-                    OnPropertyChanged(nameof(SelectedLogitechDevice));
-                    OnPropertyChanged(nameof(LogitechStatusSummary));
-                    _applyLogitechColorInternalCommand?.RaiseCanExecuteChanged();
-                }
-            }
-        }
-
-        public string LogitechColorHex
-        {
-            get => _logitechColorHex;
-            set
-            {
-                if (_logitechColorHex != value)
-                {
-                    _logitechColorHex = value;
-                    OnPropertyChanged(nameof(LogitechColorHex));
-                }
-            }
-        }
-
-        public int LogitechBrightness
-        {
-            get => _logitechBrightness;
-            set
-            {
-                if (_logitechBrightness != value)
-                {
-                    _logitechBrightness = value;
-                    OnPropertyChanged(nameof(LogitechBrightness));
-                }
-            }
-        }
-
-        public string LogitechStatusSummary => SelectedLogitechDevice == null
-            ? "No device selected"
-            : $"Battery {SelectedLogitechDevice.Status.BatteryPercent}% • DPI {SelectedLogitechDevice.Status.Dpi}/{SelectedLogitechDevice.Status.MaxDpi} • Firmware {SelectedLogitechDevice.Status.FirmwareVersion}";
 
         public string CustomPresetName
         {
@@ -2419,24 +2181,11 @@ namespace OmenCore.ViewModels
         public ICommand SwitchGpuCommand { get; }
         public ICommand ReloadConfigCommand { get; }
         public ICommand OpenConfigFolderCommand { get; }
-        public ICommand DiscoverCorsairCommand { get; }
-        public ICommand ApplyCorsairLightingCommand { get; }
-        public ICommand SaveCorsairDpiCommand { get; }
-        public ICommand ApplyMacroCommand { get; }
-        public ICommand SyncCorsairThemeCommand { get; }
-        public ICommand StartMacroRecordingCommand { get; }
-        public ICommand StopMacroRecordingCommand { get; }
-        public ICommand SaveRecordedMacroCommand { get; }
         public ICommand OpenAboutCommand { get; }
         public ICommand ToggleServiceCommand { get; }
         public ICommand ToggleLowOverheadModeCommand { get; }
-        public ICommand DiscoverLogitechCommand { get; }
-        public ICommand ApplyLogitechColorCommand { get; }
         public ICommand CreateRestorePointCommand { get; }
         public ICommand CleanupOmenHubCommand { get; }
-        public ICommand InstallUpdateCommand { get; }
-        public ICommand CheckForUpdatesCommand { get; }
-        public ICommand OpenReleaseNotesCommand { get; }
         public ICommand OpenGameProfileManagerCommand { get; }
         public ICommand ExportConfigurationCommand { get; }
         public ICommand ImportConfigurationCommand { get; }
@@ -2453,6 +2202,9 @@ namespace OmenCore.ViewModels
 
         // Expose Temperature Source Diagnostics VM
         public TemperatureSourceDiagnosticsViewModel TemperatureSourceDiagnostics { get; private set; }
+
+        // Update checking/installing — always-visible window chrome, so constructed eagerly (see UpdateViewModel).
+        public UpdateViewModel Update { get; }
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -2689,7 +2441,7 @@ namespace OmenCore.ViewModels
             
             _systemRestoreService = systemRestoreService ?? new SystemRestoreService(_logging);
             _hubCleanupService = hubCleanupService ?? new OmenGamingHubCleanupService(_logging);
-            _autoUpdateService = autoUpdateService ?? new AutoUpdateService(_logging);
+            Update = new UpdateViewModel(_logging, _configService, _config, autoUpdateService);
             _processMonitoringService = processMonitoringService ?? new ProcessMonitoringService(_logging);
             _telemetryService = telemetryService ?? new TelemetryService(_logging, _configService);
             _gameProfileService = gameProfileService ?? new GameProfileService(_logging, _processMonitoringService, _configService);
@@ -2746,10 +2498,7 @@ namespace OmenCore.ViewModels
                 }
             };
             _logging.Info("Conflict detection monitor deferred until Monitoring/OMEN/Tuning/Optimizer is opened");
-            
-            _autoUpdateService.DownloadProgressChanged += OnUpdateDownloadProgressChanged;
-            _autoUpdateService.UpdateCheckCompleted += OnBackgroundUpdateCheckCompleted;
-            
+
             // Wire up game profile notifications
             _gameProfileService.ProfileApplyRequested += OnGameProfileApplyRequested;
             
@@ -2781,9 +2530,8 @@ namespace OmenCore.ViewModels
 
             // Initialize sub-ViewModels that don't depend on async services
             // InitializeSubViewModels(); // Removed in favor of lazy loading
-            AppVersionLabel = $"v{_autoUpdateService.GetCurrentVersion()}";
 
-            ApplyFanPresetCommand = new RelayCommand(_ => 
+            ApplyFanPresetCommand = new RelayCommand(_ =>
             {
                 if (FanControl?.SelectedPreset != null)
                     FanControl.SelectedPreset = FanControl.SelectedPreset; // Trigger setter to apply
@@ -2808,21 +2556,6 @@ namespace OmenCore.ViewModels
             });
             ReloadConfigCommand = new RelayCommand(_ => ReloadConfiguration());
             OpenConfigFolderCommand = new RelayCommand(_ => OpenConfigFolder());
-            DiscoverCorsairCommand = new AsyncRelayCommand(async _ =>
-            {
-                await EnsureLightingInitializedAsync();
-                await DiscoverCorsairDevices();
-            });
-            ApplyCorsairLightingCommand = new AsyncRelayCommand(_ => ApplyCorsairLighting(), _ => SelectedCorsairDevice != null && SelectedCorsairPreset != null);
-            SaveCorsairDpiCommand = new AsyncRelayCommand(_ => SaveCorsairDpi(), _ => SelectedCorsairDevice != null);
-            ApplyMacroCommand = new AsyncRelayCommand(_ => ApplyMacroToDevice(), _ => SelectedCorsairDevice != null && SelectedMacroProfile != null);
-            _syncCorsairThemeInternalCommand = new AsyncRelayCommand(_ => SyncCorsairWithTheme(), _ => SelectedLightingProfile != null);
-            SyncCorsairThemeCommand = _syncCorsairThemeInternalCommand;
-            StartMacroRecordingCommand = new RelayCommand(_ => StartMacroRecording());
-            _stopMacroRecordingInternalCommand = new RelayCommand(_ => StopMacroRecording(), _ => IsMacroRecording);
-            StopMacroRecordingCommand = _stopMacroRecordingInternalCommand;
-            _saveRecordedMacroInternalCommand = new RelayCommand(_ => SaveRecordedMacro(), _ => RecordingBuffer.Count > 0 && !string.IsNullOrWhiteSpace(NewMacroName) && !IsMacroRecording);
-            SaveRecordedMacroCommand = _saveRecordedMacroInternalCommand;
             OpenAboutCommand = new RelayCommand(_ => ShowAbout());
             ToggleServiceCommand = new RelayCommand(param =>
             {
@@ -2832,19 +2565,10 @@ namespace OmenCore.ViewModels
                 }
             });
             ToggleLowOverheadModeCommand = new RelayCommand(_ => MonitoringLowOverheadMode = !MonitoringLowOverheadMode);
-            DiscoverLogitechCommand = new AsyncRelayCommand(_ => DiscoverLogitechDevices());
-            _applyLogitechColorInternalCommand = new AsyncRelayCommand(_ => ApplyLogitechColor(), _ => SelectedLogitechDevice != null);
-            ApplyLogitechColorCommand = _applyLogitechColorInternalCommand;
             _createRestorePointCommand = new AsyncRelayCommand(_ => CreateRestorePointAsync(), _ => !RestorePointInProgress);
             CreateRestorePointCommand = _createRestorePointCommand;
             _cleanupOmenHubCommand = new AsyncRelayCommand(_ => RunOmenCleanupAsync(), _ => !CleanupInProgress);
             CleanupOmenHubCommand = _cleanupOmenHubCommand;
-            _checkForUpdatesCommand = new AsyncRelayCommand(_ => CheckForUpdatesBannerAsync(true), _ => !_updateDownloadInProgress);
-            CheckForUpdatesCommand = _checkForUpdatesCommand;
-            _installUpdateCommand = new AsyncRelayCommand(_ => InstallUpdateAsync(), _ => CanInstallUpdate());
-            InstallUpdateCommand = _installUpdateCommand;
-            _openReleaseNotesCommand = new RelayCommand(_ => OpenReleaseNotes(), _ => CanOpenReleaseNotes());
-            OpenReleaseNotesCommand = _openReleaseNotesCommand;
             _openGameProfileManagerCommand = new RelayCommand(_ => OpenGameProfileManager());
             OpenGameProfileManagerCommand = _openGameProfileManagerCommand;
             ExportConfigurationCommand = new AsyncRelayCommand(_ => ExportConfigurationAsync());
@@ -2868,21 +2592,6 @@ namespace OmenCore.ViewModels
             
             // Restore saved settings (GPU Power Boost, TCC Offset, Fan Preset) on startup
             _ = RestoreSettingsOnStartupAsync();
-            _macroBufferNotifier = RecordingBuffer as INotifyCollectionChanged;
-            if (_macroBufferNotifier != null)
-            {
-                _macroBufferNotifier.CollectionChanged += RecordingBufferOnCollectionChanged;
-            }
-            
-            // Configure background update checks
-            var updatePrefs = _config.Updates ?? new UpdatePreferences();
-            _autoUpdateService.ConfigureBackgroundChecks(updatePrefs);
-            
-            // Check for updates on startup if enabled
-            if (updatePrefs.CheckOnStartup)
-            {
-                _ = CheckForUpdatesBannerAsync();
-            }
 
             _automationService.Start();
             
@@ -3520,234 +3229,6 @@ namespace OmenCore.ViewModels
             }
         }
 
-        private async Task CheckForUpdatesBannerAsync(bool showStatus = false)
-        {
-            try
-            {
-                if (showStatus)
-                {
-                    UpdateBannerVisible = true;
-                    UpdateBannerMessage = "Checking for updates...";
-                }
-
-                var result = await _autoUpdateService.CheckForUpdatesAsync();
-                
-                // Update last check time
-                if (_config.Updates != null)
-                {
-                    _config.Updates.LastCheckTime = DateTime.Now;
-                    _configService.Save(_config);
-                }
-                
-                if (result.UpdateAvailable && result.LatestVersion != null)
-                {
-                    // Check if version is skipped
-                    if (_config.Updates?.SkippedVersion == result.LatestVersion.VersionString)
-                    {
-                        _logging.Info($"Update v{result.LatestVersion.VersionString} available but skipped by user");
-                        return;
-                    }
-                    
-                    _availableUpdate = result.LatestVersion;
-                    _updateInstallBlocked = false;
-                    UpdateBannerMessage = $"Update available: v{_availableUpdate.VersionString} (Current {AppVersionLabel})";
-                    UpdateBannerVisible = true;
-                }
-                else
-                {
-                    _availableUpdate = null;
-                    _updateInstallBlocked = false;
-                    if (showStatus)
-                    {
-                        UpdateBannerMessage = "You are running the latest version.";
-                        UpdateBannerVisible = true;
-                        // Auto-hide after 3 seconds
-                        _ = AutoHideLatestVersionBannerAsync();
-                    }
-                    else
-                    {
-                        UpdateBannerVisible = false;
-                        UpdateBannerMessage = string.Empty;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logging.Warn($"Update check failed: {ex.Message}");
-            }
-            finally
-            {
-                RefreshUpdateCommands();
-            }
-        }
-
-        private async Task AutoHideLatestVersionBannerAsync()
-        {
-            try
-            {
-                await Task.Delay(3000);
-                if (UpdateBannerMessage == "You are running the latest version.")
-                {
-                    UpdateBannerVisible = false;
-                    UpdateBannerMessage = string.Empty;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logging.Warn($"Failed to auto-hide update banner: {ex.Message}");
-            }
-        }
-
-        private async Task InstallUpdateAsync()
-        {
-            if (_availableUpdate == null)
-            {
-                return;
-            }
-
-            try
-            {
-                UpdateDownloadInProgress = true;
-                UpdateDownloadProgress = 0;
-                UpdateBannerMessage = $"Downloading v{_availableUpdate.VersionString} ({_availableUpdate.FileSizeFormatted})";
-                UpdateDownloadStatus = "Initializing download...";
-                
-                _logging.Info($"Starting update download: v{_availableUpdate.VersionString}");
-                
-                var installerPath = await _autoUpdateService.DownloadUpdateAsync(_availableUpdate);
-                
-                if (installerPath == null)
-                {
-                    var hashMissing = string.IsNullOrWhiteSpace(_availableUpdate?.Sha256Hash);
-                    UpdateBannerMessage = hashMissing
-                        ? "Update requires manual download (missing SHA256 in release notes)."
-                        : "Download failed. Check Release Notes for manual download.";
-                    UpdateDownloadStatus = hashMissing ? "Install blocked until SHA256 is provided" : "Download failed";
-                    _updateInstallBlocked = hashMissing;
-                    _logging.Warn("Update download unavailable; missing hash or download error");
-                    RefreshUpdateCommands();
-                    return;
-                }
-
-                UpdateBannerMessage = "Installing update...";
-                UpdateDownloadStatus = "Launching installer...";
-                
-                _logging.Info($"Installing update from {Path.GetFileName(installerPath)}");
-                
-                var installResult = await _autoUpdateService.InstallUpdateAsync(installerPath);
-                
-                if (!installResult.Success)
-                {
-                    UpdateBannerMessage = installResult.Message;
-                    UpdateDownloadStatus = "Installation failed";
-                    _logging.ErrorWithContext(
-                        component: "MainViewModel",
-                        operation: "InstallUpdateAsync",
-                        message: $"Update installation failed: {installResult.Message}");
-                }
-                else
-                {
-                    _logging.Info("Update installer launched - Application will restart");
-                }
-            }
-            catch (System.Security.SecurityException ex)
-            {
-                _logging.ErrorWithContext(
-                    component: "MainViewModel",
-                    operation: "InstallUpdateAsync.Security",
-                    message: "Update security verification failed",
-                    ex: ex);
-                UpdateBannerMessage = "Security verification failed";
-                UpdateDownloadStatus = "Hash verification failed - update rejected for security";
-            }
-            catch (Exception ex)
-            {
-                _logging.ErrorWithContext(
-                    component: "MainViewModel",
-                    operation: "InstallUpdateAsync",
-                    message: "Update installation failed",
-                    ex: ex);
-                UpdateBannerMessage = $"Update failed: {ex.Message}";
-                UpdateDownloadStatus = "Error occurred";
-            }
-            finally
-            {
-                UpdateDownloadInProgress = false;
-                UpdateDownloadProgress = 0;
-                RefreshUpdateCommands();
-            }
-        }
-        
-        private void OnUpdateDownloadProgressChanged(object? sender, UpdateDownloadProgress progress)
-        {
-            Application.Current?.Dispatcher?.BeginInvoke(() =>
-            {
-                UpdateDownloadProgress = progress.ProgressPercent;
-                UpdateDownloadStatus = $"{progress.ProgressPercent:F1}% • {progress.DownloadSpeedMbps:F2} MB/s • {FormatTimeSpan(progress.EstimatedTimeRemaining)} remaining";
-            });
-        }
-        
-        private void OnBackgroundUpdateCheckCompleted(object? sender, UpdateCheckResult result)
-        {
-            Application.Current?.Dispatcher?.BeginInvoke(() =>
-            {
-                if (result.UpdateAvailable && result.LatestVersion != null)
-                {
-                    _availableUpdate = result.LatestVersion;
-                    _updateInstallBlocked = false;
-                    UpdateBannerVisible = true;
-                    UpdateBannerMessage = $"v{result.LatestVersion.VersionString} is now available";
-                    _logging.Info($"Background check found update: v{result.LatestVersion.VersionString}");
-                    RefreshUpdateCommands();
-                }
-            });
-        }
-        
-        private static string FormatTimeSpan(TimeSpan span)
-        {
-            if (span.TotalHours >= 1)
-                return $"{span.Hours}h {span.Minutes}m";
-            if (span.TotalMinutes >= 1)
-                return $"{span.Minutes}m {span.Seconds}s";
-            return $"{span.Seconds}s";
-        }
-
-        private bool CanOpenReleaseNotes() => _availableUpdate != null && !string.IsNullOrWhiteSpace(_availableUpdate.ChangelogUrl);
-
-        private bool CanInstallUpdate() => _availableUpdate != null && !_updateDownloadInProgress && !_updateInstallBlocked;
-
-        private void OpenReleaseNotes()
-        {
-            if (!CanOpenReleaseNotes())
-            {
-                return;
-            }
-
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = _availableUpdate!.ChangelogUrl,
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                _logging.ErrorWithContext(
-                    component: "MainViewModel",
-                    operation: "OpenReleaseNotes",
-                    message: "Failed to open release notes",
-                    ex: ex);
-            }
-        }
-
-        private void RefreshUpdateCommands()
-        {
-            _installUpdateCommand.RaiseCanExecuteChanged();
-            _openReleaseNotesCommand.RaiseCanExecuteChanged();
-            _checkForUpdatesCommand.RaiseCanExecuteChanged();
-        }
-
         private void HydrateCollections()
         {
             SyncCollection(FanPresets, _config.FanPresets);
@@ -3761,17 +3242,6 @@ namespace OmenCore.ViewModels
             SelectedLightingProfile = LightingProfiles.FirstOrDefault();
 
             SyncCollection(SystemToggles, _config.SystemToggles);
-
-            SyncCollection(CorsairDevices, _corsairDeviceService?.Devices ?? Enumerable.Empty<CorsairDevice>());
-
-            SyncCollection(CorsairLightingPresets, _config.CorsairLightingPresets);
-            SelectedCorsairPreset = CorsairLightingPresets.FirstOrDefault();
-
-            SyncCollection(LogitechDevices, _logitechDeviceService?.Devices ?? Enumerable.Empty<LogitechDevice>());
-            SelectedLogitechDevice = LogitechDevices.FirstOrDefault();
-
-            SyncCollection(MacroProfiles, _config.MacroProfiles);
-            SelectedMacroProfile = MacroProfiles.FirstOrDefault();
         }
 
         public static PerformanceMode? ResolveInitialPerformanceModeForDisplay(
@@ -3897,113 +3367,6 @@ namespace OmenCore.ViewModels
                     UseShellExecute = true
                 });
             }
-        }
-
-        private async Task DiscoverCorsairDevices()
-        {
-            if (_corsairDeviceService == null) return;
-            await _corsairDeviceService.DiscoverAsync();
-            CorsairDevices.Clear();
-            foreach (var device in _corsairDeviceService.Devices)
-            {
-                CorsairDevices.Add(device);
-            }
-            SelectedCorsairDevice = CorsairDevices.FirstOrDefault();
-        }
-
-        private async Task ApplyCorsairLighting()
-        {
-            if (_corsairDeviceService == null || SelectedCorsairDevice == null || SelectedCorsairPreset == null)
-            {
-                return;
-            }
-            await _corsairDeviceService.ApplyLightingPresetAsync(SelectedCorsairDevice, SelectedCorsairPreset);
-            PushEvent($"Corsair preset '{SelectedCorsairPreset.Name}' applied to {SelectedCorsairDevice.Name}");
-        }
-
-        private async Task SaveCorsairDpi()
-        {
-            if (_corsairDeviceService == null || SelectedCorsairDevice == null)
-            {
-                return;
-            }
-            var applied = await _corsairDeviceService.ApplyDpiStagesAsync(SelectedCorsairDevice, EditableDpiStages);
-            PushEvent(applied
-                ? $"DPI stages updated for {SelectedCorsairDevice.Name}"
-                : $"DPI stages NOT applied to {SelectedCorsairDevice.Name} - active Corsair backend doesn't support writing DPI");
-        }
-
-        private async Task ApplyMacroToDevice()
-        {
-            if (_corsairDeviceService == null || SelectedCorsairDevice == null || SelectedMacroProfile == null)
-            {
-                return;
-            }
-            await _corsairDeviceService.ApplyMacroProfileAsync(SelectedCorsairDevice, SelectedMacroProfile);
-            PushEvent($"Macro '{SelectedMacroProfile.Name}' applied to {SelectedCorsairDevice.Name}");
-        }
-
-        private async Task SyncCorsairWithTheme()
-        {
-            if (_corsairDeviceService == null) return;
-            var profile = SelectedLightingProfile ?? LightingProfiles.FirstOrDefault();
-            if (profile == null)
-            {
-                return;
-            }
-            await _corsairDeviceService.SyncWithThemeAsync(profile);
-            PushEvent($"Corsair devices synced with '{profile.Name}' theme");
-        }
-
-        private void StartMacroRecording()
-        {
-            _macroService.StartRecording();
-            IsMacroRecording = true;
-            PushEvent("Macro recording started");
-        }
-
-        private void StopMacroRecording()
-        {
-            _macroService.StopRecording();
-            IsMacroRecording = false;
-            PushEvent("Macro recording stopped");
-        }
-
-        private void SaveRecordedMacro()
-        {
-            if (RecordingBuffer.Count == 0)
-            {
-                return;
-            }
-            var profile = _macroService.BuildProfile(string.IsNullOrWhiteSpace(NewMacroName) ? "Recorded Macro" : NewMacroName);
-            MacroProfiles.Add(profile);
-            _config.MacroProfiles.Add(profile);
-            _configService.Save(_config);
-            SelectedMacroProfile = profile;
-            PushEvent($"Macro '{profile.Name}' saved");
-        }
-
-        private async Task DiscoverLogitechDevices()
-        {
-            if (_logitechDeviceService == null) return;
-            await _logitechDeviceService.DiscoverAsync();
-            LogitechDevices.Clear();
-            foreach (var device in _logitechDeviceService.Devices)
-            {
-                LogitechDevices.Add(device);
-            }
-            SelectedLogitechDevice = LogitechDevices.FirstOrDefault();
-            PushEvent($"Discovered {LogitechDevices.Count} Logitech device(s)");
-        }
-
-        private async Task ApplyLogitechColor()
-        {
-            if (_logitechDeviceService == null || SelectedLogitechDevice == null)
-            {
-                return;
-            }
-            await _logitechDeviceService.ApplyStaticColorAsync(SelectedLogitechDevice, LogitechColorHex, LogitechBrightness);
-            PushEvent($"Logitech {SelectedLogitechDevice.Name} color updated");
         }
 
         private OmenCleanupOptions BuildCleanupOptions() => new()
@@ -4229,11 +3592,6 @@ namespace OmenCore.ViewModels
             }));
         }
 
-        private void RecordingBufferOnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-        {
-            _saveRecordedMacroInternalCommand?.RaiseCanExecuteChanged();
-        }
-
         private void ShowAbout()
         {
             var about = new AboutWindow
@@ -4305,10 +3663,20 @@ namespace OmenCore.ViewModels
                 _corsairDeviceService = await CorsairDeviceService.CreateAsync(_logging);
                 _logitechDeviceService = await LogitechDeviceService.CreateAsync(_logging);
                 _razerService = new OmenCore.Razer.RazerService(_logging);
-                
-                await DiscoverCorsairDevices();
-                await DiscoverLogitechDevices();
-                
+
+                // Discover devices so LightingViewModel's CorsairDevices/LogitechDevices
+                // (live pass-throughs of these same service instances) aren't empty the first
+                // time the Lighting tab opens.
+                if (_corsairDeviceService != null)
+                {
+                    await _corsairDeviceService.DiscoverAsync();
+                }
+                if (_logitechDeviceService != null)
+                {
+                    await _logitechDeviceService.DiscoverAsync();
+                    PushEvent($"Discovered {_logitechDeviceService.Devices.Count} Logitech device(s)");
+                }
+
                 // Initialize Lighting sub-ViewModel after async services are ready.
                 // This is intentionally first-use for v3.6 lightweight startup: peripheral SDK,
                 // Razer process, OpenRGB, screen-sampling, and audio-reactive paths stay cold
@@ -4509,7 +3877,7 @@ namespace OmenCore.ViewModels
                         omenKeyService: _omenKeyService,
                         wmiController: _wmiBios,
                         ecAccess: _ecAccess),
-                    _autoUpdateService?.GetCurrentVersion()?.ToString() ?? "unknown");
+                    Update.AutoUpdateService?.GetCurrentVersion()?.ToString() ?? "unknown");
 
                 if (!string.IsNullOrEmpty(exportedPath) && File.Exists(exportedPath))
                 {
@@ -6052,16 +5420,9 @@ namespace OmenCore.ViewModels
             _hardwareMonitoringService.SampleUpdated -= HardwareMonitoringServiceOnSampleUpdated;
             _hardwareMonitoringService.HealthStatusChanged -= HardwareMonitoringServiceOnHealthStatusChanged;
             _hardwareMonitoringService.Dispose();
-            if (_macroBufferNotifier != null)
-            {
-                _macroBufferNotifier.CollectionChanged -= RecordingBufferOnCollectionChanged;
-            }
             _logging.LogEmitted -= HandleLogLine;
-            
-            // Unsubscribe auto-update events
-            _autoUpdateService.DownloadProgressChanged -= OnUpdateDownloadProgressChanged;
-            _autoUpdateService.UpdateCheckCompleted -= OnBackgroundUpdateCheckCompleted;
-            _autoUpdateService.Dispose();
+
+            Update.Dispose();
 
             // Unsubscribe game profile events
             if (_gameProfileService != null)

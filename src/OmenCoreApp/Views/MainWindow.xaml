@@ -22,7 +22,7 @@
     
     <!-- Keyboard Shortcuts for refresh -->
     <Window.InputBindings>
-        <KeyBinding Key="F5" Command="{Binding CheckForUpdatesCommand}" />
+        <KeyBinding Key="F5" Command="{Binding Update.CheckForUpdatesCommand}" />
     </Window.InputBindings>
     
     <!-- DataContext will be set via dependency injection in code-behind -->
@@ -61,7 +61,7 @@
                         
                         <!-- Version Badge -->
                         <Border Background="{StaticResource SurfaceLightBrush}" CornerRadius="4" Padding="8,4" VerticalAlignment="Center">
-                           <TextBlock Text="{Binding AppVersionLabel}" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" FontWeight="SemiBold" />
+                           <TextBlock Text="{Binding Update.AppVersionLabel}" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" FontWeight="SemiBold" />
                         </Border>
                         
                     </StackPanel>
@@ -238,7 +238,7 @@
                                 <TextBlock Text="About" FontSize="11" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
-                        <Button Command="{Binding CheckForUpdatesCommand}" Height="30" Padding="10,4" ToolTip="Manually check for a new version">
+                        <Button Command="{Binding Update.CheckForUpdatesCommand}" Height="30" Padding="10,4" ToolTip="Manually check for a new version">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
                                     <Setter Property="Background">
@@ -662,7 +662,7 @@
                         <Border Style="{StaticResource PremiumInfoBannerCard}"
                                 Padding="16"
                                 Margin="24,12,24,8"
-                                Visibility="{Binding UpdateBannerVisible, Converter={StaticResource BoolToVisibility}}">
+                                Visibility="{Binding Update.UpdateBannerVisible, Converter={StaticResource BoolToVisibility}}">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -678,20 +678,20 @@
                                     <Path Data="{StaticResource IconUpdate}" Width="20" Height="20" Fill="{StaticResource AccentBlueBrush}" Stretch="Uniform" Margin="0,0,12,0" VerticalAlignment="Center"/>
                                     <StackPanel>
                                         <TextBlock Text="Update Ready" FontSize="15" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
-                                        <TextBlock Text="{Binding UpdateBannerMessage}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Update.UpdateBannerMessage}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </StackPanel>
                                 
                                 <!-- Buttons -->
                                 <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                     <Button Content="Install Update"
-                                            Command="{Binding InstallUpdateCommand}"
+                                            Command="{Binding Update.InstallUpdateCommand}"
                                             Style="{StaticResource ModernButton}"
                                             Width="140"
                                             Height="34"
                                             Margin="0,0,8,0" />
                                     <Button Content="Release Notes"
-                                            Command="{Binding OpenReleaseNotesCommand}"
+                                            Command="{Binding Update.OpenReleaseNotesCommand}"
                                             Style="{StaticResource SecondaryButton}"
                                             Width="130"
                                             Height="34" />
@@ -700,15 +700,15 @@
                                 <!-- Download Progress -->
                                 <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" 
                                             Margin="34,12,0,0"
-                                            Visibility="{Binding UpdateDownloadInProgress, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
-                                    <ProgressBar Value="{Binding UpdateDownloadProgress, Mode=OneWay}" 
+                                            Visibility="{Binding Update.UpdateDownloadInProgress, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                    <ProgressBar Value="{Binding Update.UpdateDownloadProgress, Mode=OneWay}" 
                                                  Minimum="0" Maximum="100" 
                                                  Height="8" 
                                                  BorderThickness="0"
                                                  Foreground="{StaticResource AccentBlueBrush}"
                                                  Background="{StaticResource SurfaceDarkBrush}"
                                                  Margin="0,0,0,6" />
-                                    <TextBlock Text="{Binding UpdateDownloadStatus, Mode=OneWay}" 
+                                    <TextBlock Text="{Binding Update.UpdateDownloadStatus, Mode=OneWay}" 
                                                FontSize="12" 
                                                Foreground="{StaticResource TextSecondaryBrush}"
                                                FontFamily="{StaticResource MonospaceFontFamily}" />

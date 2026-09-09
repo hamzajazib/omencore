@@ -46,6 +46,18 @@ namespace OmenCoreApp.Tests.ViewModels
         }
 
         [Fact]
+        public void Update_IsConstructedEagerly_AndVersionLabelIsSet()
+        {
+            // The update-checking cluster was extracted into UpdateViewModel (a MainViewModel
+            // decomposition step); unlike tab-scoped sub-VMs, it's constructed eagerly because its
+            // bindings live in always-visible window chrome, not a lazily-created tab view.
+            using var vm = new MainViewModel();
+
+            vm.Update.Should().NotBeNull();
+            vm.Update.AppVersionLabel.Should().StartWith("v");
+        }
+
+        [Fact]
         public void RefreshNotificationPreferences_AppliesConfigTogglesToLiveNotificationService()
         {
             // GitHub #191: the Settings > Notifications toggles (Notifications, Game profile,
