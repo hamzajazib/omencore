@@ -3,8 +3,8 @@
 **Release Date:** TBD — rolling changelog, updated as work lands.
 **Release Status:** In progress. Started 2026-09-09, two days after v4.3.0 shipped.
 **Type:** Patch release. Field-report fixes from GitHub issues opened after v4.3.0 (#190, #191)
-plus a follow-up on a pending field-confirmation request (#186), alongside the first step of the
-long-flagged `MainViewModel` decomposition.
+plus a follow-up on a pending field-confirmation request (#186), alongside the first two steps of
+the long-flagged `MainViewModel` decomposition.
 **Base Version:** v4.3.0
 **Tracking doc:** `docs/ROADMAP_v4.3.1.md` — full investigation detail, rejected options, and evidence trails live there; this file stays short.
 
