@@ -23,6 +23,57 @@ disconnected from the running app — see below.
 
 ## Done
 
+### Architecture: MainViewModel Decomposition, Step 1 — Dead-Code Deletion + `UpdateViewModel` Extraction
+
+`MainViewModel.cs` (6,275 lines) has been flagged across several roadmap cycles as "increasingly
+the thing that makes everything else expensive" (see `docs/ROADMAP_v4.2.0.md`'s "MainViewModel
+decomposition" note) — it's where the #181 fan/performance link-cascade bug lived, and per that
+same note, "extracting actual business logic and bound properties into feature-scoped ViewModels
+has not started" despite several sibling sub-VMs (`FanControlViewModel`, `SystemControlViewModel`,
+`LightingViewModel`, `MemoryOptimizerViewModel`, etc.) already existing.
+
+Rather than attempting the whole decomposition at once, three parallel investigation passes mapped
+the file's remaining structure to find safe, well-bounded first steps. This surfaced something
+better than a typical extraction candidate: a ~200-line cluster of Corsair/Logitech/Macro
+RGB-device methods turned out to be **confirmed dead code** — zero UI bindings anywhere reference
+it, and it's a less-complete duplicate of what `LightingViewModel` already does with the same
+underlying service instances. A follow-up planning pass produced an exact, line-verified
+implementation plan for two changes, both now shipped:
+
+1. **Deleted the dead RGB cluster** (`DiscoverCorsairDevices`, `ApplyCorsairLighting`,
+   `SaveCorsairDpi`, `ApplyMacroToDevice`, `SyncCorsairWithTheme`, `StartMacroRecording`,
+   `StopMacroRecording`, `SaveRecordedMacro`, `DiscoverLogitechDevices`, `ApplyLogitechColor`, plus
+   ~15 backing fields/properties/commands) — pure risk-free size reduction, since nothing currently
+   exercises this code path from the running app. The one real behavior worth preserving — device
+   discovery populating the Lighting tab on first open, since `LightingViewModel.CorsairDevices`/
+   `LogitechDevices` are live pass-throughs of the same service instances, not copies — is kept via
+   a direct, corrected call in `InitializeLightingServicesAsync()`. Also deleted `MacroService.cs`
+   itself, confirmed fully dead (`MacroService.PushEvent` had zero callers anywhere in the
+   codebase, so a recorded macro could never contain anything regardless).
+2. **Extracted the update-checking/installing cluster (~250 lines) into a new `UpdateViewModel`**,
+   exposed as an eagerly-constructed `MainViewModel.Update` property — eager rather than the lazy
+   pattern used for tab-scoped sub-VMs (`MemoryOptimizer`, `BloatwareManager`, etc.), since this
+   cluster's bindings live in always-visible window chrome (title-bar version label, update
+   banner), not inside a lazily-created tab view. `MainWindow.xaml`'s 10 binding sites repointed to
+   `Update.X` accordingly. `SettingsView.xaml`'s own, unrelated `OpenReleaseNotesCommand` (a
+   different command on `SettingsViewModel` that just opens the GitHub releases page) was a
+   coincidental name collision, confirmed not to need any change.
+
+**Net effect:** `MainViewModel.cs` 6,275 → 5,636 lines (-10%). Full test suite green (1423/1423, up
+from 1415 — 8 new tests for `UpdateViewModel` plus one `MainViewModel` smoke assertion). Verified
+the app still launches cleanly on real hardware post-change (a smoke-test launch's
+`HardwareWorker.log` shows successful CPU/GPU/memory detection).
+
+**Not a field-validation item.** Pure structural refactor — no fan/EC/thermal/OC/UV write path
+touched, and the deleted cluster had no live UI surface to begin with.
+
+**Explicitly not attempted in this pass:** the GPU power-limit/adapter-clamp cluster (~800 lines,
+two hard-casts to `MainViewModel` in `DiagnosticsView.xaml.cs` code-behind) — investigated and
+found much bigger and more entangled than the update cluster, with two services
+(`AdapterPowerOverrideService`, `ApuPowerClampService`) that aren't currently DI-injectable.
+Deserves its own dedicated pass once this smaller pattern has had time to prove out; recorded here
+rather than attempted blind in the same session.
+
 ### GitHub #191 Follow-Up: The Entire "Notifications" Settings Section Was Non-Functional
 
 **Report:** [#191](https://github.com/theantipopau/omencore/issues/191) — HP OMEN Laptop, board
