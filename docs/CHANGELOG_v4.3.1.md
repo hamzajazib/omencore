@@ -38,6 +38,18 @@ left for later. Net: `MainViewModel.cs` 5,636 → 4,665 lines (6,275 → 4,665 c
 steps, -26%). Pure structural refactor plus a lifecycle-cleanup fix, no fan/EC/thermal write
 *behavior* touched. 2 new tests, 6 migrated; full suite 1425/1425.
 
+### Architecture: SystemControlViewModel Decomposition, Step 1
+
+Now that `MainViewModel` is smaller, `SystemControlViewModel.cs` (5,610 lines) became the largest
+file in the app. Extracted the four features proven independent of its undervolt/GPU-OC/power-limit
+tuning core — GPU mode switching, display panel overdrive, the OMEN Gaming Hub cleanup wizard, and
+manual restore-point creation — into a new `SystemMaintenanceViewModel`, wired in as
+`SystemControlViewModel.Maintenance`. `AdvancedView.xaml` and `SettingsView.xaml`'s bindings were
+repointed one level deeper. Also deleted a confirmed-dead, zero-reference duplicate
+`CleanupOmenHubCommand` found while mapping the cluster. Net: `SystemControlViewModel.cs` 5,610 →
+5,290 lines. Pure structural refactor, no undervolt/GPU-OC/power-limit write path touched. 6 new
+tests; full suite 1441/1441.
+
 ---
 
 ## Fixed

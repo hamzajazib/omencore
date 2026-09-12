@@ -428,7 +428,7 @@
                                    Margin="0,0,12,0"/>
                         
                         <TextBlock Grid.Column="1" 
-                                   Text="{Binding SystemControl.CurrentGpuMode}" 
+                                   Text="{Binding SystemControl.Maintenance.CurrentGpuMode}" 
                                    FontSize="14" FontWeight="SemiBold"
                                    Foreground="{StaticResource AccentBrush}"/>
                     </Grid>
@@ -448,15 +448,15 @@
                         
                         <ComboBox Grid.Column="1"
                                   Style="{StaticResource ModernComboBox}"
-                                  ItemsSource="{Binding SystemControl.GpuSwitchModes}"
-                                  SelectedItem="{Binding SystemControl.SelectedGpuMode}"
+                                  ItemsSource="{Binding SystemControl.Maintenance.GpuSwitchModes}"
+                                  SelectedItem="{Binding SystemControl.Maintenance.SelectedGpuMode}"
                                   Margin="0,0,12,0"
                                   AutomationProperties.Name="Switch GPU mode to"/>
 
                         <Button Grid.Column="2"
                                 Content="Apply (Requires Restart)"
                                 Style="{StaticResource ModernButton}"
-                                Command="{Binding SystemControl.SwitchGpuModeCommand}"
+                                Command="{Binding SystemControl.Maintenance.SwitchGpuModeCommand}"
                                 Padding="16,8"
                                 AutomationProperties.Name="Apply GPU mode switch, requires restart"/>
                     </Grid>
@@ -465,7 +465,7 @@
             
             <!-- Display Overdrive Section -->
             <Border CornerRadius="12" Padding="20" Margin="0,0,0,16"
-                    Visibility="{Binding SystemControl.DisplayOverdriveSupported, Converter={StaticResource BoolToVisibility}}">
+                    Visibility="{Binding SystemControl.Maintenance.DisplayOverdriveSupported, Converter={StaticResource BoolToVisibility}}">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                         <GradientStop Color="#161B28" Offset="0"/>
@@ -486,7 +486,7 @@
                             <TextBlock Text="Improves pixel response time on 165Hz+ displays" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
                         </StackPanel>
                         <ToggleButton Grid.Column="1"
-                                      IsChecked="{Binding SystemControl.DisplayOverdriveEnabled, Mode=TwoWay}"
+                                      IsChecked="{Binding SystemControl.Maintenance.DisplayOverdriveEnabled, Mode=TwoWay}"
                                       Style="{StaticResource ModernToggleButton}"
                                       VerticalAlignment="Center"
                                       AutomationProperties.Name="Panel overdrive"/>

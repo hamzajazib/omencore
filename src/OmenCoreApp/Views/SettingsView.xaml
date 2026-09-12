@@ -2909,7 +2909,7 @@
                 <!-- HP Omen Gaming Hub Cleanup (only show when OGH is installed) -->
                 <Border Style="{StaticResource SurfaceCard}" Padding="24" Margin="0,0,0,16"
                         Visibility="{Binding OghInstalled, Converter={StaticResource BoolToVisibility}}">
-                    <StackPanel DataContext="{Binding DataContext.SystemControl, RelativeSource={RelativeSource AncestorType=Window}}">
+                    <StackPanel DataContext="{Binding DataContext.SystemControl.Maintenance, RelativeSource={RelativeSource AncestorType=Window}}">
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                             <Path Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" 
                                   Fill="OrangeRed" 

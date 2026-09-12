@@ -410,6 +410,43 @@ lines were self-assignment, doing nothing. Removed; `ReloadConfiguration()` now 
 `Load()` for its merge side effect and re-hydrates the UI collections. 1 new test, asserting the
 reference-equality invariant the simplification depends on. 1435/1435.
 
+### Architecture: SystemControlViewModel Decomposition, Step 1 — Extract `SystemMaintenanceViewModel`
+
+With the `MainViewModel` decomposition done, `SystemControlViewModel.cs` (5,610 lines) is now the
+largest file in the app — bigger than `MainViewModel.cs` was before this cycle's work on it.
+Mapped its full structure before touching anything: most of it (undervolt, GPU OC for both
+vendors, CPU/AMD power limits, TCC offset, the tuning-safety rollback/conflict system that ties
+all of those together) is tightly interleaved and genuinely hazardous to split blindly — exactly
+the kind of thing this project's evidence-gate discipline exists for. Four features weren't part
+of that web at all: GPU mode switching (Hybrid/Discrete/Integrated), display panel overdrive, the
+OMEN Gaming Hub cleanup wizard, and manual system-restore-point creation — each with its own
+exclusively-owned service (`GpuSwitchService`, `OmenGamingHubCleanupService`,
+`SystemRestoreService`) and zero references from the fan/EC/undervolt/GPU-OC write paths. Verified
+this by grepping every field for exclusive-vs-shared usage before moving anything, not by
+assumption.
+
+Extracted into a new `SystemMaintenanceViewModel`, exposed as `SystemControlViewModel.Maintenance`.
+Two views bind into this cluster — `AdvancedView.xaml` (GPU mode switch, display overdrive, via
+`SystemControl.Maintenance.X`) and `SettingsView.xaml` (the cleanup wizard, via a nested
+`DataContext="{Binding DataContext.SystemControl.Maintenance, ...}"` rescope) — both repointed one
+level deeper. `MainViewModel`'s game-profile-apply path (`SystemControl.SelectedGpuMode` /
+`SwitchGpuModeCommand`) was the only other cross-VM reference and got the same treatment.
+
+Also deleted `SystemControlViewModel.CleanupOmenHubCommand` — confirmed, via a repo-wide grep, to
+be dead code with zero bindings or callers anywhere. (Note: `MainViewModel` has its own
+identically-named `CleanupOmenHubCommand` backing a completely separate, independently-implemented
+cleanup/restore-point feature that predates this work — left untouched; that duplication is a
+separate, real finding worth its own look, not bundled into this refactor.)
+
+Pure structural move — every property/method body is copied verbatim, including two pre-existing
+latent bugs preserved as-is rather than opportunistically fixed: `CleanupStatus`'s setter never
+notified `CleanupStatusText` of changes, and `RunCleanupAsync` never actually sets
+`CleanupInProgress = true` (only ever back to `false` in its `finally`), so the "cleanup in
+progress" spinner in Settings has likely never shown. Both are now easy to find and fix in
+isolation later. Net: `SystemControlViewModel.cs` 5,610 → 5,290 lines. 6 new tests; full suite
+1441/1441. `SystemOptimizerViewModel`, `SettingsViewModel`, and the rest of
+`SystemControlViewModel` itself (still 5,290 lines) remain candidates for further passes.
+
 ---
 
 ## Investigated, Not Yet Actioned

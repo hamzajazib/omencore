@@ -2119,11 +2119,11 @@ namespace OmenCore.ViewModels
             // Apply GPU mode
             if (profile.GpuMode.HasValue && SystemControl != null)
             {
-                SystemControl.SelectedGpuMode = profile.GpuMode.Value;
+                SystemControl.Maintenance.SelectedGpuMode = profile.GpuMode.Value;
                 // Trigger GPU switch via command
-                if (SystemControl.SwitchGpuModeCommand?.CanExecute(null) == true)
+                if (SystemControl.Maintenance.SwitchGpuModeCommand?.CanExecute(null) == true)
                 {
-                    SystemControl.SwitchGpuModeCommand.Execute(null);
+                    SystemControl.Maintenance.SwitchGpuModeCommand.Execute(null);
                 }
                 _logging.Info($"Applied GPU mode: {profile.GpuMode}");
             }
