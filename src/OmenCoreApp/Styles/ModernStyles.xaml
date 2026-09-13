@@ -581,10 +581,12 @@
         <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
     
-    <!-- Large monospace value for dashboard displays -->
+    <!-- Large monospace value for dashboard displays. Sized as a genuine "hero" readout (the
+         one number the eye lands on first) rather than a supporting stat next to the chart -
+         a deliberately bigger jump than a typical type-scale step. -->
     <Style x:Key="MonospaceValueLarge" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
         <Setter Property="FontFamily" Value="{StaticResource MonospaceFontFamily}"/>
-        <Setter Property="FontSize" Value="32"/>
+        <Setter Property="FontSize" Value="52"/>
         <Setter Property="FontWeight" Value="Bold"/>
     </Style>
 

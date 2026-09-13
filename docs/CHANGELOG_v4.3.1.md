@@ -50,6 +50,15 @@ repointed one level deeper. Also deleted a confirmed-dead, zero-reference duplic
 5,290 lines. Pure structural refactor, no undervolt/GPU-OC/power-limit write path touched. 6 new
 tests; full suite 1441/1441.
 
+### Dashboard: Bigger CPU/GPU Temperature Readouts
+
+Comparing OmenCore's Dashboard against a similar tool (Ohman, see the GPU-idle-polling entry
+below) surfaced a real, low-risk styling gap: its primary temperature/RPM numbers are the
+dominant element on the page, while OmenCore's equivalent (`MonospaceValueLarge`, used only for
+the Dashboard's CPU/GPU temperature headlines) sat at 32px — a supporting stat next to the chart
+rather than a hero number. Bumped to 52px. One shared style resource, two call sites affected,
+no layout or architecture change.
+
 ---
 
 ## Fixed
