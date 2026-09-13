@@ -339,17 +339,16 @@ namespace OmenCore.Services
         /// </summary>
         private void StartWmiEventWatcher()
         {
-            // If the low-level keyboard hook is active, prefer it over WMI OMEN-launch events
-            // to avoid duplicate/false-positive triggers (brightness keys, Fn combos, etc.).
-            // Keep the narrow Fn+P firmware watcher available; that profile-cycle event has no
-            // reliable low-level-keyboard equivalent on affected Transcend models.
-            bool fnPEnabled = _configService?.Config?.Features?.EnableFirmwareFnPProfileCycle == true;
-            if (IsHookActive && !fnPEnabled)
-            {
-                _logging.Info("Keyboard hook active - skipping WMI OMEN event watcher to avoid duplicate/false triggers");
-                return;
-            }
-
+            // GitHub #193: this used to skip starting the WMI watcher entirely whenever the
+            // keyboard hook was active and the experimental Fn+P profile-cycle feature was off
+            // (the default) - which meant, for most users, the OMEN key had exactly one detection
+            // path: the low-level keyboard hook. On a board where the physical OMEN key never
+            // produces a keyboard-observable VK/scan code at all (confirmed via an independent
+            // `Register-WmiEvent -Class hpqBEvnt` listener receiving the exact expected event on
+            // every press while the hook logged zero candidates, ever), that left no fallback.
+            // Always start the watcher now; `OnWmiEventArrived`'s own eventId/eventData filtering
+            // plus the debounce it shares with the keyboard-hook path already prevent a double
+            // action on boards where both paths genuinely fire for the same physical press.
             _logging.Debug("Attempting to start WMI BIOS event watchers...");
 
             // HP OMEN key fires via hpqBEvnt WMI event class
@@ -476,13 +475,23 @@ namespace OmenCore.Services
                     eventId.HasValue && eventId.Value == 29 &&
                     eventData.HasValue && eventData.Value == 8614;
 
-                // If a low-level keyboard hook is active, ignore normal WMI OMEN launch events
-                // and keep only the narrow Fn+P profile-cycle event.
-                if (IsHookActive && !isFirmwareFnPProfileCycle)
-                {
-                    _logging.Debug("WMI OMEN event ignored because low-level keyboard hook is active");
-                    return;
-                }
+                // GitHub #193 (HP OMEN 16-am0000, board 8D2F): this used to unconditionally skip
+                // WMI OMEN-launch events whenever the keyboard hook was active, on the theory that
+                // the hook would already catch the physical key and this just avoided a duplicate.
+                // `IsHookActive` only means the hook *object* is registered, though - not that this
+                // board's OMEN key actually produces a keyboard-observable VK/scan code at all. On
+                // this board it doesn't: the hook was active all session with zero candidates ever
+                // logged (`LastOmenKeyCandidate: none recorded`), while an independent
+                // `Register-WmiEvent -Class hpqBEvnt` listener received the exact expected
+                // EventID=29/EventData=8613 on every single press - proving the WMI event was the
+                // *only* signal this hardware exposes, and this check was silently discarding it.
+                //
+                // Removed rather than narrowed: the debounce check below (`_lastKeyPressTicks`) is
+                // already shared between this WMI path and the keyboard-hook path, so on boards
+                // where both genuinely fire for the same physical press, the hook's callback runs
+                // first (synchronous, no WMI provider round-trip) and this event arrives into an
+                // already-debounced window - no separate hook-active gate is needed to prevent a
+                // double action.
 
                 if (ShouldSuppressWmiEventFromRecentNeverInterceptKey())
                 {

@@ -59,10 +59,28 @@ namespace OmenCoreApp.Tests.Services
         }
 
         [Fact]
-        public void StartWmiEventWatcher_IsSkipped_When_HookActive()
+        public void StartWmiEventWatcher_IsAttempted_EvenWhenHookActive()
         {
+            // GitHub #193 (HP OMEN 16-am0000, board 8D2F): this test used to lock in the OLD,
+            // buggy behavior - the WMI watcher was never even attempted when the keyboard hook
+            // was active and the experimental Fn+P profile-cycle feature was off (the default),
+            // leaving zero fallback for boards whose physical OMEN key produces no
+            // keyboard-observable VK/scan code at all. Confirmed on that board via an independent
+            // `Register-WmiEvent -Class hpqBEvnt` listener receiving the exact expected
+            // EventID=29/EventData=8613 on every press, while the keyboard hook logged zero
+            // candidates all session.
+            //
+            // Asserts on the log output rather than the `_wmiEventWatcher` field: whether the
+            // watcher instance itself ends up non-null depends on whether this test machine's WMI
+            // repository has the HP-specific hpqBEvnt class registered at all, which isn't true on
+            // non-HP hardware. What must be true everywhere is that hook-active state no longer
+            // short-circuits the attempt before it even reaches WMI.
             var logging = new LoggingService();
             logging.Initialize();
+            logging.Level = LogLevel.Debug;
+
+            var logLines = new List<string>();
+            logging.LogEmitted += logLines.Add;
 
             var svc = new OmenKeyService(logging);
 
@@ -74,14 +92,14 @@ namespace OmenCoreApp.Tests.Services
             // Sanity-check public property
             svc.IsHookActive.Should().BeTrue();
 
-            // Invoke the private StartWmiEventWatcher method and verify it does not start the WMI watcher
             var startMethod = typeof(OmenKeyService).GetMethod("StartWmiEventWatcher", BindingFlags.Instance | BindingFlags.NonPublic);
             startMethod.Should().NotBeNull();
             startMethod!.Invoke(svc, null);
 
-            var watcherField = typeof(OmenKeyService).GetField("_wmiEventWatcher", BindingFlags.Instance | BindingFlags.NonPublic);
-            watcherField.Should().NotBeNull();
-            watcherField!.GetValue(svc).Should().BeNull("WMI watcher must not be started when keyboard hook is active");
+            logLines.Should().Contain(line => line.Contains("Attempting to start WMI BIOS event watchers"),
+                "the watcher must be attempted regardless of keyboard hook state");
+            logLines.Should().NotContain(line => line.Contains("skipping WMI OMEN event watcher"),
+                "the old hook-active skip must be gone");
         }
 
         [Fact]

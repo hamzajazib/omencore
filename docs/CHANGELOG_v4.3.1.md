@@ -121,6 +121,19 @@ manually copied six fields from a fresh `Load()` onto `_config` — now dead wei
 merges onto the same shared object `_config` already points at. Removed; no behavior change. 1 new
 test.
 
+### OMEN Key WMI Events Were Being Discarded on Boards Where the Keyboard Hook Never Sees the Key
+
+Reported in [#193](https://github.com/theantipopau/omencore/issues/193) (HP OMEN 16-am0000, board
+`8D2F`). The reporter ran an independent, OmenCore-free WMI listener and it received the correct
+event on every OMEN key press, proving the OS/firmware side was fine — the bug was in OmenCore.
+`OnWmiEventArrived` was unconditionally discarding real OMEN-key WMI events whenever the keyboard
+hook was active, assuming the hook would catch the key itself; on boards where the OMEN key
+produces no keyboard-observable code at all, that threw away the only real signal. A second, less
+consequential gap skipped starting the WMI watcher entirely under the same hook-active condition
+when the experimental Fn+P feature was off. Both removed — the existing debounce shared between
+the hook and WMI code paths already prevents a double-fire on boards where both genuinely catch
+the same key press. 1 existing test updated to match the corrected behavior; full suite 1441/1441.
+
 ---
 
 ## Investigated, Not Yet Actioned
@@ -132,6 +145,5 @@ test.
 - **[#191](https://github.com/theantipopau/omencore/issues/191) follow-up: does Curve Optimizer actually do anything on Ryzen 7 8845HS?** A third commenter claimed AMD Curve Optimizer only works on HX-tier and Ryzen 9 HS parts, implying the reporter's −80 mV offset is a silent no-op. Traced the actual write path (`AmdUndervoltProvider`): it doesn't gate by product tier, only by silicon family, and — more fundamentally — the SMU mailbox this project uses has no independent CO readback for *any* Ryzen chip (`UndervoltStatus.HasIndependentReadback = false`, already documented in code from an earlier false-positive found on a different board). So the tier claim can't be confirmed or ruled out from the code; asked for an empirical before/after clock-speed comparison under sustained load (or `tools/SmuProbe --outcome` for anyone comfortable building from source) rather than accepting a tier-based rule of thumb on faith. No code change made without evidence either way.
 - **`ThermalMonitoringService`'s 85°C default CPU/GPU warning threshold** — arguably low relative to `FanService`'s own 90°C ramp-start point and its documented "85°C is normal" conclusion. Not changed on the strength of one report; see roadmap.
 - **[#192](https://github.com/theantipopau/omencore/issues/192)** — the SmartScreen/Error 4551 install block (separate from the SHA256 bug fixed above) is likely a Windows AppLocker/CodeIntegrity policy or third-party AV reacting to the unsigned installer, not something in the installer script itself. Asked the reporter to check Event Viewer and try the portable ZIP as a workaround.
-- **[#193](https://github.com/theantipopau/omencore/issues/193)** — OMEN key produces no response on an HP OMEN 16-am0000 (`8D2F`). A diagnostics export ruled out logging gaps (`LastOmenKeyCandidate: none recorded` at INFO level even right after pressing the key) and the reporter ruled out an OMEN Gaming Hub conflict (fully uninstalled, no OMEN-named services, OmenCore itself confirms standalone mode). Asked for the same raw, OmenCore-independent `Register-WmiEvent -Class hpqBEvnt` listener test that isolated [#187](https://github.com/theantipopau/omencore/issues/187) on a different board, to determine whether the OS is still delivering the event at all on this one. Separately, confirmed for this reporter that the "hotkeys only work while focused" behavior is the existing, documented `WindowFocusedHotkeys` Settings toggle (defaults on) rather than a bug — disabling it resolved that part.
 
 ---

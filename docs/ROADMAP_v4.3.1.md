@@ -447,6 +447,40 @@ isolation later. Net: `SystemControlViewModel.cs` 5,610 → 5,290 lines. 6 new t
 1441/1441. `SystemOptimizerViewModel`, `SettingsViewModel`, and the rest of
 `SystemControlViewModel` itself (still 5,290 lines) remain candidates for further passes.
 
+### GitHub #193 Follow-Up: OMEN Key WMI Events Were Being Discarded, Not Missed
+
+The reporter (HP OMEN 16-am0000, board `8D2F`) ran an independent, OmenCore-free
+`Register-WmiEvent -Class hpqBEvnt` listener at our request — the same technique that isolated
+#187 on a different board — and it received the exact expected `EventID=29`/`EventData=8613` on
+every single physical OMEN key press. That's conclusive: the OS/firmware was delivering the event
+correctly the whole time, so the bug had to be in OmenCore's own handling, not a driver/firmware
+issue.
+
+Traced it to two places in `OmenKeyService`, both dating from well before this cycle:
+
+1. `OnWmiEventArrived` unconditionally discarded every WMI OMEN-launch event (`eventData=8613`)
+   whenever the keyboard hook was active, on the theory that the hook would already catch the
+   physical key so the WMI copy was just a duplicate to suppress. `IsHookActive` only proves the
+   hook *object* is registered, though — not that this board's OMEN key produces any
+   keyboard-observable VK/scan code at all. On this board it doesn't: the hook was active the
+   whole session with zero candidates ever logged (`LastOmenKeyCandidate: none recorded`), so the
+   WMI event — the only real signal this hardware exposes — was being thrown away every time.
+2. `StartWmiEventWatcher` skipped starting the watcher at all when the hook was active and the
+   experimental Fn+P profile-cycle feature was disabled. Less consequential in practice since that
+   feature defaults to enabled, but still a real gap for anyone who'd turned it off, with no other
+   fallback.
+
+Removed both. The shared debounce timer between the keyboard-hook and WMI code paths
+(`_lastKeyPressTicks`) already prevents a double-fire on boards where both paths genuinely catch
+the same physical press — hook fires first (synchronous, no WMI round-trip), so a same-press WMI
+event a few milliseconds later lands inside the debounce window that fire already opened. No new
+gate needed to replace the ones removed. Updated the one existing test that had locked in the old
+(buggy) skip-on-hook-active behavior; full suite 1441/1441.
+
+Reported as fixed, pending the reporter's confirmation once they're on a build with this change —
+matching this project's standard of not calling a hardware-interaction fix "done" purely from
+code-tracing alone.
+
 ---
 
 ## Investigated, Not Yet Actioned
