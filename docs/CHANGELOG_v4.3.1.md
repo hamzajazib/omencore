@@ -134,6 +134,27 @@ when the experimental Fn+P feature was off. Both removed — the existing deboun
 the hook and WMI code paths already prevents a double-fire on boards where both genuinely catch
 the same key press. 1 existing test updated to match the corrected behavior; full suite 1441/1441.
 
+### GPU Telemetry Backs Off Further Once Confirmed Idle
+
+Reviewing a similar open-source tool ([Ohman](https://github.com/P4R1H/Ohman)) surfaced a real gap:
+polling the GPU at all, even at a background cadence, can keep a discrete GPU out of its deepest
+idle power state, artificially raising chassis temperature with nothing running. OmenCore's
+telemetry cadence was keyed on UI visibility only, never on actual GPU load. Once 3 consecutive
+samples show the GPU at ≤1% utilization and ≤12W package power, cadence now backs off to once
+every 2 minutes — only when the window isn't actively being watched, and reset instantly the
+moment real GPU activity shows up. Confirmed this is fully decoupled from fan-curve control, which
+reads temperatures through its own independent, already-adaptive polling loop. 3 new tests.
+
+### Board `8C9C` Given a Real Database Entry
+
+[#191](https://github.com/theantipopau/omencore/issues/191)'s board (Victus, Ryzen 7 8845HS + RTX
+4070) was resolving via generic Family fallback. Cross-referencing another project's board list
+(itself sourced from Linux's `hp-wmi` driver) confirmed it as a Victus 16 S/R (2023-2024) board
+sharing a firmware generation with the already-known `8BD4` entry. Added a conservative entry
+inheriting `8BD4`'s flags — the firmware generation is now evidence-backed, but GPU boost,
+undervolt, and exact fan behavior remain unconfirmed on this specific board pending real field
+data. 2 new tests.
+
 ---
 
 ## Investigated, Not Yet Actioned

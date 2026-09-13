@@ -648,6 +648,18 @@ namespace OmenCore.Services.KeyboardLighting
 
             AddModel(new KeyboardModelConfig
             {
+                ProductId = "8C9C",
+                ModelName = "HP Victus 16 (2023/2024) AMD",
+                KeyboardType = KeyboardType.FourZone,
+                PreferredMethod = KeyboardMethod.ColorTable2020,
+                FallbackMethods = new[] { KeyboardMethod.NewWmi2023 },
+                ModelYear = 2023,
+                UserVerified = false,
+                Notes = "GitHub #191 - Victus 16 S/R (8C9C), Ryzen 7 8845HS. Same firmware generation as sibling 8BD4/8BD5 Victus 16 S/R boards; keyboard type/method inherited from those, not independently verified on this board yet."
+            });
+
+            AddModel(new KeyboardModelConfig
+            {
                 ProductId = "7Z5Z2EA",
                 ModelName = "HP Victus 16-s0035nt",
                 ModelNamePattern = "16-s0035",

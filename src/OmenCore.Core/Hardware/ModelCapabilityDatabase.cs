@@ -1901,6 +1901,38 @@ namespace OmenCore.Hardware
                 Notes = "RC1 field log - Victus 16-s0xxx (8BD4), Ryzen 7 7840HS + RTX 4060. Conservative WMI V1 fan profile; GPU boost disabled pending verification. Discord 2026-06-08 / 7Z5Z2EA reports basic keyboard RGB should be controllable through WMI ColorTable; EC keyboard writes remain disabled. Discord 2026-06-03 reported fans stuck at max after long gaming session; v3.7.1 Discord 2026-06-07 logs showed non-reactive/0 RPM fan behavior after SetFanLevel(0,0), so V1 manual-zero floor clear is disabled pending a safer handoff sequence."
             });
 
+            // Victus 16 S/R (2023/2024), AMD Ryzen 7 8845HS + Radeon 780M + RTX 4070.
+            // GitHub #191 (RaulMARK17): board previously resolved only via Family fallback
+            // (Low confidence). Cross-referenced against the open-source "Ohman" project
+            // (github.com/P4R1H/Ohman, docs/laptops.md), whose board list is itself sourced from
+            // the Linux hp-wmi driver's own table of confirmed board IDs: 8C9C is grouped with
+            // 8B2F/8BBE/8BD4/8BD5/8C99 as a "Victus 16 S/R (2023-2024)" board using the standard
+            // no-quiet-mode Victus performance-mode byte scheme (0x00 default, 0x01 performance).
+            // That confirms the firmware generation/mode-byte family, not a full capability
+            // survey, so flags here are inherited conservatively from the same-generation,
+            // same-vendor 8BD4 entry above rather than assumed - fan curves and GPU boost remain
+            // unconfirmed on this exact board pending a real diagnostics export or Guided Fan
+            // Verification run.
+            AddModel(new ModelCapabilities
+            {
+                ProductId = "8C9C",
+                ModelName = "HP Victus 16 (2023/2024) AMD",
+                ModelYear = 2023,
+                Family = OmenModelFamily.Victus,
+                SupportsFanControlWmi = true,
+                SupportsFanControlEc = false,
+                SupportsFanCurves = true,
+                SupportsIndependentFanCurves = false,
+                FanZoneCount = 2,
+                HasMuxSwitch = false,
+                SupportsGpuPowerBoost = false,
+                SupportsUndervolt = false,
+                HasFourZoneRgb = true,
+                HasKeyboardBacklight = true,
+                UserVerified = false,
+                Notes = "GitHub #191 - Victus 16 S/R (8C9C), Ryzen 7 8845HS + Radeon 780M + RTX 4070. Firmware generation/mode-byte family confirmed via cross-reference to Ohman (github.com/P4R1H/Ohman) citing Linux hp-wmi's board table; other flags conservatively inherited from the same-generation 8BD4 entry, not independently verified on this board yet."
+            });
+
             // Victus 15/16 (2024+) Ryzen — board 8C2F is shared across BOTH chassis sizes.
             // GitHub Issue #110: Victus by HP Gaming Laptop 16-r0xxx — model not in capability database
             // GitHub Issue #155: the same ProductId 8C2F resolves for a 15" "Victus by HP Gaming

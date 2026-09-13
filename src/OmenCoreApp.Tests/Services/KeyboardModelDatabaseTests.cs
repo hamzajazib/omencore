@@ -176,6 +176,19 @@ namespace OmenCoreApp.Tests.Services
         }
 
         [Fact]
+        public void GetConfig_ReturnsConfig_For_ProductId_8C9C()
+        {
+            var cfg = KeyboardModelDatabase.GetConfig("8C9C");
+
+            cfg.Should().NotBeNull();
+            cfg!.ProductId.Should().Be("8C9C");
+            cfg.PreferredMethod.Should().Be(KeyboardMethod.ColorTable2020);
+            cfg.KeyboardType.Should().Be(KeyboardType.FourZone);
+            cfg.UserVerified.Should().BeFalse();
+            cfg.Notes.Should().Contain("#191");
+        }
+
+        [Fact]
         public void GetConfig_ReturnsColorTableConfig_For_Victus16S0035NtSku()
         {
             var cfg = KeyboardModelDatabase.GetConfig("7Z5Z2EA");

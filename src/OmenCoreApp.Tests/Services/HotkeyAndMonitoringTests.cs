@@ -406,6 +406,102 @@ namespace OmenCoreApp.Tests.Services
                 "tray-only with no active fan/OSD blockers should settle to the lowest safe cadence even when low-overhead mode is enabled");
         }
 
+        private static void InvokeUpdateGpuIdleTracking(HardwareMonitoringService svc, MonitoringSample sample)
+        {
+            var method = typeof(HardwareMonitoringService).GetMethod("UpdateGpuIdleTracking", BindingFlags.Instance | BindingFlags.NonPublic);
+            method.Should().NotBeNull();
+            method!.Invoke(svc, new object[] { sample });
+        }
+
+        private static TimeSpan InvokeGetEffectiveCadenceInterval(HardwareMonitoringService svc)
+        {
+            var method = typeof(HardwareMonitoringService).GetMethod("GetEffectiveCadenceInterval", BindingFlags.Instance | BindingFlags.NonPublic);
+            method.Should().NotBeNull();
+            return (TimeSpan)method!.Invoke(svc, null)!;
+        }
+
+        private static readonly MonitoringSample IdleGpuSample = new() { GpuLoadPercent = 0, GpuPowerWatts = 5 };
+        private static readonly MonitoringSample BusyGpuSample = new() { GpuLoadPercent = 45, GpuPowerWatts = 60 };
+
+        [Fact]
+        public void GetEffectiveCadenceInterval_BacksOffToDeepIdle_WhenGpuConfirmedIdle_InTrayMode()
+        {
+            // Ohman (a similar HP OMEN/Victus control app) found that polling the discrete GPU
+            // even at a background cadence (every few seconds) can be enough to keep it out of
+            // its deepest RTD3/idle power state, artificially raising chassis temperature with
+            // nothing running. OmenCore's own tray-only cadence (10s) has the same shape of
+            // problem, so once the GPU itself has been confirmed idle for a few consecutive
+            // samples, cadence should back off much further while still tray-only/hidden.
+            var logging = new LoggingService();
+            logging.Initialize();
+
+            var bridge = new LibreHardwareMonitorBridge();
+            var prefs = new MonitoringPreferences { LowOverheadMode = false };
+            var svc = new HardwareMonitoringService(bridge, logging, prefs, new ResumeRecoveryDiagnosticsService());
+
+            svc.SetUiWindowActive(false);
+            svc.SetTrayOnlyMode(true);
+
+            InvokeGetEffectiveCadenceInterval(svc).Should().Be(TimeSpan.FromSeconds(10),
+                "before any idle readings are recorded, the existing tray-only cadence applies");
+
+            InvokeUpdateGpuIdleTracking(svc, IdleGpuSample);
+            InvokeUpdateGpuIdleTracking(svc, IdleGpuSample);
+            InvokeGetEffectiveCadenceInterval(svc).Should().Be(TimeSpan.FromSeconds(10),
+                "two consecutive idle readings is not yet enough to back off further");
+
+            InvokeUpdateGpuIdleTracking(svc, IdleGpuSample);
+            InvokeGetEffectiveCadenceInterval(svc).Should().Be(TimeSpan.FromMinutes(2),
+                "three consecutive confirmed-idle GPU readings should trigger the deep-idle cadence");
+        }
+
+        [Fact]
+        public void GetEffectiveCadenceInterval_NeverAppliesDeepIdle_WhileUiWindowIsActive()
+        {
+            // The deep-idle backoff exists purely to cut background/tray cost. It must never
+            // affect the cadence while someone is actually looking at the window, regardless of
+            // how many consecutive idle GPU readings have been recorded.
+            var logging = new LoggingService();
+            logging.Initialize();
+
+            var bridge = new LibreHardwareMonitorBridge();
+            var prefs = new MonitoringPreferences { LowOverheadMode = false };
+            var svc = new HardwareMonitoringService(bridge, logging, prefs, new ResumeRecoveryDiagnosticsService());
+
+            svc.SetUiWindowActive(true);
+
+            InvokeUpdateGpuIdleTracking(svc, IdleGpuSample);
+            InvokeUpdateGpuIdleTracking(svc, IdleGpuSample);
+            InvokeUpdateGpuIdleTracking(svc, IdleGpuSample);
+
+            InvokeGetEffectiveCadenceInterval(svc).Should().Be(TimeSpan.FromSeconds(2),
+                "an actively-watched window must keep the responsive active cadence even with a confirmed-idle GPU");
+        }
+
+        [Fact]
+        public void UpdateGpuIdleTracking_ResetsImmediately_WhenGpuBecomesBusy()
+        {
+            var logging = new LoggingService();
+            logging.Initialize();
+
+            var bridge = new LibreHardwareMonitorBridge();
+            var prefs = new MonitoringPreferences { LowOverheadMode = false };
+            var svc = new HardwareMonitoringService(bridge, logging, prefs, new ResumeRecoveryDiagnosticsService());
+
+            svc.SetUiWindowActive(false);
+            svc.SetTrayOnlyMode(true);
+
+            InvokeUpdateGpuIdleTracking(svc, IdleGpuSample);
+            InvokeUpdateGpuIdleTracking(svc, IdleGpuSample);
+            InvokeUpdateGpuIdleTracking(svc, IdleGpuSample);
+            InvokeGetEffectiveCadenceInterval(svc).Should().Be(TimeSpan.FromMinutes(2));
+
+            InvokeUpdateGpuIdleTracking(svc, BusyGpuSample);
+
+            InvokeGetEffectiveCadenceInterval(svc).Should().Be(TimeSpan.FromSeconds(10),
+                "a single busy reading must drop the deep-idle backoff immediately so a starting workload is never delayed");
+        }
+
         [Fact]
         public void UpdateCadenceTelemetry_RecordsReasonAndTransitionSnapshot()
         {

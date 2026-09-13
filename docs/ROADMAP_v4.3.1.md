@@ -492,6 +492,66 @@ Reported as fixed, pending the reporter's confirmation once they're on a build w
 matching this project's standard of not calling a hardware-interaction fix "done" purely from
 code-tracing alone.
 
+### Cross-Project Review: What "Ohman" (a Similar HP OMEN/Victus Tool) Does Differently
+
+Reviewed a smaller open-source alternative, [Ohman](https://github.com/P4R1H/Ohman), specifically
+its `docs/research.md` write-up of the same HP WMI BIOS mailbox this project drives, to see whether
+any of its documented hardware behavior or findings pointed at a real gap here rather than assuming
+either project's approach is automatically right. Checked four specific claims against OmenCore's
+actual code before acting on any of them:
+
+- **Firmware forgets a user-set fan level after ~120s** — already handled. `WmiFanController`'s
+  countdown-extension heartbeat (every 5s) and `FanService`'s independent 30s force-reapply timer
+  are both well inside that window. Nothing to change.
+- **Polling the GPU at all — even at a background cadence — can keep a discrete GPU out of its
+  deepest idle power state**, artificially raising chassis temperature with nothing running. Real,
+  unaddressed gap: `HardwareMonitoringService`'s cadence tiers (2s/5s/10s) are keyed on UI
+  visibility only, never on actual GPU load. Fixed below.
+- **System-design-data bytes can derive real per-board defaults for unverified boards** (thermal
+  policy version, SW-fan-control support, default power limits) instead of guessing from a
+  same-family template. OmenCore already parses this exact byte structure (`HpWmiBios.cs`) but
+  never wires it into the actual unverified-board fallback path (`ModelCapabilityDatabase.
+  GetCapabilitiesByFamily`, which still just clones a same-family template board's flags). Real
+  gap, confirmed — but rewiring the fallback path itself touches every currently-unverified board
+  in the database at once, so it's deliberately **not** attempted in this pass; needs its own
+  scoping and evidence review before being touched, per this project's usual discipline for
+  anything that changes real hardware-facing behavior broadly rather than for one board.
+- **Battery charge limit** — Ohman's negative result (no such command exists in the mailbox; HP's
+  own app uses a separate, UWP-gated WinRT path unreachable from an ordinary app) isn't contradicting
+  or duplicating anything in flight here; nobody had recorded this before. Filed away as a "don't
+  re-investigate this" note, not an open item.
+
+Also cross-referenced Ohman's board list (itself sourced from Linux's `hp-wmi` driver) against two
+currently-open boards: it independently confirms `8C9C` (#191) as a "Victus 16 S/R (2023-2024)"
+board and `8D2F` (#193) as a 2023-2025 OMEN 16 board — used the former to give `8C9C` a real,
+conservative database entry below instead of leaving it on Family fallback.
+
+### GPU Telemetry Now Backs Off Further Once Confirmed Idle
+
+`HardwareMonitoringService.GetEffectiveCadenceInterval()` already had three cadence tiers (2s
+active / 5s idle / 10s tray-only), all keyed on UI window visibility. None of them account for
+whether the GPU itself has anything to report. Added a fourth, narrower check: once 3 consecutive
+samples show the GPU at ≤1% utilization and ≤12W package power, cadence backs off to once every 2
+minutes — but only from the existing idle/tray-only branches, never from the active-window or
+overlay-realtime cases, so this can't make the app feel slow while someone is actually watching it.
+Resets to the normal tier instantly on the very next reading that shows real GPU activity, so a
+workload starting up is never delayed. Verified this doesn't touch fan-curve responsiveness at all:
+`FanService`'s control loop reads temperatures through its own independent `_thermalProvider` call
+with its own separate adaptive-polling logic, entirely decoupled from this dashboard/UI-facing
+telemetry pipeline. 3 new tests.
+
+### Board `8C9C` Given a Real Database Entry Instead of Family Fallback
+
+[#191](https://github.com/theantipopau/omencore/issues/191)'s board (Victus, Ryzen 7 8845HS +
+Radeon 780M + RTX 4070) was resolving via Family fallback (Low confidence) with no entry of its
+own. Cross-referencing Ohman's board list (see above) confirmed it as a "Victus 16 S/R
+(2023-2024)" board sharing a firmware generation with the already-verified-conservative `8BD4`
+entry. Added `8C9C` to both `ModelCapabilityDatabase` and `KeyboardModelDatabase` with flags
+inherited from `8BD4` — the firmware generation is now evidence-backed, but the individual
+capability flags (GPU boost, undervolt, exact fan behavior) remain unconfirmed on this specific
+board and are left conservative (`UserVerified = false`) pending a real diagnostics export or
+Guided Fan Verification run. 2 new tests.
+
 ---
 
 ## Investigated, Not Yet Actioned

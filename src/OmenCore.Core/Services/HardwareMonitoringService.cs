@@ -24,6 +24,19 @@ namespace OmenCore.Services
         private readonly TimeSpan _activeCadenceInterval = TimeSpan.FromSeconds(2);
         private readonly TimeSpan _idleCadenceInterval = TimeSpan.FromSeconds(5);
         private readonly TimeSpan _trayOnlyCadenceInterval = TimeSpan.FromSeconds(10);
+
+        // Even a background-cadence poll of the discrete GPU (every 5-10s) can be enough to keep
+        // it out of its deepest RTD3/idle power state, artificially raising chassis temperature
+        // with nothing running - the same effect the "Ohman" project measured and fixed for its
+        // own nvidia-smi polling. Once the GPU itself (not just the UI) has been confirmed idle
+        // for a few consecutive samples, back off far further than the existing idle/tray-only
+        // tiers while any window-active/overlay cadence is left untouched, so this only affects
+        // background cost, never perceived responsiveness while someone is actually watching.
+        private readonly TimeSpan _gpuDeepIdleCadenceInterval = TimeSpan.FromMinutes(2);
+        private const double GpuIdleUtilizationThresholdPercent = 1.0;
+        private const double GpuIdlePowerThresholdWatts = 12.0;
+        private const int GpuIdleReadingsRequired = 3;
+        private volatile int _consecutiveGpuIdleReadings;
         private CancellationTokenSource? _cts;
         private volatile bool _lowOverheadMode; // volatile for thread-safe reads from monitor loop
         private volatile bool _uiWindowActive = true; // Thread-safe cache updated by the UI thread via SetUiWindowActive()
@@ -225,7 +238,7 @@ namespace OmenCore.Services
 
             if (_lowOverheadMode && !_uiWindowActive && _trayOnlyMode)
             {
-                return _trayOnlyCadenceInterval;
+                return ApplyGpuDeepIdleOverride(_trayOnlyCadenceInterval);
             }
 
             if (_lowOverheadMode)
@@ -242,9 +255,35 @@ namespace OmenCore.Services
 
             // Tray-only ultra-low cadence: no visible UI and no active fan-curve work.
             if (_trayOnlyMode)
-                return _trayOnlyCadenceInterval;
+                return ApplyGpuDeepIdleOverride(_trayOnlyCadenceInterval);
 
-            return _idleCadenceInterval;
+            return ApplyGpuDeepIdleOverride(_idleCadenceInterval);
+        }
+
+        /// <summary>
+        /// Widens an idle/tray-only cadence further once the GPU itself has been confirmed idle
+        /// for <see cref="GpuIdleReadingsRequired"/> consecutive samples. Never called from the
+        /// active-window or overlay-realtime branches, so this cannot make the app feel slow
+        /// while someone is actually looking at it.
+        /// </summary>
+        private TimeSpan ApplyGpuDeepIdleOverride(TimeSpan baseline) =>
+            _consecutiveGpuIdleReadings >= GpuIdleReadingsRequired ? _gpuDeepIdleCadenceInterval : baseline;
+
+        /// <summary>
+        /// Tracks consecutive idle GPU readings so <see cref="ApplyGpuDeepIdleOverride"/> can back
+        /// off further. Resets to zero the instant the GPU shows any real load or draw, so a
+        /// workload starting up is never delayed by a stale "still idle" assumption - this only
+        /// widens the interval between reads while nothing is happening, it never changes what a
+        /// read reports.
+        /// </summary>
+        private void UpdateGpuIdleTracking(MonitoringSample sample)
+        {
+            bool gpuIdle = sample.GpuLoadPercent <= GpuIdleUtilizationThresholdPercent &&
+                           sample.GpuPowerWatts <= GpuIdlePowerThresholdWatts;
+
+            _consecutiveGpuIdleReadings = gpuIdle
+                ? Math.Min(_consecutiveGpuIdleReadings + 1, GpuIdleReadingsRequired)
+                : 0;
         }
 
         /// <summary>
@@ -305,6 +344,8 @@ namespace OmenCore.Services
             string description;
             if (cadence == _activeCadenceInterval)
                 description = "Unified monitoring pipeline (active cadence)";
+            else if (cadence == _gpuDeepIdleCadenceInterval)
+                description = "Unified monitoring pipeline (GPU confirmed idle, deep-idle cadence)";
             else if (cadence == _trayOnlyCadenceInterval)
                 description = "Unified monitoring pipeline (tray-only ultra-low cadence)";
             else
@@ -359,6 +400,11 @@ namespace OmenCore.Services
             if (_overlayRealtimeMode)
             {
                 return "overlay-realtime: OSD visible forces active 1s cadence";
+            }
+
+            if (cadence == _gpuDeepIdleCadenceInterval)
+            {
+                return "gpu-deep-idle: GPU confirmed idle in the background, backed off to reduce idle-power keep-awake cost";
             }
 
             if (_lowOverheadMode && !_uiWindowActive && _trayOnlyMode && cadence == _trayOnlyCadenceInterval)
@@ -597,6 +643,7 @@ namespace OmenCore.Services
                     sample = CheckAndRecoverFrozenTemps(sample);
                     CheckForUnexpectedLowRpmAtHighTemp(sample);
                     sample = EnrichCpuTelemetry(sample);
+                    UpdateGpuIdleTracking(sample);
 
                     // ALWAYS update historical metrics for charts/graphs (bug fix v2.7.0)
                     // The history must be populated even when UI updates are skipped

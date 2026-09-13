@@ -410,6 +410,29 @@ namespace OmenCoreApp.Tests.Hardware
         }
 
         [Fact]
+        public void GetCapabilities_8C9C_VictusSR_UsesConservativeProfileInheritedFrom8BD4()
+        {
+            // GitHub #191: previously resolved only via Family fallback (Low confidence). Board
+            // generation confirmed via cross-reference to an external project (Ohman) citing
+            // Linux hp-wmi's own board table, which groups 8C9C with 8B2F/8BBE/8BD4/8BD5/8C99 as
+            // a Victus 16 S/R (2023-2024) board - so flags mirror the same-generation, same-vendor
+            // 8BD4 entry rather than the generic Family-fallback template.
+            var caps = ModelCapabilityDatabase.GetPreferredCapabilities("8C9C", "Victus by HP Gaming Laptop 16-s0xxx");
+
+            caps.Should().NotBeNull();
+            caps!.ProductId.Should().Be("8C9C");
+            caps.Family.Should().Be(OmenModelFamily.Victus);
+            caps.SupportsFanControlWmi.Should().BeTrue();
+            caps.SupportsFanCurves.Should().BeTrue();
+            caps.FanZoneCount.Should().Be(2);
+            caps.HasFourZoneRgb.Should().BeTrue();
+            caps.SupportsGpuPowerBoost.Should().BeFalse("not independently verified on this exact board yet");
+            caps.SupportsUndervolt.Should().BeFalse("not independently verified on this exact board yet");
+            caps.UserVerified.Should().BeFalse();
+            caps.Notes.Should().Contain("#191");
+        }
+
+        [Fact]
         public void ModelIdentitySummary_8BD4_ReportsExactProductId()
         {
             var modelConfig = ModelCapabilityDatabase.GetPreferredCapabilities("8BD4", "Victus by HP Gaming Laptop 16-s0xxx");
