@@ -359,6 +359,17 @@ Pinged them on the issue to let them know a build now exists to test against —
 here, just closing the loop on a field-validation request that was blocked on our own release
 timing, not on them.
 
+**Update:** RobRobM came back with a genuinely thorough confirmation — side-by-side idle readings
+against `nvidia-smi`, a 25-second sustained-load comparison tracking second-for-second, and all
+three surfaces (CLI `status`, `monitor`, and the GUI) checked independently. Every item on the
+fix's own checklist confirmed. Closed.
+
+While verifying, they separately found that v4.3.0's release-notes SHA256 hashes don't match the
+actual published assets (both platforms) — traced it to a likely local-build-vs-CI-rebuild
+divergence in the release workflow, not the files themselves being wrong. Split into its own issue,
+[#194](https://github.com/theantipopau/omencore/issues/194), since it's unrelated to NVML telemetry
+and a release-process problem rather than application code — not investigated further this cycle.
+
 ---
 
 ### GitHub #190 — Second Independent Report on Board `8E5E`, Already Given a Conservative Entry From #178
