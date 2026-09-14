@@ -22,6 +22,19 @@ improvement.
 **Base Version:** v4.3.0
 **Tracking doc:** `docs/ROADMAP_v4.3.1.md` — full investigation detail, rejected options, and evidence trails live there; this file stays short.
 
+### Downloads
+
+Computed by the release workflow itself from the exact files attached to the
+[v4.3.1 release](https://github.com/theantipopau/omencore/releases/tag/v4.3.1) — see the SHA256
+fix above ([#194](https://github.com/theantipopau/omencore/issues/194)) for why that distinction
+matters this time.
+
+| Artifact | SHA256 |
+|---|---|
+| `OmenCoreSetup-4.3.1.exe` | `B232BBA0181062DCA9D7CB746B7BF5DF369B2B0D2DB807A979A86793C2ED1AD0` |
+| `OmenCore-4.3.1-win-x64.zip` | `41290B284C38AD66458AF2AD42F90B73444C054B9B00CBF811D2D9D04FAD2FA5` |
+| `OmenCore-4.3.1-linux-x64.zip` | `72A4163F5175E772815A1583BABE0B610C5BD58ED86DB5A19FA14E37B5F1BA9E` |
+
 ---
 
 ## Added
