@@ -1338,121 +1338,68 @@
                                    Foreground="{StaticResource TextSecondaryBrush}" 
                                    Margin="0,8,0,12"/>
 
-                        <!-- Visual laptop keyboard schematic -->
+                        <!-- Visual laptop keyboard - a synthetic standard layout (not read from any
+                             device; four-zone hardware doesn't expose per-key positions the way the
+                             per-key editor's measured map does), with every key tagged to the zone it
+                             falls under. Click a key to open that zone's color picker. -->
                         <Border Background="#0D0D0D" CornerRadius="10" Padding="14,10" Margin="0,0,0,16"
                                 BorderBrush="#333" BorderThickness="2">
-                            <!-- Function row spacer -->
-                            <StackPanel>
-                                <!-- Function key row (decorative) -->
-                                <Grid Margin="0,0,0,4">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="3*"/>
-                                        <ColumnDefinition Width="2.5*"/>
-                                        <ColumnDefinition Width="2.5*"/>
-                                        <ColumnDefinition Width="2*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Background="{Binding Zone1Brush}" Opacity="0.25" CornerRadius="3" Height="10" Margin="0,0,2,0"/>
-                                    <Border Grid.Column="1" Background="{Binding Zone2Brush}" Opacity="0.25" CornerRadius="3" Height="10" Margin="2,0"/>
-                                    <Border Grid.Column="2" Background="{Binding Zone3Brush}" Opacity="0.25" CornerRadius="3" Height="10" Margin="2,0"/>
-                                    <Border Grid.Column="3" Background="{Binding Zone4Brush}" Opacity="0.25" CornerRadius="3" Height="10" Margin="2,0,0,0"/>
-                                </Grid>
-                                <!-- Main key area (clickable zones) -->
-                                <Grid Height="110">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="3*"/>
-                                        <ColumnDefinition Width="2.5*"/>
-                                        <ColumnDefinition Width="2.5*"/>
-                                        <ColumnDefinition Width="2*"/>
-                                    </Grid.ColumnDefinitions>
+                            <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left">
+                                <Canvas Width="{Binding FourZoneCanvasWidth}" Height="{Binding FourZoneCanvasHeight}"
+                                        Background="Transparent">
+                                    <ItemsControl ItemsSource="{Binding FourZoneKeys}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <Canvas IsItemsHost="True"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
 
-                                    <!-- Zone 1 -->
-                                    <Border Grid.Column="0" CornerRadius="6" Margin="0,0,2,0" Cursor="Hand"
-                                            BorderBrush="{Binding Zone1Brush}" BorderThickness="1.5">
-                                        <Border.InputBindings>
-                                            <MouseBinding MouseAction="LeftClick" Command="{Binding SetZone1ColorCommand}"/>
-                                        </Border.InputBindings>
-                                        <Grid>
-                                            <Rectangle Fill="{Binding Zone1Brush}" Opacity="0.18" RadiusX="5" RadiusY="5"/>
-                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,8">
-                                            <TextBlock Text="ESC  F1-F4" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="~ 1 2 3 4 5" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="TAB Q W E R T" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="CAPS A S D F G" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="SHIFT Z X C V" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="Zone 1" FontSize="10" FontWeight="Bold" Foreground="{Binding Zone1Brush}" HorizontalAlignment="Center" Margin="0,6,0,0"/>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
+                                        <ItemsControl.ItemContainerStyle>
+                                            <Style TargetType="ContentPresenter">
+                                                <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                                <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                                            </Style>
+                                        </ItemsControl.ItemContainerStyle>
 
-                                    <!-- Zone 2 -->
-                                    <Border Grid.Column="1" CornerRadius="6" Margin="2,0" Cursor="Hand"
-                                            BorderBrush="{Binding Zone2Brush}" BorderThickness="1.5">
-                                        <Border.InputBindings>
-                                            <MouseBinding MouseAction="LeftClick" Command="{Binding SetZone2ColorCommand}"/>
-                                        </Border.InputBindings>
-                                        <Grid>
-                                            <Rectangle Fill="{Binding Zone2Brush}" Opacity="0.18" RadiusX="5" RadiusY="5"/>
-                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,8">
-                                            <TextBlock Text="F5-F8" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="6 7 8" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="Y U I" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="H J K" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="B N M" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="Zone 2" FontSize="10" FontWeight="Bold" Foreground="{Binding Zone2Brush}" HorizontalAlignment="Center" Margin="0,6,0,0"/>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-
-                                    <!-- Zone 3 -->
-                                    <Border Grid.Column="2" CornerRadius="6" Margin="2,0" Cursor="Hand"
-                                            BorderBrush="{Binding Zone3Brush}" BorderThickness="1.5">
-                                        <Border.InputBindings>
-                                            <MouseBinding MouseAction="LeftClick" Command="{Binding SetZone3ColorCommand}"/>
-                                        </Border.InputBindings>
-                                        <Grid>
-                                            <Rectangle Fill="{Binding Zone3Brush}" Opacity="0.18" RadiusX="5" RadiusY="5"/>
-                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,8">
-                                            <TextBlock Text="F9-F12" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="9 0 - =" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="O P [ ]" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="L ; ' \" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text=", . / SHIFT" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="Zone 3" FontSize="10" FontWeight="Bold" Foreground="{Binding Zone3Brush}" HorizontalAlignment="Center" Margin="0,6,0,0"/>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-
-                                    <!-- Zone 4 -->
-                                    <Border Grid.Column="3" CornerRadius="6" Margin="2,0,0,0" Cursor="Hand"
-                                            BorderBrush="{Binding Zone4Brush}" BorderThickness="1.5">
-                                        <Border.InputBindings>
-                                            <MouseBinding MouseAction="LeftClick" Command="{Binding SetZone4ColorCommand}"/>
-                                        </Border.InputBindings>
-                                        <Grid>
-                                            <Rectangle Fill="{Binding Zone4Brush}" Opacity="0.18" RadiusX="5" RadiusY="5"/>
-                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,8">
-                                            <TextBlock Text="Del Ins" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="BS  \  ]" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="ENTER" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="▲" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="◄ ▼ ►" FontSize="9" FontWeight="SemiBold" Foreground="White" Opacity="0.55" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="Zone 4" FontSize="10" FontWeight="Bold" Foreground="{Binding Zone4Brush}" HorizontalAlignment="Center" Margin="0,6,0,0"/>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </Grid>
-                                <!-- Space bar row (decorative) -->
-                                <Grid Margin="0,4,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="0.5*"/>
-                                        <ColumnDefinition Width="5*"/>
-                                        <ColumnDefinition Width="2.5*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Background="{Binding Zone1Brush}" Opacity="0.2" CornerRadius="2" Height="10" Margin="0,0,2,0"/>
-                                    <Border Grid.Column="1" Background="#333" CornerRadius="4" Height="10" Margin="2,0"/>
-                                    <Border Grid.Column="2" Background="{Binding Zone4Brush}" Opacity="0.2" CornerRadius="2" Height="10" Margin="2,0,0,0"/>
-                                </Grid>
-                            </StackPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Width="{Binding Width}" Height="{Binding Height}"
+                                                        CornerRadius="4" Cursor="Hand"
+                                                        BorderBrush="#3A3A3A" BorderThickness="1"
+                                                        ToolTip="{Binding Label}">
+                                                    <Border.InputBindings>
+                                                        <MouseBinding MouseAction="LeftClick"
+                                                                      Command="{Binding DataContext.SetZoneColorByIndexCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                      CommandParameter="{Binding ZoneIndex}"/>
+                                                    </Border.InputBindings>
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding ZoneIndex}" Value="1">
+                                                                    <Setter Property="Background" Value="{Binding DataContext.Zone1Brush, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ZoneIndex}" Value="2">
+                                                                    <Setter Property="Background" Value="{Binding DataContext.Zone2Brush, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ZoneIndex}" Value="3">
+                                                                    <Setter Property="Background" Value="{Binding DataContext.Zone3Brush, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ZoneIndex}" Value="4">
+                                                                    <Setter Property="Background" Value="{Binding DataContext.Zone4Brush, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock Text="{Binding Label}" FontSize="8" FontWeight="SemiBold"
+                                                               Foreground="White" Opacity="0.75"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Canvas>
+                            </Viewbox>
                         </Border>
 
                         <!-- Hex color inputs for each zone -->

@@ -65,6 +65,30 @@ the Dashboard's CPU/GPU temperature headlines) sat at 32px — a supporting stat
 rather than a hero number. Bumped to 52px. One shared style resource, two call sites affected,
 no layout or architecture change.
 
+### Four-Zone Keyboard Lighting Gets a Real Keyboard Visual
+
+OmenCore already had a genuine, physically-drawn per-key keyboard editor
+(`KeyboardMapEditor`/`KeyboardMapViewModel`) with click-select, drag-to-select, and a
+measured-vs-inferred honesty banner — arguably more capable than similar tools' equivalents. It
+only ever applied to per-key RGB hardware with a measured hardware map, though; the far more
+common four-zone boards got four plain rectangles with text listing which keys were roughly
+inside each one, not a drawn keyboard.
+
+Added a new `FourZoneKeyboardLayout` — a small, pure, side-effect-free generator (no device
+involved, unlike the measured per-key case) that lays out a standard TKL laptop keyboard shape and
+tags every key to the zone it falls under, matching the exact key lists the old text schematic
+already used ("TAB Q W E R T" for Zone 1, etc.). Replaced the four-rectangle schematic in
+`LightingView.xaml` with a drawn keyboard using the same Canvas/ItemsControl rendering approach as
+the existing per-key editor; clicking a key opens that zone's existing color picker. Zero changes
+to the underlying zone-coloring logic — every key's fill and click action bind straight through to
+the `Zone1Brush`..`Zone4Brush` properties and `SetZone1ColorCommand`..`SetZone4ColorCommand`
+already driving the rest of the page, via one new one-line dispatch command
+(`SetZoneColorByIndexCommand`) that routes a key's zone index to the matching existing command.
+
+5 new tests for the layout generator, including bounds-checking every key against the canvas —
+which caught a real off-by-3-units sizing bug in the arrow-cluster column before it shipped. Full
+suite 1455/1455.
+
 ---
 
 ## Fixed

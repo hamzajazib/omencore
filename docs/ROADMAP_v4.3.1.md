@@ -536,6 +536,64 @@ workload starting up is never delayed. Verified this doesn't touch fan-curve res
 with its own separate adaptive-polling logic, entirely decoupled from this dashboard/UI-facing
 telemetry pipeline. 3 new tests.
 
+### Four-Zone Keyboard Lighting Gets a Real Keyboard Visual (Like Ohman/OmenMon)
+
+Asked directly: could the four-zone RGB editor look like Ohman's or OmenMon's drawn keyboard?
+Checked what already existed first rather than assuming a gap. `KeyboardMapEditor.xaml` /
+`KeyboardMapViewModel.cs` already do exactly this — a physically-drawn, click-select,
+rubber-band-drag-select keyboard, with a "measured from your actual hardware" vs "inferred from
+HP's device table" honesty banner that neither reference project's screenshots show. It's arguably
+already ahead here, just not where most users would find it: `IsFixedGridEditorVisible`/
+`HasMeasuredKeyMap` gate it to per-key RGB hardware only (a narrow slice — OMEN MAX-class Darfon
+boards), and the per-key-without-a-measured-map fallback is a uniform 6×14 grid, not a drawn
+keyboard shape either. The genuinely common case — four-zone boards, most OMEN/Victus laptops —
+had four plain rectangles with text listing roughly which keys sit in each zone
+("TAB Q W E R T", "F5-F8 6 7 8 Y U I H J K B N M", etc.), not a keyboard at all.
+
+`KeyboardMapViewModel` itself wasn't a good fit to extend for this: by design it draws from a
+device's own reported lamp/key geometry (explicit in its own doc comment — "IT IS BUILT FROM THE
+LAYOUT, NOT FROM LAMPARRAY, and the difference is the whole point"), and four-zone hardware
+exposes no per-key positions to read at all. Forcing a "measured from the device" abstraction to
+serve a "no device data, synthetic standard layout" case would have fought the class's actual
+design intent — the codebase's own established pattern here is closer to "add a new view for new
+evidence, don't force-fit old data flows" (see `KeyboardMapViewModel`'s own comment: "This exists
+alongside the 6 x 14 grid editor rather than replacing it").
+
+Instead, added a small, self-contained `FourZoneKeyboardLayout` — pure and side-effect free (no
+device, no I/O), generating a standard TKL laptop keyboard shape row by row (unit-width keys,
+cumulative X position, matching common ANSI key-width conventions: Tab 1.5u, Caps 1.75u, Enter
+2.25u, etc.) with a slim right-side utility column for Del and an inverted-T arrow cluster. Each
+key is tagged to a zone (1-4) using the *exact* key lists the old text schematic already
+documented (Zone 1 = Esc/F1-F4/`1-5/Tab-G/Shift-V, Zone 2 = F5-F8/6-8/Y-M-ish, etc.) rather than
+an even proportional split — a couple of those hints overlapped at their edges (both the old Zone
+3 and Zone 4 text mentioned backslash/bracket keys), so the boundaries here make the closest
+clean, consistent choice instead of reproducing that ambiguity. The one key that can't cleanly
+belong to one zone on real hardware — the space bar, which physically spans Zones 1-3 — is shown
+as Zone 2, the middle of its span, since this data model can only carry one zone per key.
+
+Replaced the four-rectangle schematic in `LightingView.xaml` with this keyboard, reusing
+`KeyboardMapEditor`'s exact Canvas/ItemsControl/Viewbox rendering approach for visual consistency
+between the app's two keyboard views. Zero changes to the underlying zone-coloring logic: every
+key's fill binds straight through to the existing `Zone1Brush`..`Zone4Brush` properties via a
+`DataTrigger` on its zone index, and clicking a key routes through one new one-line dispatch
+command (`SetZoneColorByIndexCommand`) to whichever of the existing
+`SetZone1ColorCommand`..`SetZone4ColorCommand` already back the color pickers — the same proven
+`RelativeSource AncestorType=ItemsControl` → `DataContext.X` binding pattern the per-key grid
+editor already uses elsewhere in the same file.
+
+5 new tests for the layout generator (every zone has a key, every key has a valid zone index, spot
+checks against the old schematic's own key lists) — including a bounds-check against the canvas
+that caught a real bug before it shipped: the canvas-width calculation reserved only 1 unit for
+the utility column, but the arrow cluster (◄▼►) needs 3 keys side by side, so the right edge of
+the keyboard was being clipped. Fixed by reserving the correct 3 units. Full suite 1455/1455.
+
+Not independently visually verified against a live render: doing so means launching the actual
+hardware-controlling executable (fan/RGB write access, admin elevation), which needs a UAC prompt
+neither this environment's browser tooling nor its desktop-automation tooling can click through —
+verified instead via the XAML compiling cleanly, a geometry unit-test suite with real bounds
+checking (which already caught one real bug), and using the exact binding pattern already proven
+working elsewhere in the same file. Worth a look on a real machine before calling this done.
+
 ### Unverified-Board Fan Control Now Respects Firmware's Own SystemDesignData
 
 The deferred half of the Ohman review, scoped narrowly rather than as the full rewrite originally

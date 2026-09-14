@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
@@ -1360,6 +1361,19 @@ namespace OmenCore.ViewModels
         public ICommand SetZone3ColorCommand { get; }
         public ICommand SetZone4ColorCommand { get; }
 
+        /// <summary>
+        /// Synthetic keyboard-shaped visual for the four-zone editor - not read from any device,
+        /// just a standard TKL laptop layout with each key tagged to the zone it falls under. Lets
+        /// the existing Zone1..Zone4 pickers be clicked on a keyboard shape instead of four labelled
+        /// rectangles. See <see cref="FourZoneKeyboardLayout"/>.
+        /// </summary>
+        public IReadOnlyList<FourZoneKeyVisual> FourZoneKeys => FourZoneKeyboardLayout.Keys;
+        public double FourZoneCanvasWidth => FourZoneKeyboardLayout.CanvasWidth;
+        public double FourZoneCanvasHeight => FourZoneKeyboardLayout.CanvasHeight;
+
+        /// <summary>Routes a click on the four-zone keyboard visual to the matching existing zone command.</summary>
+        public ICommand SetZoneColorByIndexCommand { get; }
+
         // Per-Key Lighting Commands
         public ICommand PaintKeyCommand { get; }
         public ICommand FillAllPerKeyCommand { get; }
@@ -1450,6 +1464,21 @@ namespace OmenCore.ViewModels
             SetZone2ColorCommand = new RelayCommand(_ => OpenColorPickerForZone(2, "Left"));
             SetZone3ColorCommand = new RelayCommand(_ => OpenColorPickerForZone(3, "Right"));
             SetZone4ColorCommand = new RelayCommand(_ => OpenColorPickerForZone(4, "Far Right"));
+            SetZoneColorByIndexCommand = new RelayCommand(param =>
+            {
+                var zoneName = param switch
+                {
+                    1 => "WASD",
+                    2 => "Left",
+                    3 => "Right",
+                    4 => "Far Right",
+                    _ => null
+                };
+                if (zoneName != null && param is int zoneIndex)
+                {
+                    OpenColorPickerForZone(zoneIndex, zoneName);
+                }
+            });
 
             // Per-Key Lighting Commands
             PaintKeyCommand = new RelayCommand(cell =>
