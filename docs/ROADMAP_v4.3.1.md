@@ -673,6 +673,101 @@ independent cross-reference to Linux's `hp-wmi` board table (via the Ohman revie
 evidence to add a conservative, firmware-generation-only entry — the fan-curve/RGB/GPU-boost
 confirmation this note originally asked for is still genuinely open and still worth getting.
 
+### Board `8C9C` — Field Confirmation Received, Still Not Promoted to `UserVerified`
+
+The diagnostics export this cycle's entry asked for arrived on 2026-09-14
+([#191](https://github.com/theantipopau/omencore/issues/191)): two Guided Fan Verification runs
+scored 84/100 and 88/100 ("Good"), RPM-vs-requested-level scaling was consistent across both
+(one weak row, CPU@60% on the first run, "evidence: None" rather than "evidence: Level" — the
+second run passed that same point cleanly), and `core-control-readiness.txt` showed
+`FanService`'s real thermal-protection system (90°C ramp, independent of the 85°C notification
+toast already explained earlier in this thread) had engaged and auto-released correctly
+(`cpu=48.0C gpu=45.0C ... belowReleaseFor=19s`) shortly before capture. The reporter's two
+"alert while AFK" follow-ups aren't evidence of an OmenCore bug: `ThermalMonitoringService`
+already requires 2 consecutive over-threshold samples plus a 5-minute cooldown before firing
+(`ConsecutiveReadingsForAlert = 2`, `_alertCooldown = 5min`), and a genuine brief thermal
+protection activation on a self-described "warm place" system is a more direct explanation than a
+notification false-positive.
+
+This is decent supporting evidence for the conservative flags already given to `8C9C` (inherited
+from `8BD4`), but it's fan-control-only — GPU Power Boost, undervolt/Curve Optimizer, and RGB are
+still unconfirmed on this board, and this project's `UserVerified = true` bar (going by every
+existing entry carrying that flag) implies a fuller capability sweep than one Guided Fan
+Verification pass. Left `UserVerified = false`. Replied on the issue thanking the reporter and
+explaining what's confirmed vs. still open.
+
+### Board `8E35` — Two Independent Reports Disagree on the CPU
+
+[#195](https://github.com/theantipopau/omencore/issues/195) reported the exact same ProductId
+*and* SKU (`8E35` / `1H85430PWY`) as the existing RC1 Discord report the database entry was built
+from — but native diagnostics on #195 identify the CPU as `Ryzen 9 8940HX` (RaphaelDragonRange),
+not the `Ryzen AI 9 365` the original report and this entry's `Notes` field claimed. Traced every
+place `SupportsUndervolt`/`ModelName`/`Notes` from this entry could matter before touching
+anything: `RyzenControl`'s Curve-Optimizer gating and `IsUndervoltSupported` (the actual UI gate,
+via `SystemControlViewModel`) both resolve entirely from the live-detected CPU string, never from
+this database's `Notes` text, and the model DB's own `SupportsUndervolt` flag only ever gates the
+Intel-MSR-specific path (`DeviceCapabilities.CanUndervolt`/`UndervoltMethod.IntelMsrPawnIO`) —
+`UndervoltMethod.AmdCurveOptimizer` is declared in the enum but never assigned anywhere, confirming
+AMD Curve Optimizer availability is fully independent of this entry regardless of which CPU claim
+is right. So: zero functional impact either way, but a laptop CPU is soldered, and two reports
+disagreeing about which chip a specific SKU ships with deserves a flag, not a guess. Corrected both
+`ModelCapabilityDatabase.cs` and `KeyboardModelDatabase.cs`'s `Notes` to state the conflict rather
+than assert either CPU as fact.
+
+### Second Ohman Cross-Check Round — Checked Four of Their Recent Fixes Against Our Own Code
+
+Ohman shipped several notable fixes on 2026-09-13/14; checked each against OmenCore's equivalent
+code path rather than assuming either relevance or irrelevance:
+
+- **Board `878A` write-spam** (firmware's `SystemDesignData` denies software fan control, but
+  Ohman kept writing anyway, producing a repeated BIOS-rejection log line). Confirmed OmenCore's
+  equivalent case is architecturally closed, and more strongly than Ohman's per-call fix: when
+  `RefineCapabilitiesFromModel()`'s `SystemDesignData` check (this cycle's own fix, see above)
+  forces `FanControlMethod.MonitoringOnly`, `FanControllerFactory` never constructs a
+  write-capable `WmiFanController` at all — it returns `FallbackFanController`, whose
+  `ApplyPreset`/etc. are hard no-ops. A capability flag being false can't be bypassed by a stray
+  call site forgetting to check it, because the writing object never exists. No change needed.
+- **Fan curve "unlink does nothing"** (Ohman computed both curves' levels then returned `max()`
+  for both fans regardless of link state). Checked `FanService.ApplyIndependentCurvesAsync`
+  (`FanService.cs:2745`): `cpuFanPercent`/`gpuFanPercent` are computed from `_cpuCurve`/`_gpuCurve`
+  independently and applied via `SetFanSpeedsSerialized(cpuFanPercent, gpuFanPercent)` as two
+  distinct values — no shared-max collapse. Not the same bug shape. No change needed.
+- **Windows Dynamic Lighting handoff removing more devices than intended.** OmenCore doesn't
+  integrate with the Windows Dynamic Lighting / `AmbientLightingEnabled` API at all — `LampArray`
+  hits in this codebase are the HID LampArray *protocol* implementation, unrelated to that OS
+  feature. Not applicable.
+- **Docked-laptop refresh-rate control silently targeting the external monitor instead of the
+  laptop panel** (`EnumDisplaySettings(null, ...)` resolves to whichever display Windows currently
+  calls primary — not necessarily the built-in panel — when docked with an external monitor set
+  as primary; Ohman had two independent field reports of exactly this). **This one does apply to
+  us and isn't fixed.** `TrayIconService`'s "Display: [rate]" tray menu (`SetHighRefreshRate`/
+  `SetLowRefreshRate`/`ToggleRefreshRate`, `TrayIconService.cs:379-383`) calls
+  `DisplayService`'s parameterless overloads, which default `deviceName` to `null` — the same
+  primary-display assumption. (`QuickPopupWindow.xaml.cs` already avoids this: it lets the user
+  cycle through specific displays by `DeviceName` and doesn't assume primary — that surface is
+  fine.) Not fixed here: Ohman's own commit for this notes their first implementation attempt
+  compiled, ran, and silently did nothing due to a `DISPLAYCONFIG` struct/API mixup that only a
+  hardware harness caught — exactly the kind of Win32 API surface this project doesn't touch
+  without real-hardware verification, and there's no docked-laptop-with-external-primary rig
+  available this cycle to verify against. Logged below as a known, credible, deferred gap rather
+  than attempted blind.
+
+### Flagged, Not Investigated: HP WMI Command `0x23`'s Sensor-Index Semantics
+
+Ohman's commit history (`e5830e6`, `ad33ab0`) cites OGH's own device-library strings naming four
+sensor indices for WMI command `0x23`: `0=IR, 1=Ambient, 2=PCH, 3=VR`, and describes their own
+prior code as having read index `1` and mislabeled it "chassis" (it's the ambient sensor).
+OmenCore's `HpWmiBios.GetTemperature()`/`GetGpuTemperature()` also use command `0x23`, sending
+index `0x01` for what this codebase calls CPU temperature and `0x02` for GPU (`HpWmiBios.cs:1259-
+1310`), sourced from OmenMon's own convention per the existing code comments. Whether OmenMon's
+CPU=1/GPU=2 mapping and Ohman's IR/Ambient/PCH/VR mapping are actually in conflict, or describe two
+different parameter ranges/command variants that happen to share the `0x23` opcode, is not
+something this pass resolved — noting it here rather than guessing either way, given how high the
+stakes would be if OmenCore's CPU/GPU temperature readouts (which `FanService`'s real thermal
+protection and both notification thresholds key off) were ever silently reading the wrong physical
+sensor. Worth independently checking against OmenMon's current source and/or real hardware before
+concluding anything; not touched this cycle.
+
 ---
 
 ## Standing Rules (unchanged, carried from v4.3.0)

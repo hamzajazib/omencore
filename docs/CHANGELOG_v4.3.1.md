@@ -214,6 +214,22 @@ inheriting `8BD4`'s flags — the firmware generation is now evidence-backed, bu
 undervolt, and exact fan behavior remain unconfirmed on this specific board pending real field
 data. 2 new tests.
 
+The requested field data arrived before shipping: two Guided Fan Verification runs scored 84–88/100
+with consistent RPM-vs-request scaling, and the reporter's real `FanService` thermal-protection
+system was observed engaging and auto-releasing correctly. Good supporting evidence for the
+conservative flags already given — not upgraded to `UserVerified` off one report, since GPU boost,
+undervolt, and RGB are still unconfirmed on this board.
+
+### Board `8E35`'s Notes Corrected to Flag a CPU-Identity Conflict, Not Assert One
+
+[#195](https://github.com/theantipopau/omencore/issues/195) reported the same ProductId *and* SKU
+as this entry's original source report, but with native diagnostics showing a different CPU
+(`Ryzen 9 8940HX` vs. the `Ryzen AI 9 365` this entry's `Notes` claimed). Traced every place that
+text could matter first: it doesn't drive any capability decision (undervolt gating resolves from
+the live-detected CPU string, never this database's notes), so this is a documentation correction
+with zero functional effect — but a soldered laptop CPU shouldn't have two reports disagreeing
+about what it is, so the notes now say so explicitly instead of picking one.
+
 ---
 
 ## Investigated, Not Yet Actioned
@@ -224,5 +240,6 @@ data. 2 new tests.
 - **[#191](https://github.com/theantipopau/omencore/issues/191) follow-up: does Curve Optimizer actually do anything on Ryzen 7 8845HS?** A third commenter claimed AMD Curve Optimizer only works on HX-tier and Ryzen 9 HS parts, implying the reporter's −80 mV offset is a silent no-op. Traced the actual write path (`AmdUndervoltProvider`): it doesn't gate by product tier, only by silicon family, and — more fundamentally — the SMU mailbox this project uses has no independent CO readback for *any* Ryzen chip (`UndervoltStatus.HasIndependentReadback = false`, already documented in code from an earlier false-positive found on a different board). So the tier claim can't be confirmed or ruled out from the code; asked for an empirical before/after clock-speed comparison under sustained load (or `tools/SmuProbe --outcome` for anyone comfortable building from source) rather than accepting a tier-based rule of thumb on faith. No code change made without evidence either way.
 - **`ThermalMonitoringService`'s 85°C default CPU/GPU warning threshold** — arguably low relative to `FanService`'s own 90°C ramp-start point and its documented "85°C is normal" conclusion. Not changed on the strength of one report; see roadmap.
 - **[#192](https://github.com/theantipopau/omencore/issues/192)** — the SmartScreen/Error 4551 install block (separate from the SHA256 bug fixed above) is likely a Windows AppLocker/CodeIntegrity policy or third-party AV reacting to the unsigned installer, not something in the installer script itself. Asked the reporter to check Event Viewer and try the portable ZIP as a workaround.
+- **Tray icon's refresh-rate menu can target the wrong display when docked.** A second Ohman cross-check found a real, credible gap: the "Display: [rate]" tray menu's High/Low/Toggle actions default to whatever Windows currently calls the primary display, which can silently be an external monitor rather than the laptop panel when docked (Ohman had two independent field reports of the same class of bug). The newer Quick Popup display control already avoids this by letting you target a specific display. Not fixed this cycle — the correct fix needs real Win32 display-connector-type detection, which this project doesn't ship without hardware verification, and no docked rig was available. Checked three other candidate gaps from the same review round and found them not applicable: a fan-write-spam bug on unsupported boards (already closed architecturally by this cycle's `FanControllerFactory` design), a fan-curve-unlink bug (OmenCore's independent-curves path already keeps CPU/GPU levels separate), and a Windows Dynamic Lighting device-handoff bug (OmenCore doesn't integrate with that OS feature). Also flagged, not investigated: whether HP's WMI temperature-sensor command (`0x23`) actually means what this codebase assumes for its sensor-index parameter — a different open-source tool's findings suggest the same opcode may address a different sensor set than OmenCore/OmenMon's existing CPU/GPU convention assumes; the stakes are high enough (this feeds real thermal protection) that it needs independent verification before any change, not a guess either way.
 
 ---

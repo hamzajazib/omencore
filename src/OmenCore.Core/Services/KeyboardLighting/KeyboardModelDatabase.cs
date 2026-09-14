@@ -355,7 +355,7 @@ namespace OmenCore.Services.KeyboardLighting
                 PreferredMethod = KeyboardMethod.ColorTable2020,
                 FallbackMethods = new[] { KeyboardMethod.NewWmi2023, KeyboardMethod.EcDirect },
                 ModelYear = 2025,
-                Notes = "Discord RC1 report - ProductId 8E35 / SKU 1H85430PWY, Ryzen AI 9 365 + RTX 5060 - V1 WMI keyboard interface"
+                Notes = "Discord RC1 report - ProductId 8E35 / SKU 1H85430PWY - V1 WMI keyboard interface. CPU identity disputed (Ryzen AI 9 365 vs Ryzen 9 8940HX per GitHub #195); see ModelCapabilityDatabase.cs. Doesn't affect keyboard method selection, which isn't CPU-gated."
             });
 
             AddModel(new KeyboardModelConfig
