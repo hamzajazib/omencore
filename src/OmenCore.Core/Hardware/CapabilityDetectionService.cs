@@ -217,6 +217,24 @@ namespace OmenCore.Hardware
                     Capabilities.CanSetFanSpeed = false;
                 }
             }
+
+            // Firmware-declared narrowing for unverified boards only (docs/ROADMAP_v4.3.1.md,
+            // "Cross-Project Review: What Ohman Does Differently"). HP's own SystemDesignData
+            // block - read during WMI BIOS init, well before this phase runs - is a firmware-
+            // authored capability declaration, not a guess. When it explicitly denies software
+            // fan control, that's a stronger signal than a same-family template clone assuming
+            // it works. This only ever REMOVES a capability the template guessed at; it never
+            // grants one the template didn't already claim, and it never runs for a board whose
+            // flags came from a real person's hardware (UserVerified) - those stay authoritative
+            // over a generic byte heuristic regardless of what SystemDesignData says.
+            if (!model.UserVerified &&
+                _wmiBios?.SystemDesign is HpWmiBios.SystemDesignData design &&
+                !design.IsSwFanControlSupport &&
+                Capabilities.CanSetFanSpeed)
+            {
+                _logging?.Warn($"  Fan control disabled per firmware SystemDesignData (IsSwFanControlSupport=false) - overrides the unverified {model.ModelName} template's assumption");
+                ForceMonitoringOnlyFanControl("Firmware SystemDesignData reports no software fan control support");
+            }
             
             // Fan count override
             if (model.FanZoneCount != Capabilities.FanCount)

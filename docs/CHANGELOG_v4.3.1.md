@@ -1,10 +1,16 @@
 # OmenCore v4.3.1
 
-**Release Date:** TBD — rolling changelog, updated as work lands.
+**Release Date:** TBD — not shipping yet; still waiting on field confirmation from open GitHub
+issues before cutting this release. Rolling changelog, updated as work lands.
 **Release Status:** In progress. Started 2026-09-09, two days after v4.3.0 shipped.
-**Type:** Patch release. Field-report fixes from GitHub issues opened after v4.3.0 (#190, #191)
-plus a follow-up on a pending field-confirmation request (#186), alongside the first two steps of
-the long-flagged `MainViewModel` decomposition.
+**Type:** Patch release grown into a broader maintenance cycle. Started as field-report fixes from
+GitHub issues opened after v4.3.0 (#190, #191) plus a pending field-confirmation follow-up (#186);
+expanded to include a real, provable config-persistence data-loss bug (#191), a broken auto-updater
+SHA256 check (#192), an OMEN-key WMI event bug (#193), the `MainViewModel` and
+`SystemControlViewModel` decompositions (four extraction steps total), two board database entries
+(`8BAD`, `8C9C`) with a third split into its own issue (#194), a cross-project review against a
+similar tool ("Ohman") that produced a GPU-idle-polling fix and a firmware-aware unverified-board
+capability fix, and a Dashboard styling improvement.
 **Base Version:** v4.3.0
 **Tracking doc:** `docs/ROADMAP_v4.3.1.md` — full investigation detail, rejected options, and evidence trails live there; this file stays short.
 
@@ -154,6 +160,18 @@ every 2 minutes — only when the window isn't actively being watched, and reset
 moment real GPU activity shows up. Confirmed this is fully decoupled from fan-curve control, which
 reads temperatures through its own independent, already-adaptive polling loop. 3 new tests.
 
+### Unverified Boards No Longer Assume Fan Control Works When Firmware Says It Doesn't
+
+The other half of the Ohman review: OmenCore already parses HP's firmware-authored
+`SystemDesignData` block (including an explicit "software fan control supported" flag) but never
+used it — an unverified board falling back to a same-family template just inherited that
+template's guess about fan control regardless of what its own firmware actually reported.
+`RefineCapabilitiesFromModel()` now checks that flag: if the firmware itself says software fan
+control isn't supported, fan control is forced to monitoring-only, overriding the template's
+assumption. Scoped narrowly on purpose — only for boards nobody has hand-verified yet (a verified
+board's own confirmed flags are never second-guessed), and it can only ever narrow a capability a
+template guessed at, never grant one the template didn't already claim. 4 new tests.
+
 ### Board `8C9C` Given a Real Database Entry
 
 [#191](https://github.com/theantipopau/omencore/issues/191)'s board (Victus, Ryzen 7 8845HS + RTX
@@ -171,7 +189,6 @@ data. 2 new tests.
 - **[#194](https://github.com/theantipopau/omencore/issues/194)** (new) — v4.3.0's release-notes SHA256 hashes don't match the actual published assets (Linux and Windows both), found by RobRobM while independently verifying #186's fix. Likely a local-build-vs-CI-rebuild divergence in the release workflow; needs a look at the release job's build/hash-generation steps, not application code. Split out of #186 (now closed) since it's an unrelated release-process issue.
 - **[#142](https://github.com/theantipopau/omencore/issues/142)** — new field data on an unconfirmed 2026 flagship board (`8E9A`, HyperX OMEN MAX, RTX 5090): fan control "hit or miss," RGB limited to static red only, CPU/GPU power not scaling together under combined load. Not enough yet for a database entry — asked for a diagnostics export, physical RGB-zone confirmation, and an OMEN Gaming Hub baseline comparison for the power question. Separately, clarified for this reporter that the temperature-warning toast shows OmenCore's own independent notification threshold, not their BIOS TCC offset — same distinction as #191 below.
 - **[PR #147](https://github.com/theantipopau/omencore/pull/147)** — reviewed in full before considering a merge. The log-buffer `StringBuilder` change is correct and worth keeping, but two bugs found in the other two changes: the tray-icon change-detection cache never actually populates in the default configuration (so the optimization never engages for most users), and the dashboard uptime timer can never restart once paused once (a hard freeze of `SessionUptime`/`LastSampleAge` for the rest of the session). Posted a specific review comment; not merged as-is.
-- **Board `8C9C`** (HP OMEN, AMD Ryzen 7 8845HS + RTX 4070) — not yet in the model database, resolving via Family fallback. Waiting on a fuller diagnostics export before adding an entry.
 - **[#191](https://github.com/theantipopau/omencore/issues/191) follow-up: does Curve Optimizer actually do anything on Ryzen 7 8845HS?** A third commenter claimed AMD Curve Optimizer only works on HX-tier and Ryzen 9 HS parts, implying the reporter's −80 mV offset is a silent no-op. Traced the actual write path (`AmdUndervoltProvider`): it doesn't gate by product tier, only by silicon family, and — more fundamentally — the SMU mailbox this project uses has no independent CO readback for *any* Ryzen chip (`UndervoltStatus.HasIndependentReadback = false`, already documented in code from an earlier false-positive found on a different board). So the tier claim can't be confirmed or ruled out from the code; asked for an empirical before/after clock-speed comparison under sustained load (or `tools/SmuProbe --outcome` for anyone comfortable building from source) rather than accepting a tier-based rule of thumb on faith. No code change made without evidence either way.
 - **`ThermalMonitoringService`'s 85°C default CPU/GPU warning threshold** — arguably low relative to `FanService`'s own 90°C ramp-start point and its documented "85°C is normal" conclusion. Not changed on the strength of one report; see roadmap.
 - **[#192](https://github.com/theantipopau/omencore/issues/192)** — the SmartScreen/Error 4551 install block (separate from the SHA256 bug fixed above) is likely a Windows AppLocker/CodeIntegrity policy or third-party AV reacting to the unsigned installer, not something in the installer script itself. Asked the reporter to check Event Viewer and try the portable ZIP as a workaround.

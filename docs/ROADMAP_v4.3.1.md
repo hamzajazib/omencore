@@ -510,12 +510,8 @@ actual code before acting on any of them:
 - **System-design-data bytes can derive real per-board defaults for unverified boards** (thermal
   policy version, SW-fan-control support, default power limits) instead of guessing from a
   same-family template. OmenCore already parses this exact byte structure (`HpWmiBios.cs`) but
-  never wires it into the actual unverified-board fallback path (`ModelCapabilityDatabase.
-  GetCapabilitiesByFamily`, which still just clones a same-family template board's flags). Real
-  gap, confirmed — but rewiring the fallback path itself touches every currently-unverified board
-  in the database at once, so it's deliberately **not** attempted in this pass; needs its own
-  scoping and evidence review before being touched, per this project's usual discipline for
-  anything that changes real hardware-facing behavior broadly rather than for one board.
+  never wired it into the actual unverified-board fallback path. Real gap, confirmed — narrowly
+  addressed below (see "Unverified-Board Fan Control Now Respects Firmware's Own SystemDesignData").
 - **Battery charge limit** — Ohman's negative result (no such command exists in the mailbox; HP's
   own app uses a separate, UWP-gated WinRT path unreachable from an ordinary app) isn't contradicting
   or duplicating anything in flight here; nobody had recorded this before. Filed away as a "don't
@@ -539,6 +535,42 @@ workload starting up is never delayed. Verified this doesn't touch fan-curve res
 `FanService`'s control loop reads temperatures through its own independent `_thermalProvider` call
 with its own separate adaptive-polling logic, entirely decoupled from this dashboard/UI-facing
 telemetry pipeline. 3 new tests.
+
+### Unverified-Board Fan Control Now Respects Firmware's Own SystemDesignData
+
+The deferred half of the Ohman review, scoped narrowly rather than as the full rewrite originally
+flagged. `CapabilityDetectionService.LoadModelCapabilities()` already falls through to
+`ModelCapabilityDatabase.GetCapabilitiesByFamily()` for any board with no entry of its own —
+cloning a same-family template's flags, including whatever that template guessed about fan
+control. `HpWmiBios` already queries and decodes HP's `SystemDesignData` block (`Default 0x28`)
+during its own initialization, well before capability refinement runs, and one of its fields —
+`IsSwFanControlSupport` — is a direct, firmware-authored statement of whether the board supports
+software fan control at all. That's a stronger signal than a template guess, so
+`RefineCapabilitiesFromModel()` (Phase 11, which already applies model-database overrides to the
+live `DeviceCapabilities`) now checks it: if the firmware itself denies software fan control,
+fan control is forced to monitoring-only regardless of what the family template assumed.
+
+Scoped deliberately narrow to keep this safe:
+- **Only for unverified boards** (`ModelConfig.UserVerified == false`). A hand-verified board's
+  flags came from a real person's hardware and stay authoritative over a generic byte heuristic,
+  full stop — this never runs for one, even if `SystemDesignData` disagrees.
+- **Only narrows, never grants.** The check can turn a template's "fan control works" into "it
+  doesn't" when firmware says so; it can never turn a template's "no" into a "yes." Under-claiming
+  a capability is safe (worst case: a user files a report that turns out to work); over-claiming
+  one from an unverified assumption is not.
+- **Only the one field with an unambiguous, already-decoded meaning.** `SystemDesignData` also
+  carries a GPU-mode-switch bitmask that could in principle narrow `HasMuxSwitch` the same way,
+  but OmenCore's own decode only captures the raw byte (`GpuModeSwitch`) without an independently
+  confirmed bit-to-meaning mapping — the only interpretation available (1 iGPU-only / 2 Hybrid /
+  4 Discrete / 8 Advanced Optimus) comes from Ohman's own OGH-decompile research, not evidence
+  this project has verified itself. Left alone rather than trusting a borrowed, unconfirmed
+  bitmask in a capability-gating path; a real candidate for later if that mapping gets independently
+  confirmed.
+
+4 new tests, covering: the firmware-denies-support case actually disables fan control; a
+`UserVerified` board is left untouched even when `SystemDesignData` disagrees; a firmware
+confirmation changes nothing; and no `SystemDesignData` reading at all (WMI unavailable) falls
+back to today's existing model-database-only behavior rather than guessing. Full suite 1450/1450.
 
 ### Board `8C9C` Given a Real Database Entry Instead of Family Fallback
 
@@ -570,15 +602,18 @@ reports of the same shape come in; not changed here on the strength of one repor
 evidence-gate discipline against making a default-value judgment call for every existing user from
 a single data point.
 
-### Board `8C9C` — HP OMEN Laptop (AMD Ryzen 7 8845HS + RTX 4070), Not Yet in the Model Database
+### Board `8C9C` — Database Entry Added, Full Capability Survey Still Open
 
-Surfaced by #191's own diagnostics screenshot: resolves via Family fallback only (Low confidence).
-Reporter has AMD Curve Optimizer (-80mV) and AMD CPU Power Limits (STAPM/TCTL) working via PawnIO,
-suggesting the AMD SMU backend functions on this board — but no fan-curve or RGB confirmation
-exists yet, and no other open issue mentions this exact ProductId (checked via
-`gh search issues "8C9C"` before writing this). Not added as a database entry yet — waiting on the
-fuller diagnostics export requested in the #191 reply before adding an identity entry that would
-otherwise just be guessed at from one screenshot.
+Superseded by the entry above ("Board `8C9C` Given a Real Database Entry Instead of Family
+Fallback") — kept here only for the evidence trail that predates it. Surfaced by #191's own
+diagnostics screenshot: was resolving via Family fallback only (Low confidence). Reporter has AMD
+Curve Optimizer (-80mV) and AMD CPU Power Limits (STAPM/TCTL) working via PawnIO, suggesting the
+AMD SMU backend functions on this board, but no fan-curve or RGB confirmation existed yet, and no
+other open issue mentioned this exact ProductId (checked via `gh search issues "8C9C"` at the
+time). Rather than continuing to wait on a full diagnostics export before adding *any* entry,
+independent cross-reference to Linux's `hp-wmi` board table (via the Ohman review) gave enough
+evidence to add a conservative, firmware-generation-only entry — the fan-curve/RGB/GPU-boost
+confirmation this note originally asked for is still genuinely open and still worth getting.
 
 ---
 
