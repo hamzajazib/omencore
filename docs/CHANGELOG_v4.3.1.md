@@ -89,6 +89,14 @@ already driving the rest of the page, via one new one-line dispatch command
 which caught a real off-by-3-units sizing bug in the arrow-cluster column before it shipped. Full
 suite 1455/1455.
 
+### Real Razer Logo in the RGB Section
+
+The Razer Devices card used a generic "green circle/square with a bold R" placeholder in two
+spots (the section header and every device card). Replaced both with Razer's actual triple-snake
+mark, traced from the brand's own official logo file and added as a new `IconRazer` Geometry
+resource — a single-color vector, matching every other icon in `ModernStyles.xaml`, recolorable
+via `Fill` the same way. No behavior change.
+
 ---
 
 ## Fixed

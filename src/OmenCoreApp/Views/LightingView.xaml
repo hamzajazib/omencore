@@ -942,9 +942,9 @@
                     <StackPanel>
                         <!-- Brand Header with Logo -->
                         <StackPanel Style="{StaticResource BrandSectionHeader}">
-                            <Border Width="28" Height="28" Background="#44D62C" CornerRadius="6" Margin="0,0,12,0">
-                                <TextBlock Text="R" FontSize="16" FontWeight="Bold" Foreground="Black"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Border Width="28" Height="28" Background="#1A44D62C" CornerRadius="6" Margin="0,0,12,0">
+                                <Path Data="{StaticResource IconRazer}" Fill="#44D62C" Stretch="Uniform"
+                                      Width="18" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <TextBlock Text="Razer Devices" FontSize="20" FontWeight="SemiBold" 
                                        Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
@@ -1003,12 +1003,12 @@
                                             </Grid.ColumnDefinitions>
 
                                             <!-- Razer Icon -->
-                                            <Border Grid.Column="0" Width="48" Height="48" 
-                                                    Background="#44D62C" CornerRadius="24" Margin="0,0,16,0">
-                                                <TextBlock Text="R" FontSize="22" FontWeight="Bold"
-                                                           Foreground="Black"
-                                                           HorizontalAlignment="Center" 
-                                                           VerticalAlignment="Center"/>
+                                            <Border Grid.Column="0" Width="48" Height="48"
+                                                    Background="#1A44D62C" CornerRadius="24" Margin="0,0,16,0">
+                                                <Path Data="{StaticResource IconRazer}" Fill="#44D62C" Stretch="Uniform"
+                                                      Width="30" Height="30"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
                                             </Border>
 
                                             <!-- Device Info -->
