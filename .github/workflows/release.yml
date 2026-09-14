@@ -43,7 +43,9 @@ jobs:
           $version = "${{ steps.version.outputs.value }}"
           $expected = @(
             "artifacts/OmenCore-$version-win-x64.zip",
-            "artifacts/OmenCoreSetup-$version.exe"
+            "artifacts/OmenCore-$version-win-x64.zip.sha256",
+            "artifacts/OmenCoreSetup-$version.exe",
+            "artifacts/OmenCoreSetup-$version.exe.sha256"
           )
           foreach ($path in $expected) {
             if (-not (Test-Path $path)) {
@@ -57,7 +59,9 @@ jobs:
           name: windows-artifacts
           path: |
             artifacts/OmenCore-${{ steps.version.outputs.value }}-win-x64.zip
+            artifacts/OmenCore-${{ steps.version.outputs.value }}-win-x64.zip.sha256
             artifacts/OmenCoreSetup-${{ steps.version.outputs.value }}.exe
+            artifacts/OmenCoreSetup-${{ steps.version.outputs.value }}.exe.sha256
 
   build-linux:
     runs-on: ubuntu-latest
@@ -133,12 +137,31 @@ jobs:
           name: linux-artifacts
           path: artifacts
 
+      - name: Read published hashes
+        # Reads the .sha256 sidecars generated alongside each artifact by build-installer.ps1 /
+        # build-linux-package.ps1 in THIS run, so the hashes below are guaranteed to match the
+        # exact bytes attached to this release - not a separate local build (see #194: release
+        # notes had previously been hand-copied from a local run that produced different bytes
+        # than what CI actually published).
+        id: hashes
+        shell: bash
+        run: |
+          version="${{ steps.version.outputs.value }}"
+          win_zip_hash=$(cut -d' ' -f1 "artifacts/OmenCore-$version-win-x64.zip.sha256")
+          win_setup_hash=$(cut -d' ' -f1 "artifacts/OmenCoreSetup-$version.exe.sha256")
+          linux_zip_hash=$(cut -d' ' -f1 "artifacts/OmenCore-$version-linux-x64.zip.sha256")
+          echo "win_zip=$win_zip_hash" >> "$GITHUB_OUTPUT"
+          echo "win_setup=$win_setup_hash" >> "$GITHUB_OUTPUT"
+          echo "linux_zip=$linux_zip_hash" >> "$GITHUB_OUTPUT"
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
             artifacts/OmenCore-${{ steps.version.outputs.value }}-win-x64.zip
+            artifacts/OmenCore-${{ steps.version.outputs.value }}-win-x64.zip.sha256
             artifacts/OmenCoreSetup-${{ steps.version.outputs.value }}.exe
+            artifacts/OmenCoreSetup-${{ steps.version.outputs.value }}.exe.sha256
             artifacts/OmenCore-${{ steps.version.outputs.value }}-linux-x64.zip
             artifacts/OmenCore-${{ steps.version.outputs.value }}-linux-x64.zip.sha256
           body: |
@@ -153,5 +176,12 @@ jobs:
             - **Windows**: Windows 10/11 (x64), .NET 8 runtime is bundled in shipped artifacts
             - **Linux**: x64, kernel modules: `ec_sys` (write_support=1), `hp-wmi`
             - HP OMEN or Victus gaming laptop
+
+            ### SHA256 (computed by this workflow from the exact files attached above)
+            | Artifact | SHA256 |
+            |---|---|
+            | `OmenCoreSetup-${{ steps.version.outputs.value }}.exe` | `${{ steps.hashes.outputs.win_setup }}` |
+            | `OmenCore-${{ steps.version.outputs.value }}-win-x64.zip` | `${{ steps.hashes.outputs.win_zip }}` |
+            | `OmenCore-${{ steps.version.outputs.value }}-linux-x64.zip` | `${{ steps.hashes.outputs.linux_zip }}` |
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

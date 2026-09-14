@@ -23,6 +23,30 @@ disconnected from the running app — see below.
 
 ## Done
 
+### GitHub #194: Release-Notes SHA256 Hashes Fixed at the Source, Not Just Documented
+
+Filed this cycle (see the "Flagged, Not Actioned" entry below, now superseded) after RobRobM found
+v4.3.0's release-notes hashes didn't match the published assets. Root cause traced to
+`build-installer.ps1`: it never computed a SHA256 for either Windows artifact at all —
+`build-linux-package.ps1` already did this (`Get-FileHash` → `.sha256` sidecar → embedded in
+`version.json`), but the Windows script had no equivalent. Whatever hash ended up in past release
+notes was hand-copied from a separate local run, and a local build's bytes (timestamps, embedding
+order, etc.) don't necessarily match what the CI release job independently rebuilds — so the two
+were never guaranteed to agree, and #194 is the proof they didn't.
+
+Fixed at the point of cutting v4.3.1's own release rather than left as a process reminder:
+- `build-installer.ps1` gained a `Write-Sha256Sidecar` helper (mirrors the Linux script's pattern)
+  called for both the win-x64 zip and the installer exe, writing `<file>.sha256` next to each.
+- `release.yml`'s `build-windows` job now uploads both `.sha256` files as part of the
+  `windows-artifacts` bundle and verifies they exist before proceeding (same as the zip/exe
+  themselves already were).
+- `release.yml`'s `release` job gained a `Read published hashes` step that reads all three
+  `.sha256` sidecars (win zip, win installer, linux zip) *from the artifacts this run just built
+  and is about to attach* and exposes them as step outputs, then a SHA256 table in the published
+  release body reads those outputs directly — no hand-copying, no separate local run, no chance for
+  the notes and the actual attached files to diverge, because they're now mechanically the same
+  build.
+
 ### Custom Settings Silently Reverting After Restart — Multiple Stale `AppConfig` Snapshots Clobbering Each Other's Saves
 
 **Report:** Two independent users, same underlying symptom. Discord (AlthegarOP, board `8BAD`,

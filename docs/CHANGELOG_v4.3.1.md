@@ -1,16 +1,24 @@
 # OmenCore v4.3.1
 
-**Release Date:** TBD — not shipping yet; still waiting on field confirmation from open GitHub
-issues before cutting this release. Rolling changelog, updated as work lands.
-**Release Status:** In progress. Started 2026-09-09, two days after v4.3.0 shipped.
+**Release Date:** 2026-09-15.
+**Release Status:** Shipping. Started 2026-09-09, two days after v4.3.0 shipped. Every fan/EC/
+thermal/OC/UV-behavior change in this release has field validation per this project's evidence-gate
+convention, with one exception noted explicitly: the OMEN-key WMI fix (`#193`) is root-caused with
+strong evidence (the reporter's own independent, OmenCore-free WMI listener proved the OS/firmware
+side was fine and isolated the bug to OmenCore's own event-discarding logic), but the reporter had
+not yet re-tested the actual fix as of release; treat as implemented-pending-confirmation for that
+specific board (`8D2F`) until they report back. Board `8C9C`'s fan-control entry has real field
+confirmation (two Guided Fan Verification runs, 84-88/100); GPU boost, undervolt, and RGB remain
+unconfirmed on that board and stay conservative.
 **Type:** Patch release grown into a broader maintenance cycle. Started as field-report fixes from
 GitHub issues opened after v4.3.0 (#190, #191) plus a pending field-confirmation follow-up (#186);
 expanded to include a real, provable config-persistence data-loss bug (#191), a broken auto-updater
 SHA256 check (#192), an OMEN-key WMI event bug (#193), the `MainViewModel` and
-`SystemControlViewModel` decompositions (four extraction steps total), two board database entries
-(`8BAD`, `8C9C`) with a third split into its own issue (#194), a cross-project review against a
-similar tool ("Ohman") that produced a GPU-idle-polling fix and a firmware-aware unverified-board
-capability fix, and a Dashboard styling improvement.
+`SystemControlViewModel` decompositions (four extraction steps total), three board database entries
+(`8BAD`, `8C9C`, plus an `8E35` identity-conflict flag), two rounds of cross-project review against
+a similar tool ("Ohman") that produced a GPU-idle-polling fix, a firmware-aware unverified-board
+capability fix, and a fixed release-notes SHA256 process (`#194`), and a Dashboard styling
+improvement.
 **Base Version:** v4.3.0
 **Tracking doc:** `docs/ROADMAP_v4.3.1.md` — full investigation detail, rejected options, and evidence trails live there; this file stays short.
 
@@ -100,6 +108,20 @@ via `Fill` the same way. No behavior change.
 ---
 
 ## Fixed
+
+### Release Notes' SHA256 Hashes Will No Longer Silently Diverge From the Published Assets
+
+[#194](https://github.com/theantipopau/omencore/issues/194): v4.3.0's release notes listed SHA256
+hashes that didn't match the actual published Windows or Linux assets, found by RobRobM while
+independently verifying #186's fix. Root cause: `build-installer.ps1` never computed a hash for
+either Windows artifact at all (unlike the Linux packaging script), so the hashes in past release
+notes had been hand-copied from a separate local build run — which produces different bytes, and
+therefore a different hash, than what the CI release job actually built and published. Fixed at
+the source: `build-installer.ps1` now writes a `.sha256` sidecar next to both the Windows zip and
+the installer exe, matching the pattern the Linux script already used. `release.yml` uploads all
+three `.sha256` files as release assets and now reads them back to populate a hash table directly
+in the published release notes, computed from the exact files attached to that release — nothing
+hand-copied, nothing that can drift out of sync with what CI actually built.
 
 ### Custom Settings Silently Reverting After Restart — A Real Config-Persistence Bug
 
@@ -234,7 +256,6 @@ about what it is, so the notes now say so explicitly instead of picking one.
 
 ## Investigated, Not Yet Actioned
 
-- **[#194](https://github.com/theantipopau/omencore/issues/194)** (new) — v4.3.0's release-notes SHA256 hashes don't match the actual published assets (Linux and Windows both), found by RobRobM while independently verifying #186's fix. Likely a local-build-vs-CI-rebuild divergence in the release workflow; needs a look at the release job's build/hash-generation steps, not application code. Split out of #186 (now closed) since it's an unrelated release-process issue.
 - **[#142](https://github.com/theantipopau/omencore/issues/142)** — new field data on an unconfirmed 2026 flagship board (`8E9A`, HyperX OMEN MAX, RTX 5090): fan control "hit or miss," RGB limited to static red only, CPU/GPU power not scaling together under combined load. Not enough yet for a database entry — asked for a diagnostics export, physical RGB-zone confirmation, and an OMEN Gaming Hub baseline comparison for the power question. Separately, clarified for this reporter that the temperature-warning toast shows OmenCore's own independent notification threshold, not their BIOS TCC offset — same distinction as #191 below.
 - **[PR #147](https://github.com/theantipopau/omencore/pull/147)** — reviewed in full before considering a merge. The log-buffer `StringBuilder` change is correct and worth keeping, but two bugs found in the other two changes: the tray-icon change-detection cache never actually populates in the default configuration (so the optimization never engages for most users), and the dashboard uptime timer can never restart once paused once (a hard freeze of `SessionUptime`/`LastSampleAge` for the rest of the session). Posted a specific review comment; not merged as-is.
 - **[#191](https://github.com/theantipopau/omencore/issues/191) follow-up: does Curve Optimizer actually do anything on Ryzen 7 8845HS?** A third commenter claimed AMD Curve Optimizer only works on HX-tier and Ryzen 9 HS parts, implying the reporter's −80 mV offset is a silent no-op. Traced the actual write path (`AmdUndervoltProvider`): it doesn't gate by product tier, only by silicon family, and — more fundamentally — the SMU mailbox this project uses has no independent CO readback for *any* Ryzen chip (`UndervoltStatus.HasIndependentReadback = false`, already documented in code from an earlier false-positive found on a different board). So the tier claim can't be confirmed or ruled out from the code; asked for an empirical before/after clock-speed comparison under sustained load (or `tools/SmuProbe --outcome` for anyone comfortable building from source) rather than accepting a tier-based rule of thumb on faith. No code change made without evidence either way.

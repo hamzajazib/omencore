@@ -88,6 +88,21 @@ if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $zipPath
 Write-Host "Created $zipPath" -ForegroundColor Green
 
+# Written next to the artifact so CI can upload it as a release asset and the release job can
+# read it back into the published release notes. This is the fix for #194: release notes had
+# been hand-copied from a separate LOCAL build-script run, which produces different bytes (and
+# therefore a different hash) than the artifact CI actually publishes. Hashing the exact file
+# this script just produced - the same file CI uploads - keeps the two in sync by construction.
+function Write-Sha256Sidecar {
+    param([string]$FilePath)
+    $hash = (Get-FileHash $FilePath -Algorithm SHA256).Hash
+    Set-Content -Path "$FilePath.sha256" -Value "$hash  $([IO.Path]::GetFileName($FilePath))" -NoNewline
+    Write-Host "SHA256 ($([IO.Path]::GetFileName($FilePath))): $hash" -ForegroundColor Green
+    return $hash
+}
+
+Write-Sha256Sidecar -FilePath $zipPath | Out-Null
+
 # Resolve Inno Setup CLI to a plain path string. Get-Command returns an
 # ApplicationInfo (has .Source, no .FullName) when iscc is found on PATH
 # (e.g. via `choco install innosetup` on CI runners), but Get-Item returns
@@ -142,3 +157,4 @@ if (-not (Test-Path $installer)) {
 }
 
 Write-Host "Created installer $installer" -ForegroundColor Green
+Write-Sha256Sidecar -FilePath $installer | Out-Null
