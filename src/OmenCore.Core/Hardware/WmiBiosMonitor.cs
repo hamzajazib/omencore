@@ -940,13 +940,10 @@ namespace OmenCore.Hardware
                         var acpiTemp = GetAcpiCpuTemperature();
                         if (acpiTemp > 0 && acpiTemp < 110)
                         {
-                            // ACPI thermal zones can occasionally report unrelated/system zones.
-                            // Reject large outliers against the current WMI/fallback reading unless
-                            // we are explicitly in a frozen-sensor recovery path.
-                            if (_cachedCpuTemp > 0 && !_cpuTempFrozen &&
-                                Math.Abs(acpiTemp - _cachedCpuTemp) > MaxAcpiDeltaFromWmiC)
+                            var isUnchangedFrozenValue = _cpuTempFrozen && Math.Abs(acpiTemp - _lastAcpiCpuTempReading) < 0.1;
+                            if (!ShouldAcceptAcpiCpuReading(acpiTemp, _cachedCpuTemp, _cpuTempFrozen, _lastAcpiCpuTempReading, MaxAcpiDeltaFromWmiC))
                             {
-                                _logging?.Debug($"[WmiBiosMonitor] Ignoring ACPI CPU outlier {acpiTemp:F1}°C (current {_cachedCpuTemp:F1}°C)");
+                                _logging?.Debug($"[WmiBiosMonitor] Ignoring ACPI CPU outlier {acpiTemp:F1}°C (current {_cachedCpuTemp:F1}°C){(isUnchangedFrozenValue ? " - still the frozen value" : "")}");
                             }
                             else
                             {
@@ -2693,6 +2690,47 @@ namespace OmenCore.Hardware
             /// via the ambiguous-fallback heuristic below.
             /// </summary>
             public bool IsConfirmed { get; }
+        }
+
+        /// <summary>
+        /// Whether a new ACPI CPU-zone reading should be trusted as authoritative, given the
+        /// currently-cached CPU temperature and whether this zone was previously flagged frozen.
+        /// Pure/static so the decision is unit-testable without a live WMI namespace.
+        ///
+        /// The bug this replaces (GitHub #198, board 8BBE): once <paramref name="isFrozen"/> was
+        /// set, outlier rejection was disabled entirely for as long as it stayed set, with no check
+        /// that the new reading had actually changed from the one that triggered the freeze
+        /// warning. A zone stuck at a fixed value (confirmed on a real session log: ACPI pinned at
+        /// 27.9°C for an entire session while LibreHardwareMonitor tracked real load at 56-95°C)
+        /// sailed through that bypass every poll, won authority, lost it a couple of readings later
+        /// to the separate WMI/fallback-mismatch check, and won it right back the very next poll —
+        /// an unbounded flip-flop between a frozen wrong value and a real one. Since thermal
+        /// protection reacts to whichever value is briefly authoritative, this is what reads to a
+        /// user as both "wildly fluctuating temperature" and fan behavior that won't settle down.
+        ///
+        /// The bypass is still needed — a genuinely-recovered sensor must be believed without
+        /// waiting through a full outlier-rejection cycle — so it now only applies to a reading
+        /// that has actually moved since the one that triggered the freeze warning. A repeat of the
+        /// exact stuck value is held to the ordinary outlier check like any other tick, so a
+        /// proven-frozen zone can never re-win authority by repeating the value that proved it
+        /// frozen in the first place.
+        /// </summary>
+        internal static bool ShouldAcceptAcpiCpuReading(
+            double acpiTemp,
+            double cachedCpuTemp,
+            bool isFrozen,
+            double lastAcpiReading,
+            double maxDeltaFromCached)
+        {
+            if (cachedCpuTemp <= 0)
+            {
+                return true;
+            }
+
+            var isUnchangedFrozenValue = isFrozen && Math.Abs(acpiTemp - lastAcpiReading) < 0.1;
+            var outlierRejectionApplies = !isFrozen || isUnchangedFrozenValue;
+
+            return !outlierRejectionApplies || Math.Abs(acpiTemp - cachedCpuTemp) <= maxDeltaFromCached;
         }
 
         // Real HP ACPI thermal zone names vary by board and are not a documented contract, but
