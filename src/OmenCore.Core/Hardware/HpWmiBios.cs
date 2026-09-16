@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Management;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -1317,6 +1318,48 @@ namespace OmenCore.Hardware
                 return (cpu ?? 0.0, gpu ?? 0.0);
             }
             return null;
+        }
+
+        /// <summary>
+        /// Diagnostic-only, read-only probe of every documented sensor index for command 0x23.
+        /// GetTemperature()/GetGpuTemperature() only ever ask for indices 1 and 2 (OmenMon's own
+        /// CPU/GPU convention); this asks for all four (0-3) and returns the raw byte exactly as
+        /// the firmware answers, with no plausibility filtering.
+        ///
+        /// Why this exists: two independent, unrelated community research efforts (a decompile of
+        /// OMEN Gaming Hub's own device library, and a from-scratch reverse-engineering of this
+        /// exact command on a different board for GitHub #189) both found index 0 = IR, 1 =
+        /// Ambient, 2 = PCH, 3 = VR - a completely different mapping from the CPU=1/GPU=2
+        /// convention this class uses. Whether that means OmenCore's own indices are wrong on some
+        /// boards, or the two conventions genuinely differ by board generation, is unresolved (see
+        /// docs/ROADMAP_v4.4.0.md) - this method exists purely to let a diagnostics export capture
+        /// what every index actually reports on a given board, so that question can eventually be
+        /// answered from real field data instead of guessed at. Never called from any control or
+        /// telemetry path - diagnostics-only, and safe to call regardless of board: it writes
+        /// nothing to the firmware.
+        /// </summary>
+        public IReadOnlyDictionary<int, byte?> ProbeAllTemperatureSensors()
+        {
+            var results = new Dictionary<int, byte?>();
+            if (!_isAvailable)
+            {
+                return results;
+            }
+
+            for (byte index = 0; index <= 3; index++)
+            {
+                try
+                {
+                    var result = SendBiosCommand(BiosCmd.Default, CMD_TEMP_GET, new byte[4] { index, 0x00, 0x00, 0x00 }, 4);
+                    results[index] = result != null && result.Length >= 1 ? result[0] : (byte?)null;
+                }
+                catch
+                {
+                    results[index] = null;
+                }
+            }
+
+            return results;
         }
 
         /// <summary>

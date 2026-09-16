@@ -114,7 +114,8 @@ namespace OmenCore.Services.Diagnostics
                     CollectPowerAdapterSnapshotAsync(exportPath, effectiveWmiController),
                     CollectTuningAndFanFocusAsync(exportPath, effectiveWmiController, effectiveFanService),
                     CollectMonitoringCadenceAndFanHoldAsync(exportPath, effectiveMonitoringService, effectiveFanService, effectiveWmiController),
-                    CollectResumeRecoveryDiagnosticsAsync(exportPath)
+                    CollectResumeRecoveryDiagnosticsAsync(exportPath),
+                    CollectWmiTemperatureSensorProbeAsync(exportPath, effectiveWmiController)
                 };
 
                 await Task.WhenAll(tasks);
@@ -1113,6 +1114,7 @@ namespace OmenCore.Services.Diagnostics
             sb.AppendLine("- omenmon-reborn-parity.txt");
             sb.AppendLine("- rgb-control-path.txt for lighting reports");
             sb.AppendLine("- wmi-command-history.txt and tuning-fan-focus.txt for fan/performance reports");
+            sb.AppendLine("- wmi-temperature-sensors.txt for temperature-accuracy reports (frozen/wrong-looking readings)");
             sb.AppendLine("- identity-resolution-trace.txt for unknown, fallback, or unverified models");
 
             return sb.ToString();
@@ -2798,6 +2800,74 @@ namespace OmenCore.Services.Diagnostics
             var property = source.GetType().GetProperty(propertyName);
             var value = property?.GetValue(source);
             sb.AppendLine($"{propertyName}: {value ?? "<unavailable>"}");
+        }
+
+        /// <summary>
+        /// Diagnostics-only capture of every documented sensor index for HP WMI command 0x23 (see
+        /// docs/ROADMAP_v4.4.0.md for why: two independent research efforts on other boards found a
+        /// completely different IR/Ambient/PCH/VR sensor-index mapping than the CPU=1/GPU=2
+        /// convention OmenCore's own GetTemperature()/GetGpuTemperature() use). Read-only, writes
+        /// nothing to the firmware - purely so a future diagnostics export carries the raw evidence
+        /// needed to actually resolve that question instead of guessing at it per-board.
+        /// </summary>
+        private async Task CollectWmiTemperatureSensorProbeAsync(string exportPath, object? wmiController)
+        {
+            try
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("=== WMI TEMPERATURE SENSOR PROBE (command 0x23, all indices) ===");
+                sb.AppendLine($"Captured: {DateTime.UtcNow:O}");
+                sb.AppendLine("Read-only diagnostic - written nothing to the firmware.");
+                sb.AppendLine();
+                sb.AppendLine("OmenCore's own GetTemperature()/GetGpuTemperature() use index 1 for CPU and 2 for GPU");
+                sb.AppendLine("(OmenMon's convention). Two independent, unrelated research efforts on other boards");
+                sb.AppendLine("(a decompile of OMEN Gaming Hub's device library, and a from-scratch reverse-engineering");
+                sb.AppendLine("for GitHub #189) both found 0=IR, 1=Ambient, 2=PCH, 3=VR instead - a different mapping.");
+                sb.AppendLine("This capture exists to find out which convention (if either) matches this board.");
+                sb.AppendLine();
+
+                if (wmiController == null)
+                {
+                    sb.AppendLine("WMI BIOS controller not available - nothing to probe.");
+                }
+                else
+                {
+                    try
+                    {
+                        var probeMethod = wmiController.GetType().GetMethod("ProbeAllTemperatureSensors");
+                        if (probeMethod?.Invoke(wmiController, null) is IDictionary rawResults)
+                        {
+                            var labels = new[] { "IR", "Ambient", "PCH", "VR" };
+                            foreach (DictionaryEntry entry in rawResults)
+                            {
+                                var index = (int)entry.Key;
+                                var label = index >= 0 && index < labels.Length ? labels[index] : "unknown";
+                                var known = index == 1 ? " <- OmenCore's own 'CPU' index"
+                                    : index == 2 ? " <- OmenCore's own 'GPU' index"
+                                    : "";
+                                sb.AppendLine($"  Index {index} ({label}){known}: {entry.Value ?? (object)"<no response>"}");
+                            }
+                        }
+                        else
+                        {
+                            sb.AppendLine("ProbeAllTemperatureSensors was not available on this WMI controller instance.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        sb.AppendLine($"Probe failed: {ex.Message}");
+                    }
+                }
+
+                File.WriteAllText(Path.Combine(exportPath, "wmi-temperature-sensors.txt"), sb.ToString());
+                _logging.Info("Collected WMI temperature sensor probe");
+            }
+            catch (Exception ex)
+            {
+                _logging.Warn($"Failed to collect WMI temperature sensor probe: {ex.Message}");
+            }
+
+            await Task.CompletedTask;
         }
 
         private string ZipDiagnostics(string exportPath)

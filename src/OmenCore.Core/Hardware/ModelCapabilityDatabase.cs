@@ -1839,6 +1839,36 @@ namespace OmenCore.Hardware
                 Notes = "GitHub #148 — HP Victus 15-fb3012AX (2025 AMD). Pattern-matched on '15-fb3'; no diagnostics-confirmed ProductId yet. Conservative Victus profile: WMI fan/profile control, no direct EC writes, WMI thermal-policy fallback for Performance/Balanced/Quiet. User reports no RGB keyboard."
             });
 
+            // Victus 15-fb3xxx (2025 AMD) - board 8DD2, the exact ProductId #148's pattern-matched
+            // entry above was waiting on. GitHub Issue #197 confirmed it (SKU 1H85482PX4), including
+            // independently reporting no RGB keyboard on this unit - the same detail #148 already
+            // noted, good corroboration rather than a new claim. Reported without a diagnostics
+            // export, so this inherits #148's flags verbatim rather than widening anything; still
+            // UserVerified = false pending real evidence beyond identity confirmation.
+            AddModel(new ModelCapabilities
+            {
+                ProductId = "8DD2",
+                ModelName = "HP Victus 15 (2025) fb3xxx",
+                ModelNamePattern = "15-fb3",
+                ModelYear = 2025,
+                Family = OmenModelFamily.Victus,
+                SupportsFanControlWmi = true,
+                SupportsFanControlEc = false,
+                SupportsFanCurves = true,
+                SupportsIndependentFanCurves = false,
+                FanZoneCount = 1,
+                HasMuxSwitch = false,
+                SupportsGpuPowerBoost = false,
+                SupportsUndervolt = false,
+                SupportsPowerLimits = false,
+                PerformanceModes = new[] { "Quiet", "Balanced", "Performance" },
+                AllowDecoupledWmiThermalPolicyFallback = true,
+                HasFourZoneRgb = false,
+                HasKeyboardBacklight = false,
+                UserVerified = false,
+                Notes = "GitHub #197 — HP Victus 15-fb3xxx, ProductId 8DD2, SKU 1H85482PX4 (2025 AMD). The exact-ProductId confirmation #148's pattern-matched entry above was waiting on; flags inherited verbatim from that entry, not independently widened. Reporter confirms no RGB keyboard, matching #148's own report."
+            });
+
             // Victus 16 (2023/2024) - d1xxx series
             // GitHub Issue #66: Product ID 8A26 requested for capability DB.
             AddModel(new ModelCapabilities

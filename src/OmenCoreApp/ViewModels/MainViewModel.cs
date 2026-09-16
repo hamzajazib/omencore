@@ -455,6 +455,7 @@ namespace OmenCore.ViewModels
         private readonly RelayCommand _openGameProfileManagerCommand;
         private const int MaxUiLogLines = 200;
         private readonly Queue<string> _logLines = new();
+        private readonly StringBuilder _logBufferBuilder = new();
         private string _logBufferText = string.Empty;
 
         private FanPreset? _selectedPreset;
@@ -2640,19 +2641,49 @@ namespace OmenCore.ViewModels
         {
             // Skip empty entries to reduce log clutter
             if (string.IsNullOrWhiteSpace(entry)) return;
-            
+
             var line = entry.TrimEnd();
             Application.Current?.Dispatcher?.BeginInvoke(() =>
             {
-                _logLines.Enqueue(line);
-                while (_logLines.Count > MaxUiLogLines)
-                {
-                    _logLines.Dequeue();
-                }
-
-                _logBufferText = string.Join("\n", _logLines);
+                _logBufferText = AppendLogLineAndRebuildBuffer(line, _logLines, _logBufferBuilder, MaxUiLogLines);
                 OnPropertyChanged(nameof(LogBuffer));
             });
+        }
+
+        /// <summary>
+        /// Appends one line to the capped log-line queue and returns the buffer text to display,
+        /// mutating <paramref name="lines"/> and <paramref name="builder"/> in place. Pure aside
+        /// from those two mutations, so it's testable without a WPF <c>Dispatcher</c> - the caller
+        /// (<see cref="HandleLogLine"/>) is the only place that needs one, to marshal the resulting
+        /// property-changed notification onto the UI thread.
+        ///
+        /// PR #147 (picked up standalone - its other two changes had real bugs and were not
+        /// merged). Rebuilding the whole buffer with <c>string.Join</c> on every single log line is
+        /// O(n) per line for a queue capped at <paramref name="maxLines"/> - fine individually,
+        /// wasteful under a burst of rapid logging. Append incrementally instead, and only pay for
+        /// a full rebuild on the (much rarer) tick where the cap is actually exceeded and the
+        /// oldest line needs to be dropped.
+        /// </summary>
+        internal static string AppendLogLineAndRebuildBuffer(string line, Queue<string> lines, StringBuilder builder, int maxLines)
+        {
+            lines.Enqueue(line);
+            builder.Append(line).Append('\n');
+
+            if (lines.Count > maxLines)
+            {
+                while (lines.Count > maxLines)
+                {
+                    lines.Dequeue();
+                }
+
+                builder.Clear();
+                foreach (var bufferedLine in lines)
+                {
+                    builder.Append(bufferedLine).Append('\n');
+                }
+            }
+
+            return builder.Length > 0 ? builder.ToString(0, builder.Length - 1) : string.Empty;
         }
 
         public async Task<LightingViewModel?> EnsureLightingInitializedAsync()
@@ -2800,6 +2831,7 @@ namespace OmenCore.ViewModels
         private void ReloadRecentBuffer()
         {
             _logLines.Clear();
+            _logBufferBuilder.Clear();
             _logBufferText = string.Empty;
             OnPropertyChanged(nameof(LogBuffer));
         }

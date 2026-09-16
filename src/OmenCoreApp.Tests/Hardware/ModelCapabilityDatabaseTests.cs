@@ -433,6 +433,29 @@ namespace OmenCoreApp.Tests.Hardware
         }
 
         [Fact]
+        public void GetCapabilities_8DD2_VictusFb3xxx_ResolvesToExactEntryInsteadOfNamePattern()
+        {
+            // GitHub #197: confirmed the exact ProductId (8DD2) that #148's earlier "15-fb3"
+            // name-pattern entry was waiting on. Flags must match #148's entry verbatim - this is
+            // an identity-confidence upgrade (exact match instead of pattern match), not a widened
+            // capability claim, since no diagnostics export accompanied #197's report.
+            var caps = ModelCapabilityDatabase.GetPreferredCapabilities("8DD2", "Victus by HP Gaming Laptop 15-fb3xxx");
+
+            caps.Should().NotBeNull();
+            caps!.ProductId.Should().Be("8DD2");
+            caps.Family.Should().Be(OmenModelFamily.Victus);
+            caps.SupportsFanControlWmi.Should().BeTrue();
+            caps.SupportsFanControlEc.Should().BeFalse();
+            caps.SupportsGpuPowerBoost.Should().BeFalse();
+            caps.SupportsUndervolt.Should().BeFalse();
+            caps.HasFourZoneRgb.Should().BeFalse("reporter confirms no RGB keyboard on this unit");
+            caps.HasKeyboardBacklight.Should().BeFalse();
+            caps.AllowDecoupledWmiThermalPolicyFallback.Should().BeTrue();
+            caps.UserVerified.Should().BeFalse();
+            caps.Notes.Should().Contain("#197");
+        }
+
+        [Fact]
         public void ModelIdentitySummary_8BD4_ReportsExactProductId()
         {
             var modelConfig = ModelCapabilityDatabase.GetPreferredCapabilities("8BD4", "Victus by HP Gaming Laptop 16-s0xxx");

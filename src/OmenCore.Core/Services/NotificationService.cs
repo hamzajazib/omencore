@@ -223,14 +223,23 @@ namespace OmenCore.Services
 
             try
             {
+                // Two independent reports (#191, #142) show the same real confusion: this toast's
+                // wording read as if it were the trigger for fan behavior, or tied to a BIOS TCC/
+                // thermal-limit setting - it's neither. It's a separate, informational-only
+                // threshold with no connection to FanService's own real thermal-protection ramp
+                // (90°C default) or to anything in firmware. Clarifying it right here, at the
+                // moment of actual confusion, rather than only in a GitHub reply after the fact.
                 new ToastContentBuilder()
                     .AddText($"High Temperature Warning")
                     .AddText($"{component}: {temperature:F0}°C")
-                    .AddText($"Threshold: {threshold:F0}°C")
+                    .AddText($"Threshold: {threshold:F0}°C · informational only, not a fan trigger")
                     .SetToastDuration(ToastDuration.Long)
                     .Show();
 
-                AddWarning("High Temperature Warning", $"{component}: {temperature:F0}°C (threshold {threshold:F0}°C)");
+                AddWarning("High Temperature Warning",
+                    $"{component}: {temperature:F0}°C (threshold {threshold:F0}°C). This is an informational " +
+                    "notification only - it's independent of fan behavior and any BIOS thermal/TCC limit. " +
+                    "Adjust or disable it under Settings → Notifications.");
                 _logging.Info($"Notification: Temperature warning - {component} at {temperature}°C");
             }
             catch (Exception ex)

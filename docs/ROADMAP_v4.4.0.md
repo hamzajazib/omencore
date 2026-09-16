@@ -88,6 +88,52 @@ in the first place this session — forcing the fallback chain down through LHM 
 at all — is still unexplained. See "Open Investigations" below. Also not yet confirmed on the
 reporter's actual hardware; this fix is implemented-pending-confirmation, not closed.
 
+### GitHub #197: Board `8DD2` Promoted From Name-Pattern Match to an Exact Entry
+
+Confirmed the exact ProductId (`8DD2`) that `#148`'s earlier WMI-name-pattern entry (`15-fb3`) had
+been waiting on. No diagnostics export accompanied the report, so the new entry inherits `#148`'s
+flags verbatim rather than widening anything — this is purely an identity-confidence upgrade (exact
+match instead of pattern match). Reporter's "no RGB keyboard" observation matches `#148`'s own
+independent report of the same thing, good corroboration. 1 new test
+(`GetCapabilities_8DD2_VictusFb3xxx_ResolvesToExactEntryInsteadOfNamePattern`).
+
+### `ThermalMonitoringService`'s Warning Toast Now Explains Itself
+
+Both smaller pickups from "Candidates Pulled Forward" below are done as of this entry. First: two
+independent reports (`#191`, `#142`) showed the same real confusion — the "High Temperature
+Warning" toast read as tied to fan behavior or a BIOS TCC limit, when it's a wholly separate,
+informational-only threshold with no connection to `FanService`'s real 90°C thermal-protection
+ramp. Rather than reconsidering the 85°C default itself (a judgment call affecting every existing
+user, not something to change on the strength of two reports that were both about wording, not the
+number), fixed the actual point of confusion: the toast text and in-app notification history now
+say directly that it's informational and independent of fan/BIOS behavior, right at the moment the
+notification fires — not only after someone asks on GitHub. No behavior change, no existing test
+depended on the exact wording.
+
+### Log Buffer Performance Fix Picked Up From `PR #147`
+
+Second smaller pickup: reviewed `PR #147` last cycle and found its log-buffer `StringBuilder` change
+correct, but the PR's other two changes had real bugs (a tray-icon cache that never populates in the
+default configuration, a dashboard uptime timer that can't restart once paused) and it was never
+merged as-is. Cherry-picked just the good change into `MainViewModel`: the in-app log view no longer
+rebuilds its entire displayed buffer with `string.Join` on every single incoming log line, only on
+the rarer tick where the 200-line cap is actually exceeded. Extracted into a pure, static, testable
+method (`AppendLogLineAndRebuildBuffer`) rather than leaving it inline inside the WPF
+`Dispatcher.BeginInvoke` callback the original code ran in — this test suite has no `Application`
+shim, so testing it required pulling the logic out from behind the dispatcher dependency, not just
+copying the PR's diff verbatim. 5 new tests confirm the output is byte-identical to the old
+`string.Join` behavior in every case, including past the cap.
+
+### Diagnostics: All Four HP WMI Temperature Sensor Indices Now Captured
+
+First concrete step on the `0x23` sensor-index question (see "Candidates Pulled Forward" below):
+added `HpWmiBios.ProbeAllTemperatureSensors()`, a read-only probe of all four documented indices,
+and wired it into the diagnostics export as a new `wmi-temperature-sensors.txt` file labeled against
+both the IR/Ambient/PCH/VR mapping two independent research efforts found and OmenCore's own CPU/GPU
+convention. Writes nothing to the firmware, changes no existing temperature-reading behavior —
+purely so the next round of field reports can finally carry the evidence needed to answer the
+question with data instead of guessing.
+
 ---
 
 ## Open Investigations
@@ -129,25 +175,16 @@ diagnostics as blocking MSR access for undervolt; unrelated to this bug but wort
 confound on the same machine, since XTU is known to interfere with other vendor tools' hardware
 access on some systems).
 
-### #197 — HP Victus 15-fb3xxx (board `8DD2`, 2025 AMD)
-
-Reported without a diagnostics export. Currently resolves via WMI-model-name-pattern match
-(`15-fb3`) to the existing conservative profile documented in the database's `#148` notes — Low
-confidence, no exact ProductId entry yet. Reporter states no RGB keyboard on this unit, which is
-useful and specific enough to act on for a future keyboard-database entry once an exact capability
-entry exists. Straightforward next step once a diagnostics export arrives: promote `8DD2` to an
-exact entry inheriting the pattern-matched profile's flags (same low-risk pattern used for `8C9C`,
-`8BAB`, etc. this past cycle), rather than leaving it on name-pattern matching indefinitely.
-
 ---
 
 ## Candidates Pulled Forward From Past Cycles
 
 Asked directly whether anything significant had been left off recent builds that was now worth
-investigating — these three had genuinely new evidence behind them since being deferred, plus two
-smaller pickups. None of this is started; recorded here so it doesn't get lost.
+investigating — these had genuinely new evidence behind them since being deferred. Two smaller
+pickups from this list are already done (see Done above); the rest are recorded here so they don't
+get lost.
 
-### HP WMI command `0x23`'s sensor-index semantics — two independent sources now agree
+### HP WMI command `0x23`'s sensor-index semantics — two independent sources now agree, diagnostics can finally collect the evidence
 
 Flagged in the v4.3.1 cycle from Ohman's own decompiled OGH device-library strings, found in its
 `Support.cs`: sensor index `0=IR, 1=Ambient, 2=PCH, 3=VR`, with Ohman's own code comment noting "on
@@ -169,6 +206,12 @@ survey which boards in the database use which convention, and whether `0x23` ind
 OmenCore's assumption) ever demonstrably disagrees with a confirmed-good reading on real hardware —
 before touching the indices OmenCore currently ships with.
 
+**First step taken this cycle (see Done above):** added `HpWmiBios.ProbeAllTemperatureSensors()` and
+a new `wmi-temperature-sensors.txt` diagnostic that captures all four raw index readings on every
+export, going forward. Deliberately not touching the CPU=1/GPU=2 indices themselves yet — this is
+evidence-gathering only, so the actual question above gets answered from real per-board data over
+the next few cycles' worth of diagnostics exports, not guessed at now.
+
 ### Opt-in automatic software fan-curve controller (`#189`) — considerably de-risked since deferral
 
 Deferred in the v4.3.0 cycle for "a dedicated design pass": an exceptionally well-researched report
@@ -185,20 +228,8 @@ recovery story so an interrupted daemon never leaves fans in an unexpected state
 scoping as its own design doc before any code lands, given it's a new automatic write-loop rather
 than a fix to an existing one.
 
-### Smaller pickups
-
-- **`PR #147`'s log-buffer `StringBuilder` change** was reviewed last cycle and found correct and
-  worth keeping — the PR's other two changes had real bugs (a tray-icon cache that never populates,
-  an uptime timer that can't restart once paused) and the PR was never merged as-is. Cherry-picking
-  just the good change would be a small, low-risk win rather than leaving it to bit-rot in an
-  unmerged PR.
-- **`ThermalMonitoringService`'s 85°C default CPU/GPU warning threshold** has now caused the same
-  "why is this alerting, that's normal boost behavior" confusion in two independent reports (`#191`,
-  `#142`), both resolved the same way (explaining the toast is informational and independent of real
-  thermal protection). Past the "one report" bar this project usually waits for before revisiting a
-  shipped default — worth reconsidering the default value itself, or at minimum making the
-  distinction from `FanService`'s real 90°C threshold more visible in the UI at the point the toast
-  fires, not just in a GitHub reply.
+Both smaller pickups originally listed here (`PR #147`'s log-buffer fix, `ThermalMonitoringService`'s
+toast wording) are done — see Done above.
 
 ### Carried forward, still blocked on evidence neither cycle has had
 
