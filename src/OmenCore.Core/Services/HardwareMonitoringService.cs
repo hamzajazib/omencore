@@ -32,7 +32,14 @@ namespace OmenCore.Services
         // for a few consecutive samples, back off far further than the existing idle/tray-only
         // tiers while any window-active/overlay cadence is left untouched, so this only affects
         // background cost, never perceived responsiveness while someone is actually watching.
-        private readonly TimeSpan _gpuDeepIdleCadenceInterval = TimeSpan.FromMinutes(2);
+        // Must stay well under HardwareWatchdogService.FreezeThresholdSeconds: the watchdog treats
+        // "no monitoring sample for that long" as frozen sensors and forces fans to 90%. v4.3.1
+        // shipped this at 2 minutes, which outlasted the 90s limit, so every tray-only idle stretch
+        // tripped the watchdog roughly every two minutes and pinned real fans at 90% (GitHub #203
+        // and field bundles from board 8BD4). Thermal protection also only sees a new temperature
+        // once per cadence tick, so a long interval means slower reaction to a sudden load.
+        internal static readonly TimeSpan GpuDeepIdleCadence = TimeSpan.FromSeconds(30);
+        private readonly TimeSpan _gpuDeepIdleCadenceInterval = GpuDeepIdleCadence;
         private const double GpuIdleUtilizationThresholdPercent = 1.0;
         private const double GpuIdlePowerThresholdWatts = 12.0;
         private const int GpuIdleReadingsRequired = 3;

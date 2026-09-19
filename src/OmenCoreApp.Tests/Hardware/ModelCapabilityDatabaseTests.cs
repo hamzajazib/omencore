@@ -456,6 +456,23 @@ namespace OmenCoreApp.Tests.Hardware
         }
 
         [Fact]
+        public void GetCapabilities_8CC0_Omen16Ae0xxx_ResolvesExactlyAndStaysConservative()
+        {
+            // GitHub #204: previously OMEN16 family fallback, where Performance mode applied nothing.
+            var caps = ModelCapabilityDatabase.GetPreferredCapabilities("8CC0", "OMEN Gaming Laptop 16-ae0xxx");
+
+            caps.Should().NotBeNull();
+            caps!.ProductId.Should().Be("8CC0");
+            caps.SupportsFanControlWmi.Should().BeTrue();
+            caps.SupportsFanControlEc.Should().BeFalse();
+            caps.AllowDecoupledWmiThermalPolicyFallback.Should().BeTrue("Performance must not be a no-op when direct EC writes are unavailable");
+            caps.SupportsFanCurves.Should().BeFalse("no evidence yet that curves work on this board");
+            caps.SupportsGpuPowerBoost.Should().BeFalse();
+            caps.UserVerified.Should().BeFalse();
+            caps.Notes.Should().Contain("#204");
+        }
+
+        [Fact]
         public void ModelIdentitySummary_8BD4_ReportsExactProductId()
         {
             var modelConfig = ModelCapabilityDatabase.GetPreferredCapabilities("8BD4", "Victus by HP Gaming Laptop 16-s0xxx");

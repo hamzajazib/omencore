@@ -451,8 +451,19 @@ namespace OmenCoreApp.Tests.Services
                 "two consecutive idle readings is not yet enough to back off further");
 
             InvokeUpdateGpuIdleTracking(svc, IdleGpuSample);
-            InvokeGetEffectiveCadenceInterval(svc).Should().Be(TimeSpan.FromMinutes(2),
+            InvokeGetEffectiveCadenceInterval(svc).Should().Be(HardwareMonitoringService.GpuDeepIdleCadence,
                 "three consecutive confirmed-idle GPU readings should trigger the deep-idle cadence");
+        }
+
+        [Fact]
+        public void DeepIdleCadence_StaysWellUnderTheWatchdogFreezeThreshold()
+        {
+            // v4.3.1 regression (GitHub #203, board 8BD4 bundles): a 2-minute deep-idle cadence
+            // outlasted the watchdog's 90s freeze limit, so every tray-only idle stretch was read
+            // as "temperature monitoring frozen" and real fans were forced to 90% about every two
+            // minutes. Require at least a 2x margin so one late tick can never trip it.
+            (HardwareMonitoringService.GpuDeepIdleCadence.TotalSeconds * 2)
+                .Should().BeLessThan(HardwareWatchdogService.FreezeThresholdSeconds);
         }
 
         [Fact]
@@ -494,7 +505,7 @@ namespace OmenCoreApp.Tests.Services
             InvokeUpdateGpuIdleTracking(svc, IdleGpuSample);
             InvokeUpdateGpuIdleTracking(svc, IdleGpuSample);
             InvokeUpdateGpuIdleTracking(svc, IdleGpuSample);
-            InvokeGetEffectiveCadenceInterval(svc).Should().Be(TimeSpan.FromMinutes(2));
+            InvokeGetEffectiveCadenceInterval(svc).Should().Be(HardwareMonitoringService.GpuDeepIdleCadence);
 
             InvokeUpdateGpuIdleTracking(svc, BusyGpuSample);
 

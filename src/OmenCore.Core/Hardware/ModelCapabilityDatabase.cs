@@ -925,6 +925,35 @@ namespace OmenCore.Hardware
                 Notes = "GitHub #111 / Discord 2026-05-20 and 2026-05-21; Discord 2026-06-02 follow-up - OMEN Gaming Laptop 16-am0xxx, ProductId 8D2F. Exact board identity confirmed; product ID has appeared across AMD and Intel Core Ultra variants, so direct EC fan writes and independent curves remain disabled. WMI V1 fan/profile control is retained, WMI thermal-policy fallback is enabled for performance modes when EC/MSR power-limit writes are unavailable, and V1 auto-mode floor clear is enabled to let fans ramp down after load.",
             });
 
+            // OMEN 16-ae0xxx (2025 Intel HX) - board 8CC0. GitHub Issue #204: OMEN Gaming Laptop
+            // 16-ae0xxx, i7-14650HX, BIOS F.19, SKU CND4160KXF, thermal policy V1 with the firmware's
+            // software-fan-control bit set. Was resolving via OMEN16 family fallback (Low confidence),
+            // whose log showed "Performance mode: nothing was applied (Direct EC writes disabled)".
+            // Flags follow the same-generation, same-thermal-policy 8D2F entry (verified) where the
+            // WMI thermal-policy fallback is what actually makes Performance take effect, but stay
+            // conservative everywhere else: fan curves, GPU boost and RGB zone layout are not
+            // claimed until a diagnostics run shows them working on this board.
+            AddModel(new ModelCapabilities
+            {
+                ProductId = "8CC0",
+                ModelName = "OMEN 16-ae0xxx (8CC0)",
+                ModelNamePattern = "16-ae0",
+                ModelYear = 2025,
+                Family = OmenModelFamily.OMEN16,
+                SupportsFanControlWmi = true,
+                SupportsFanControlEc = false,
+                SupportsFanCurves = false,
+                SupportsIndependentFanCurves = false,
+                FanZoneCount = 2,
+                SupportsPerformanceModes = true,
+                HasMuxSwitch = false,
+                SupportsGpuPowerBoost = false,
+                SupportsUndervolt = false,
+                AllowDecoupledWmiThermalPolicyFallback = true,
+                UserVerified = false,
+                Notes = "GitHub #204 - OMEN 16-ae0xxx, ProductId 8CC0, i7-14650HX + RTX 4060, BIOS F.19. Exact identity replaces OMEN16 family fallback. WMI fan/profile control retained (fans reached ~5800/6100 RPM in Performance in the reporter's bundle); WMI thermal-policy fallback enabled so Performance mode isn't a no-op when direct EC writes are unavailable, mirroring same-generation 8D2F. Fan curves, GPU boost and undervolt remain unclaimed pending a real verification run."
+            });
+
             // OMEN 16 (2025) - am0xxx Intel Core Ultra H + RTX 50-series
             // GitHub Issue #124: HP Omen 16-am0168ng (Core Ultra 7-255H + RTX 5070)
             // reports broad model fallback / erratic fans when ProductId is not yet known.

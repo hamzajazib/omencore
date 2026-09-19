@@ -25,6 +25,48 @@ returns on that board.
 
 ## Fixed
 
+### Two v4.3.1 Regressions Found in Field Bundles (Both Caused by v4.3.1's "Ohman Cross-Check" Changes)
+
+Both came out of diagnostics bundles for [#203](https://github.com/theantipopau/omencore/issues/203),
+[#202](https://github.com/theantipopau/omencore/issues/202) and a Victus 16 (`8BD4`) bundle, and both
+are **my own v4.3.1 changes being wrong**, not board quirks. Recorded plainly because the changelog
+that shipped them presented both as safe, evidence-backed improvements.
+
+**1. Fan control was switched off on V0-thermal-policy boards where it works (`#203`, `#202`).**
+v4.3.1 forced monitoring-only whenever HP's `SystemDesignData` "software fan control supported" bit
+read false on an unverified board, reasoning that a firmware-authored "no" outranks a template's
+guess. On V0 (legacy) firmware that byte simply isn't populated — the captured block is
+`C8 00 00 00 00 …`, policy 0, flag 0 — yet WMI `0x2E` level writes are accepted, read back from
+firmware, and audibly move the fans. `#203`'s reporter had Custom Fan Curve working on 4.3.0 on
+board `8C2F` and lost it on 4.3.1; Guided Fan Verification then scored 5/100 ("Backend: None"). The
+bit is now diagnostic-only: logged when it disagrees, never acted on, and write outcomes decide.
+My own test for the old behavior used a default-constructed struct — i.e. policy V0 — which is
+exactly the case that turned out to be wrong. Replaced with tests built from the real captured
+bytes (V0 blocks from `#203`/`#202`, V1 block from `8BD4`/`8CC0`).
+
+**2. The 2-minute GPU-idle cadence tripped the hardware watchdog, forcing real fans to 90% every
+~2 minutes.** v4.3.1's "GPU telemetry backs off once confirmed idle" set the tray-only cadence to
+120s, but `HardwareWatchdogService` declares monitoring frozen after 90s without a sample and applies
+a 90% failsafe. Every tray-only idle stretch therefore produced `WATCHDOG: Temperature monitoring
+frozen for ~101s → Fans set to 90%` about every two minutes (32 events in one `#203` log; 3 real 90%
+failsafes in the `8BD4` bundle) — on boards where fan control was available, the fans were actually
+pinned. I verified the new cadence was decoupled from `FanService`'s own polling loop but never
+checked the watchdog. Deep-idle cadence is now 30s, and a test asserts it stays at least 2x under
+the watchdog threshold so the two can't drift apart again. A long cadence also delays thermal
+protection's view of a sudden load, which is the other reason it shouldn't be minutes.
+
+The GPU-idle backoff itself is unproven for OmenCore (the "wakes the dGPU" measurement was Ohman's,
+for `nvidia-smi`, not our NVAPI path) and is now much smaller; whether it's worth keeping at all
+should be decided by measurement, not by analogy.
+
+### Board `8CC0` (OMEN 16-ae0xxx, i7-14650HX + RTX 4060) Given an Exact Entry
+
+[#204](https://github.com/theantipopau/omencore/issues/204): resolved via OMEN16 family fallback,
+where the log showed "Performance mode: nothing was applied (Direct EC writes disabled)". Exact
+entry mirrors same-generation, same-thermal-policy `8D2F` for the one flag that makes Performance
+take effect (WMI thermal-policy fallback) and stays conservative everywhere else — fan curves, GPU
+boost, undervolt unclaimed until a verification run shows them working. 1 new test.
+
 ### A Frozen ACPI Thermal Zone Could Win CPU-Temperature Authority Back Forever, Causing an Unbounded Flip-Flop
 
 [#198](https://github.com/theantipopau/omencore/issues/198) reported wildly fluctuating CPU

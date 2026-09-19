@@ -29,7 +29,7 @@ namespace OmenCore.Services
         private DateTime _resumeGraceUntilUtc = DateTime.MinValue;
 
         private const int WatchdogIntervalMs = 10000; // Check every 10 seconds
-        private const int FreezeThresholdSeconds = 90; // Require longer stall to reduce false positives
+        internal const int FreezeThresholdSeconds = 90; // Require longer stall to reduce false positives
         private const int FreezeBreachConfirmations = 2; // Require two consecutive breaches before failsafe
         private const int FailsafeFanPercent = 90;
         private const int ResumeGraceSeconds = 120; // Ignore freeze detection briefly after wake while sensors reattach
