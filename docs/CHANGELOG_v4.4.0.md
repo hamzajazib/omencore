@@ -113,6 +113,25 @@ period it goes back to idle speeds". So this regression isn't limited to boards 
 quiet fans in Auto under a game, is the firmware-Auto under-cooling described in #189 and its design
 doc, not this bug.)
 
+### Community PR #196 Merged: Correct SKU Reporting, Measured-vs-Estimated Fan RPM, Honest Performance-Mode Trace
+
+From WoofahRayetCode, the same reporter as #195, with on-device validation on an `8E35` laptop.
+`SystemInfoService` took `Win32_ComputerSystemProduct.IdentifyingNumber` (`1H85430PWY`, a serial-like
+asset value) as the "System SKU"; the real SKU is `Win32_ComputerSystem.SystemSKUNumber`
+(`BP1Q1UA#ABA`), and the identifying number is now reported separately. Exports also label each fan
+RPM as measured or a fan-level estimate, and the performance-mode apply trace now says whether any
+firmware policy was actually applied instead of letting a selected mode read as proof that limits
+changed. **This corrects my own earlier "CPU-identity conflict" note for `8E35`:** the two reports
+weren't disagreeing about one laptop's CPU — they were two different configurations (different real
+SKUs) and the SKU I'd matched them on was the wrong field. Notes now say so.
+
+### Board `8DD0` (Victus 15-fb3xxx, Ryzen 7 7445HS + RTX 2050) Added, From PR #200
+
+The contributor hit the v4.3.1 fan-control regression on this board and tested Max fan through WMI
+with readback, manual level writes and keepalive on real hardware. The regression is fixed at the
+source, so this is an identity entry mirroring `8DD2`. The PR marked it `UserVerified`; one
+contributor's run isn't the full verification card, so it stays false. 1 new test.
+
 ### Board `8CC0` (OMEN 16-ae0xxx, i7-14650HX + RTX 4060) Given an Exact Entry
 
 [#204](https://github.com/theantipopau/omencore/issues/204): resolved via OMEN16 family fallback,

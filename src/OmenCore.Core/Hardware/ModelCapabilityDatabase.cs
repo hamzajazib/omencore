@@ -839,17 +839,9 @@ namespace OmenCore.Hardware
             });
 
             // OMEN 16 (2025) - ap0xxx AMD, alternate board/ProductId reported by RC1 testers.
-            // Community report: Product ID 8E35, SKU 1H85430PWY, AMD Ryzen AI 9 365 + RTX 5060.
-            // GitHub Issue #195: same ProductId/SKU (8E35 / 1H85430PWY), but native diagnostics on
-            // that report identify the actual CPU as Ryzen 9 8940HX (RaphaelDragonRange) instead -
-            // the two reports disagree on which CPU this board/SKU combination actually ships with,
-            // and neither has been independently re-verified against the other. Not resolved here;
-            // flagging rather than guessing since a laptop CPU is soldered and a genuine SKU-to-CPU
-            // mismatch between two reports needs a real explanation, not a pick. This entry only
-            // ever governed board-level fan/GPU-boost/lighting flags, not CPU identity or CPU-gated
-            // capabilities like undervolt - those are resolved from the live-detected CPU string
-            // elsewhere (RyzenControl/AmdUndervoltProvider), never from this Notes text, so the
-            // discrepancy has no functional effect regardless of which report is right.
+            // Community reports cover multiple configurations on this board: Ryzen AI 9 365 + RTX 5060,
+            // and Ryzen 9 8940HX + RTX 5060 (system SKU BP1Q1UA#ABA). 1H85430PWY is the latter
+            // system's ComputerSystemProduct.IdentifyingNumber, not its support product SKU.
             AddModel(new ModelCapabilities
             {
                 ProductId = "8E35",
@@ -868,7 +860,7 @@ namespace OmenCore.Hardware
                 HasFourZoneRgb = true,
                 SupportsUndervolt = false,
                 UserVerified = false,
-                Notes = "Discord RC1 report - OMEN Gaming Laptop 16-ap0xxx / ProductId 8E35 / SKU 1H85430PWY. CPU identity disputed: original report said Ryzen AI 9 365 + RTX 5060; GitHub #195's native diagnostics on the same ProductId/SKU show Ryzen 9 8940HX instead - unresolved, see comment above. Same WMI V1 fan profile as 8D24; EC direct remains disabled until validated."
+                Notes = "Community reports: OMEN Gaming Laptop 16-ap0xxx / ProductId 8E35, including Ryzen AI 9 365 + RTX 5060 and Ryzen 9 8940HX + RTX 5060 (system SKU BP1Q1UA#ABA; system product identifying number 1H85430PWY). Same WMI V1 fan profile as 8D24; EC direct remains disabled until validated."
             });
 
             // OMEN 16 (2025) - ap0xxx AMD, lower CPU/GPU tier of the same board family.
