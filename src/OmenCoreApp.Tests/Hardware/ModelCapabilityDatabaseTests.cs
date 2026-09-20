@@ -473,6 +473,20 @@ namespace OmenCoreApp.Tests.Hardware
         }
 
         [Fact]
+        public void GetCapabilities_8DD0_VictusFb3xxx_ResolvesExactly_WithFanControlKept()
+        {
+            // PR #200: this board hit the v4.3.1 fan-control regression. The exact entry must keep
+            // WMI fan control on and win over the shared 15-fb3 pattern entry.
+            var caps = ModelCapabilityDatabase.GetPreferredCapabilities("8DD0", "Victus by HP Gaming Laptop 15-fb3xxx");
+
+            caps.Should().NotBeNull();
+            caps!.ProductId.Should().Be("8DD0");
+            caps.SupportsFanControlWmi.Should().BeTrue();
+            caps.SupportsFanCurves.Should().BeTrue();
+            caps.UserVerified.Should().BeFalse("one contributor's run is not the full verification card");
+        }
+
+        [Fact]
         public void ModelIdentitySummary_8BD4_ReportsExactProductId()
         {
             var modelConfig = ModelCapabilityDatabase.GetPreferredCapabilities("8BD4", "Victus by HP Gaming Laptop 16-s0xxx");

@@ -1898,6 +1898,37 @@ namespace OmenCore.Hardware
                 Notes = "GitHub #197 — HP Victus 15-fb3xxx, ProductId 8DD2, SKU 1H85482PX4 (2025 AMD). The exact-ProductId confirmation #148's pattern-matched entry above was waiting on; flags inherited verbatim from that entry, not independently widened. Reporter confirms no RGB keyboard, matching #148's own report."
             });
 
+            // Victus 15-fb3xxx (2025 AMD) - board 8DD0. Contributed via PR #200 (ujjawalkaushik1110),
+            // who hit the v4.3.1 SystemDesignData regression on this exact board (fan control forced to
+            // monitoring-only although WMI fan writes work) and verified Max fan through WMI with
+            // level/RPM readback, manual level writes and keepalive on real hardware. The regression
+            // itself is fixed at the source, so this is an identity entry mirroring 8DD2/#148's flags.
+            // The PR marked it UserVerified; one contributor's run isn't the full verification card the
+            // project's promotion rule asks for, so it stays false until that's complete.
+            AddModel(new ModelCapabilities
+            {
+                ProductId = "8DD0",
+                ModelName = "HP Victus 15 (2025) fb3xxx",
+                ModelNamePattern = "15-fb3",
+                ModelYear = 2025,
+                Family = OmenModelFamily.Victus,
+                SupportsFanControlWmi = true,
+                SupportsFanControlEc = false,
+                SupportsFanCurves = true,
+                SupportsIndependentFanCurves = false,
+                FanZoneCount = 1,
+                HasMuxSwitch = false,
+                SupportsGpuPowerBoost = false,
+                SupportsUndervolt = false,
+                SupportsPowerLimits = false,
+                PerformanceModes = new[] { "Quiet", "Balanced", "Performance" },
+                AllowDecoupledWmiThermalPolicyFallback = true,
+                HasFourZoneRgb = false,
+                HasKeyboardBacklight = false,
+                UserVerified = false,
+                Notes = "GitHub PR #200 - HP Victus 15-fb3xxx, ProductId 8DD0, Ryzen 7 7445HS + RTX 2050, BIOS F.15. Contributor verified Max fan via WMI with level/RPM readback, manual level writes and keepalive on this board. Flags mirror 8DD2; UserVerified withheld pending a full verification pass."
+            });
+
             // Victus 16 (2023/2024) - d1xxx series
             // GitHub Issue #66: Product ID 8A26 requested for capability DB.
             AddModel(new ModelCapabilities

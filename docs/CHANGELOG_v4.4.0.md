@@ -25,12 +25,12 @@ returns on that board.
 
 ## Fixed
 
-### Two v4.3.1 Regressions Found in Field Bundles (Both Caused by v4.3.1's "Ohman Cross-Check" Changes)
+### Three v4.3.1 Regressions Found in Field Bundles (All Caused by v4.3.1's Own Changes)
 
-Both came out of diagnostics bundles for [#203](https://github.com/theantipopau/omencore/issues/203),
-[#202](https://github.com/theantipopau/omencore/issues/202) and a Victus 16 (`8BD4`) bundle, and both
+All three came out of diagnostics bundles and logs for [#203](https://github.com/theantipopau/omencore/issues/203),
+[#202](https://github.com/theantipopau/omencore/issues/202) and a Victus 16 (`8BD4`) bundle, and all
 are **my own v4.3.1 changes being wrong**, not board quirks. Recorded plainly because the changelog
-that shipped them presented both as safe, evidence-backed improvements.
+that shipped them presented them as safe, evidence-backed improvements.
 
 **1. Fan control was switched off on V0-thermal-policy boards where it works (`#203`, `#202`).**
 v4.3.1 forced monitoring-only whenever HP's `SystemDesignData` "software fan control supported" bit
@@ -58,6 +58,60 @@ protection's view of a sudden load, which is the other reason it shouldn't be mi
 The GPU-idle backoff itself is unproven for OmenCore (the "wakes the dGPU" measurement was Ohman's,
 for `nvidia-smi`, not our NVAPI path) and is now much smaller; whether it's worth keeping at all
 should be decided by measurement, not by analogy.
+
+**How widespread #1 is.** Every V0-thermal-policy board seen since release lost fan control on 4.3.1,
+not just the two boards in the reports: `8C2F` (#203), `8BB1`/`8C3F`-class Victus 15 (#202, #205),
+`8C30` (#208 - "Fan Verification 5/100, Backend: None"), `8A25` (a Discord report), `88F8`
+(#207) and `8EDC` (#201) all show `SW fan control support: False`, policy V0, and
+`Backend: None (monitoring only)` in their bundles. Any of them that used Custom Fan Curve, linked
+fan profiles to performance modes, or the Max preset was affected. A patch release is warranted
+rather than waiting for the rest of 4.4.0.
+
+**3. The monitor loop couldn't be woken, so "open the window / show the OSD" waited out the sleep
+already in progress.** Reported on `8A25` (OSD takes minutes to show numbers, fan shows 0 on the
+OSD, General page slow to populate, all "unlike 4.3.0"). The loop chose its sleep once per cycle;
+`SetUiWindowActive`/`SetTrayOnlyMode`/`SetOverlayRealtimeMode` changed the mode but never ended the
+current sleep. At the old 10s tray cadence that was invisible; with the 2-minute deep-idle sleep it
+became minutes of stale or zero telemetry after opening the window or the OSD. Every cadence-
+affecting setter now cuts the current sleep short (only on a real change), so the new cadence
+applies and a fresh sample is taken immediately. The same `8A25` log also explains "linked fan
+profiles stopped following performance mode": `Link sync: Performance -> Fan 'Extreme'` fired, then
+`Fan preset skipped; fan control unavailable (monitoring only)` - regression #1 again, not a
+separate bug. 2 new tests.
+
+### OMEN MAX Per-Key Keyboard: Uniform Colour Now Falls Back to the LampArray Interface When the MCU Refuses
+
+Reported on `8D87` (ThaMadRus, v4.3.1): RGB worked after install, then after a full shutdown only the
+light bar responded. The log shows `[DojoPerKey] Uniform fill via mi_03: REFUSED`, after which nothing
+else was tried, so the V2 engine fell back to the four-zone WMI ColorTable - which on this chassis
+drives only the light bar (documented in the 8D87 support plan), so the keyboard silently stopped
+changing. A refused mi_03 fill now falls through to painting the same keys over mi_04 (HID LampArray),
+before giving up. The known trade-off of mi_04 - no MCU redraw after an Fn overlay - applies only on
+this recovery path; the normal path is unchanged. **Not root-caused:** why the MCU refuses after a
+cold power-up isn't visible in the log (`REFUSED` carries no reason), and there's no hardware here to
+test the fallback, so this is implemented-pending-confirmation. A diagnostics export from the
+affected machine after a cold boot would show what the device actually returns.
+
+### Game-Profile Exit Now Runs the Full Balanced Restore on the UI Thread ([#206](https://github.com/theantipopau/omencore/issues/206))
+
+Diagnosed, fixed and validated under real gaming load on a v4.3.1 build by the reporter (Karoth89,
+board `8BD4`); I checked their diagnosis against the code and applied it. On game exit,
+`RestoreDefaultSettingsAsync` set `FanControl.SelectedPreset` / `SystemControl.SelectedPerformanceMode`
+directly from the game-profile monitor's thread — WPF-bound properties, so it could throw
+`InvalidOperationException` mid-restore, and even when it didn't, selecting them isn't the full
+Balanced restore, so Performance mode could stay active with fans back on Auto. It now marshals
+onto the UI dispatcher and calls `GeneralViewModel.ApplyBalancedProfile()` (power mode, Auto cooling,
+runtime sync, persistence). Side effect worth knowing: that path also sets GPU Power Boost to Medium,
+as the Balanced profile always has. The dispatcher path itself has no test shim in this suite; a
+test covers the no-dispatcher case (returns cleanly instead of touching UI state).
+
+**Confirmed on the owner-verified `8D87` (OMEN MAX 16-ak0xxx, thermal policy V1).** Its log shows 149
+false watchdog failsafes and 150 "MAX mode reset sequence" runs in about seven hours. Each reset
+drops a user-selected Max hold back to BIOS Auto, which is exactly the report "I set MAX, but after a
+period it goes back to idle speeds". So this regression isn't limited to boards that lost fan control
+- it also silently cancelled Max on boards where fan control works. (The reporter's other complaint,
+quiet fans in Auto under a game, is the firmware-Auto under-cooling described in #189 and its design
+doc, not this bug.)
 
 ### Board `8CC0` (OMEN 16-ae0xxx, i7-14650HX + RTX 4060) Given an Exact Entry
 

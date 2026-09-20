@@ -158,6 +158,24 @@ namespace OmenCore.Services.KeyboardLighting
                     result.BackendReportedSuccess = _mcu.SetStaticColor(c.R, c.G, c.B);
                     _logging.Info($"[DojoPerKey] Uniform fill via mi_03: " +
                                   $"{(result.BackendReportedSuccess ? "accepted" : "REFUSED")}");
+
+                    // Field report (8D87, v4.3.1 log): after a full shutdown the MCU refused the mi_03
+                    // fill, and with nothing else tried the whole apply failed - the V2 engine then fell
+                    // back to the four-zone WMI ColorTable, which on this chassis only drives the light
+                    // bar, so the keyboard silently stopped changing while the light bar kept working.
+                    // mi_04 (HID LampArray) is a documented, admin-free way to paint the same keys, so
+                    // try it before giving up. Trade-off stated in the branch below: host control means
+                    // the picture won't be redrawn by the MCU after an Fn overlay. Only reached when the
+                    // preferred path already failed, so the working path is unchanged.
+                    if (!result.BackendReportedSuccess && _lamps != null && _lampMap.Count > 0)
+                    {
+                        TakeHostControl();
+                        ushort first = _lampMap.Min(l => l.LampId);
+                        ushort last = _lampMap.Max(l => l.LampId);
+                        result.BackendReportedSuccess = _lamps.SetRange(first, last, c.R, c.G, c.B, _brightness);
+                        _logging.Info($"[DojoPerKey] Uniform fill over lamps {first}-{last} (mi_04, after mi_03 refusal): " +
+                                      $"{(result.BackendReportedSuccess ? "accepted" : "REFUSED")}");
+                    }
                 }
                 else if (uniform && _lamps != null && _lampMap.Count > 0)
                 {

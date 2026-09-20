@@ -455,6 +455,54 @@ namespace OmenCoreApp.Tests.Services
                 "three consecutive confirmed-idle GPU readings should trigger the deep-idle cadence");
         }
 
+        private static (HardwareMonitoringService svc, System.Threading.CancellationTokenSource waiting) ServiceWithRegisteredSleep()
+        {
+            var logging = new LoggingService();
+            logging.Initialize();
+            var svc = new HardwareMonitoringService(new LibreHardwareMonitorBridge(), logging,
+                new MonitoringPreferences { LowOverheadMode = false }, new ResumeRecoveryDiagnosticsService());
+
+            // Stand in for the monitor loop's in-progress inter-sample sleep.
+            var cts = new System.Threading.CancellationTokenSource();
+            typeof(HardwareMonitoringService)
+                .GetField("_cadenceWaitCts", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .SetValue(svc, cts);
+            return (svc, cts);
+        }
+
+        [Fact]
+        public void CadenceAffectingModeChanges_CutTheMonitorLoopsCurrentSleepShort()
+        {
+            // v4.3.1 regression (field reports on 8A25/8BD4): the loop slept out its whole cadence
+            // before noticing a change, so with a 2-minute deep-idle sleep, opening the window or
+            // showing the OSD left stale/zero numbers for minutes. Every cadence-affecting setter
+            // must wake the loop.
+            foreach (var change in new System.Action<HardwareMonitoringService>[]
+            {
+                s => s.SetUiWindowActive(false),   // default is active, so this is a real change
+                s => s.SetTrayOnlyMode(true),
+                s => s.SetOverlayRealtimeMode(true),
+                s => s.SetLowOverheadMode(true),
+            })
+            {
+                var (svc, waiting) = ServiceWithRegisteredSleep();
+                change(svc);
+                waiting.IsCancellationRequested.Should().BeTrue("a real mode change must end the current sleep so the new cadence applies immediately");
+            }
+        }
+
+        [Fact]
+        public void RedundantModeSets_DoNotWakeTheLoop()
+        {
+            var (svc, waiting) = ServiceWithRegisteredSleep();
+
+            svc.SetUiWindowActive(true);          // already true
+            svc.SetTrayOnlyMode(false);           // already false
+            svc.SetOverlayRealtimeMode(false);    // already false
+
+            waiting.IsCancellationRequested.Should().BeFalse("setting a mode to its current value must not cause extra sampling");
+        }
+
         [Fact]
         public void DeepIdleCadence_StaysWellUnderTheWatchdogFreezeThreshold()
         {
