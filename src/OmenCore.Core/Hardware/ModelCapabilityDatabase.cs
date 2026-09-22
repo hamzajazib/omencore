@@ -2094,6 +2094,28 @@ namespace OmenCore.Hardware
             // ═══════════════════════════════════════════════════════════════════════════════════
             AddModel(new ModelCapabilities
             {
+                ProductId = "88ED",
+                ModelName = "HP Victus 16-e0xxx",
+                ModelNamePattern = "16-e0",
+                ModelYear = 2022,
+                Family = OmenModelFamily.Victus,
+                SupportsFanControlWmi = true,
+                SupportsFanCurves = true,
+                SupportsIndependentFanCurves = false,
+                FanZoneCount = 2,
+                HasMuxSwitch = false,
+                SupportsGpuPowerBoost = false,
+                SupportsUndervolt = false,
+                HasFourZoneRgb = false,
+                HasKeyboardBacklight = true,
+                AllowDecoupledWmiThermalPolicyFallback = true,
+                UserVerified = false,
+                Notes = "GitHub #209 — HP Victus 16-e0005np / ProductId 88ED, Ryzen 7 5800H + RTX 3050 Ti. Exact conservative sibling of 88EC/88EE added so model identity resolves by ProductId instead of low-confidence 16-e0 model-name pattern; flags mirror 88EC's (including the AllowDecoupledWmiThermalPolicyFallback fix, since 88EC needed it for Performance-mode switching to do anything at all) rather than granting anything new — no live capability probe or field-validation-script run from this board yet."
+            });
+
+            // ═══════════════════════════════════════════════════════════════════════════════════
+            AddModel(new ModelCapabilities
+            {
                 ProductId = "88EE",
                 ModelName = "HP Victus 16-e0194nw",
                 ModelNamePattern = "16-e0",

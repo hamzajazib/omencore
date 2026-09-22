@@ -707,6 +707,24 @@ namespace OmenCoreApp.Tests.Hardware
         }
 
         [Fact]
+        public void GetPreferredCapabilities_88ED_ResolvesExactly_WithFanControlAndFallbackKept()
+        {
+            var caps = ModelCapabilityDatabase.GetPreferredCapabilities("88ED", "Victus by HP Laptop 16-e0xxx");
+
+            caps.Should().NotBeNull();
+            caps!.ProductId.Should().Be("88ED", "GitHub #209 reports Baseboard ProductId 88ED");
+            caps.ModelNamePattern.Should().Be("16-e0");
+            caps.Family.Should().Be(OmenModelFamily.Victus);
+            caps.SupportsFanControlWmi.Should().BeTrue();
+            caps.SupportsFanCurves.Should().BeTrue();
+            caps.HasFourZoneRgb.Should().BeFalse("conservative until 88ED's own RGB hardware is field-verified");
+            caps.AllowDecoupledWmiThermalPolicyFallback.Should().BeTrue(
+                "sibling 88EC needed this for Performance-mode switching to do anything, since Direct EC writes are disabled on this family");
+            caps.UserVerified.Should().BeFalse("a support request with no diagnostics bundle isn't a field verification");
+            caps.Notes.Should().Contain("GitHub #209");
+        }
+
+        [Fact]
         public void GetPreferredCapabilities_88EE_ResolvesToExactVictusE0194nwMapping()
         {
             var caps = ModelCapabilityDatabase.GetPreferredCapabilities("88EE", "Victus by HP Laptop 16-e0xxx");
