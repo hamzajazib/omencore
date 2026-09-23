@@ -3584,18 +3584,21 @@ namespace OmenCore.ViewModels
 
         private void OnHotkeyToggleFanMode(object? sender, EventArgs e)
         {
-            _hotkeyCoordinator.EnqueueUiAction("ToggleFanMode", () =>
+            _hotkeyCoordinator.EnqueueUiAction("ToggleFanMode", async () =>
             {
                 if (FanControl == null) return;
 
                 var currentCycleMode = ResolveHotkeyFanCycleMode();
                 var nextMode = ResolveNextHotkeyFanMode(currentCycleMode, out var targetMode);
-                
+
                 try
                 {
-                    FanControl.ApplyFanMode(targetMode);
-
-                    var confirmedFanMode = _fanService.GetCurrentFanMode()
+                    // Awaited, not fire-and-forget (GitHub #199): ApplyFanMode's underlying write
+                    // runs on a background Task, so reading _fanService.GetCurrentFanMode()
+                    // immediately after it returned a stale mode - the OSD showed the mode the
+                    // fans were leaving, one hotkey press behind the one actually requested.
+                    var confirmedFanMode = await FanControl.ApplyFanModeAsync(targetMode)
+                        ?? _fanService.GetCurrentFanMode()
                         ?? _fanService.ActivePresetName
                         ?? nextMode;
 
