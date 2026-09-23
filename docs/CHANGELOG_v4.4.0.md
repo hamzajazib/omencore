@@ -285,6 +285,35 @@ resolved to it. Reporter's own diagnostics confirmed a `fa1082wm` unit — a 202
 here, which the name flatly contradicted. The `15-fa1` name pattern spans more than one year and
 can't tell them apart, so it no longer asserts one; capability flags are unchanged. 1 new test.
 
+### Three Fixes Found by Cross-Checking Ohman's Last Week of Releases Against Our Code
+
+Ohman (the alternative OMEN Gaming Hub replacement) shipped v1.0.6 → v1.2.1 between 2026-09-15 and
+09-22. Each fix was checked against OmenCore's own code; three matched real bugs here. Ohman's
+repository carries no licence, so nothing was copied — these are OmenCore's own implementations of
+the same findings.
+
+- **Max could be accepted by the firmware and silently ignored, forever.** When Max-mode telemetry
+  dropped, OmenCore re-sent `SetFanMax(true)` and only fell back to writing the top fan level if that
+  command *returned false*. Ohman found boards (`8A26`, `8E5E`) where the firmware accepts Max and
+  does nothing; our own `#178` bundle for `8E5E` fits (Guided Fan Verification failed at CPU@100%).
+  Two consecutive accepted-but-ineffective reasserts now escalate to the level-ceiling write that
+  already existed for the refused case. **Pending field confirmation** on an affected board.
+- **Auto → Max → quit within 5 seconds could leave the firmware holding Max after exit.** The
+  auto-restore's reset cooldown (meant to stop repeated resets hammering the firmware) also skipped
+  the `SetFanMax(false)` step, then marked Max inactive anyway. A live Max now always gets its reset.
+- **The tray's refresh-rate shortcuts changed the external monitor on a docked laptop.** Carried
+  forward since v4.3.1 as "needs a docked rig". The root cause turned out to be visible in code:
+  every tray action passed no device, which Windows reads as "primary display". The built-in panel
+  is now found through the Windows display-configuration API's output-technology field (embedded
+  DisplayPort / internal / LVDS); if none is active (lid closed, desktop) behavior is unchanged. The
+  live query needs real display hardware; tests pin the classification and the marshalled struct
+  sizes it depends on. Still wants a docked-laptop confirmation.
+
+Checked and **not** affected: Ohman's dark spacebar/Copilot keys on OMEN MAX 16 (our measured `8D87`
+layout covers all 176 LEDs; Ohman painted through the 120-lamp interface), its battery-time firmware
+handoff on the Transcend 14 (OmenCore only switches user-chosen presets on AC/battery), and its
+thermal guard lowering already-faster fans (OmenCore has refused to since bug fix #32).
+
 ### Log Buffer No Longer Rebuilds the Entire Displayed Buffer on Every Single Log Line
 
 Picked up standalone from community [PR #147](https://github.com/theantipopau/omencore/pull/147) —
@@ -304,7 +333,6 @@ original code was wrapped in a WPF `Dispatcher.BeginInvoke` this test suite has 
 - **[#198](https://github.com/theantipopau/omencore/issues/198) — remaining question after the fix above.** Why did this board's WMI BIOS CPU-temperature path get rejected in the first place this session, forcing the fallback chain all the way down through LHM to a broken ACPI zone? Board has no exact database entry yet (resolves via generic Family fallback; the `RequiredCpuVendor` guard correctly prevents it from inheriting the AMD-only `8C2F` profile a sibling board with the same WMI name pattern uses — verified working as intended, not a suspect here).
 - **HP WMI command `0x23`'s sensor-index semantics — now backed by two independent sources, and diagnostics can finally collect the evidence.** Flagged last cycle from Ohman's decompiled OGH device-library strings (`0=IR, 1=Ambient, 2=PCH, 3=VR`). An unrelated, independently-researched community report on `#189` (board `8D87`) reverse-engineered the same firmware command and confirmed index 0 = IR used as Gaming Hub's own fan-curve input — and found no Linux ACPI zone exposes the same reading on that board. The new `wmi-temperature-sensors.txt` diagnostic (above) is the first step toward answering whether OmenCore's own CPU/GPU indices (currently 1/2, per OmenMon's convention) are right for every board this project supports, or only some — no code changed on the indices themselves yet, deliberately, pending real per-board evidence.
 - **Opt-in automatic software fan-curve controller for boards where firmware Auto under-cools (`#189`).** Deferred last cycle for "a dedicated design pass"; now considerably de-risked — the reporter has since built and shared a working reference daemon (`omen-fanctl`) on top of an already-extracted factory fan-curve table and WMI payload format. Still needs OmenCore's own model-allowlist, curve-validation, and crash-safe-recovery design before any code lands.
-- **Tray icon's refresh-rate menu targeting the wrong display when docked** — carried forward from v4.3.1, still blocked on hardware/reporter evidence neither cycle has had.
 - **Board `8D87`'s RTX 5080 stays capped near 80-105 W in Performance mode; OMEN Gaming Hub and third-party tools reach 175 W** (Discord, papap). Not guesswork here — `docs/8D87-OMEN-MAX-16-SUPPORT-PLAN.md` already reverse-engineered the exact mechanism: two EC bits (`OGHP`, `PROH`) gate a configurable-TGP adder that OmenCore has never driven. The same investigation found a real hazard: forcing the unlock on an undersized adapter left the GPU in a degraded state that persisted after the manipulation stopped and only cleared on reboot, on hardware with a history of power-related BSODs. Not implemented pending a deliberate, explicit-opt-in, adapter-wattage-proportional design (the doc's own T3 plan) rather than a blind unlock — this needs a dedicated pass, not a quick patch.
 
 ---

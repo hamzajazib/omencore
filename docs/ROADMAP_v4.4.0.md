@@ -134,9 +134,33 @@ convention. Writes nothing to the firmware, changes no existing temperature-read
 purely so the next round of field reports can finally carry the evidence needed to answer the
 question with data instead of guessing.
 
+### Everything Landed 2026-09-20 → 09-23 (detail in `CHANGELOG_v4.4.0.md`)
+
+- **Three v4.3.1 regressions** (V0 SystemDesignData bit disabling fan control on 7+ boards; 2-min
+  cadence tripping the 90s watchdog; un-wakeable monitor loop) — fixed, tests from real bytes.
+  Re-confirmed live on 4.3.1 in `#191` (8C9C: 90-106s stall cycle, one 96°C emergency) and `#199`
+  (8BA9: 257/155/253/35 "frozen" events per log). Still only on `main`; **no hotfix cut yet.**
+- **Worker crash on hot-plugged unpartitioned drives** (`#199`) — LHM storage/SMART off by default.
+- **PR #176 ported** (8D87 lighting, AMD SMU four-limit write + readback, iGPU CO family gate,
+  WMI process-trace subscription, worker path under single-file publish, two CI jobs), plus both
+  defects the v4.3.0 review of it flagged (effect freeze after backlight toggle; iGPU slider on
+  parts that always refuse). PR #196 merged; PR #200 re-implemented; PR #150 already adopted.
+- **Ohman v1.0.6–v1.2.1 cross-check:** ignored-Max escalation, Max latched after quick exit,
+  tray refresh-rate targeting the internal panel. Three other Ohman fixes checked, not affected.
+- **Boards:** `8CC0`, `8DD0`, `88ED` added; `8E35` WMI policy fallback on after `#195`'s controlled
+  0.0 W test (awaiting re-test); `8BB1` Victus side no longer claims "(2022)" (`#202`).
+- **`#206`** game-exit restore marshalled to the UI thread (reporter's tested fix).
+
 ---
 
 ## Open Investigations
+
+### Board `8D87` GPU TGP capped at 80–105 W where OGH / Ohman reach 175 W (Discord, papap)
+
+Fully explained by `docs/8D87-OMEN-MAX-16-SUPPORT-PLAN.md` (`OGHP`/`PROH` EC bits gating the
+configurable-TGP adder, never driven by OmenCore). Not implemented: the same investigation found a
+forced unlock on an undersized adapter left the GPU degraded until reboot. Needs the doc's T3 design
+(explicit opt-in, adapter-wattage-proportional cap, rollback) and an owner decision before any code.
 
 ### #198 follow-up — why did WMI BIOS temperature get rejected in the first place?
 
@@ -233,11 +257,11 @@ toast wording) are done — see Done above.
 
 ### Carried forward, still blocked on evidence neither cycle has had
 
-- Tray icon's refresh-rate menu targeting the wrong display when docked — needs a docked-laptop-
-  with-external-primary rig to verify any fix against.
-- Board `8E35`'s family (`8D24`/`8E35`/`8D26`) possibly not applying any power-limit change on a
-  Performance-mode switch (`AllowDecoupledWmiThermalPolicyFallback` gap) — needs a before/after
-  wattage reading from `#195`'s reporter, not yet received.
+- ~~Tray refresh-rate targeting the wrong display when docked~~ — fixed 2026-09-23 via internal-panel
+  detection; still wants one docked-laptop confirmation.
+- ~~`8E35` Performance mode applying nothing~~ — evidence received (`#195`, 0.0 W), flag enabled
+  2026-09-23; awaiting the reporter's re-test. Siblings `8D24`/`8D26` deliberately unchanged until
+  someone on those boards shows the same trace.
 
 ---
 
