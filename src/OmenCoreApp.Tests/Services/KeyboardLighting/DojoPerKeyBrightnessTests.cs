@@ -73,5 +73,34 @@ namespace OmenCoreApp.Tests.Services.KeyboardLighting
                 previous = current;
             }
         }
+
+        [Fact]
+        public void Brightness_DoesNotRepaintMap_OverARunningEffect_AfterBlankAndUnblank()
+        {
+            // v4.3.0's review of PR #176: paint a picture, apply a device effect, blank, unblank.
+            // Unblanking used to rebuild "is the map showing" from "was a map ever painted", which
+            // said yes - so the next brightness change re-sent the stale map and froze the effect.
+            // The effect clears mapIsBasePicture; a blank/unblank no longer touches it.
+            DojoPerKeyBackend.ShouldRepaintMapForBrightness(
+                mapIsBasePicture: false, backlightBlanked: false, mapExists: true)
+                .Should().BeFalse("a device effect is the base picture, even though an older map still exists");
+        }
+
+        [Fact]
+        public void Brightness_DoesNotRepaintMap_WhileBlanked()
+        {
+            // The colour frame carries 0x09 payload 0x01, so repainting would light the keyboard.
+            DojoPerKeyBackend.ShouldRepaintMapForBrightness(
+                mapIsBasePicture: true, backlightBlanked: true, mapExists: true)
+                .Should().BeFalse();
+        }
+
+        [Fact]
+        public void Brightness_RepaintsMap_WhenItIsTheLitBasePicture()
+        {
+            DojoPerKeyBackend.ShouldRepaintMapForBrightness(
+                mapIsBasePicture: true, backlightBlanked: false, mapExists: true)
+                .Should().BeTrue();
+        }
     }
 }

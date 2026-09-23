@@ -84,11 +84,23 @@ namespace OmenCore.Services.KeyboardLighting
         private byte[]? _mapR, _mapG, _mapB;
 
         /// <summary>
-        /// Whether <see cref="_mapR"/> is what the keyboard is drawing right now. False once an
-        /// effect, host lamp ownership or a blank has taken the display, and it is what stops a
-        /// brightness change from yanking a running animation back to a stale static frame.
+        /// Whether <see cref="_mapR"/> is the MCU's current base picture - what it draws whenever
+        /// the backlight is lit. False once an effect or host lamp ownership has taken the display,
+        /// and it is what stops a brightness change from yanking a running animation back to a
+        /// stale static frame. Deliberately NOT cleared by a blank: see <see cref="_backlightBlanked"/>.
         /// </summary>
         private bool _mcuShowsHostMap;
+
+        /// <summary>
+        /// Whether the backlight is currently off via the MCU's own blank.
+        ///
+        /// Kept separate from <see cref="_mcuShowsHostMap"/> on purpose. They used to be one flag,
+        /// and turning the backlight back on had to reconstruct "was the map showing" from
+        /// <c>_mapR != null</c> - which only says a map was EVER painted. Paint, apply a device
+        /// effect, blank, unblank: that guess said "map", the next brightness change re-sent it,
+        /// and the running effect froze into a stale still. Flagged in the v4.3.0 review of PR #176.
+        /// </summary>
+        private bool _backlightBlanked;
 
         private const int ZoneCountConst = 4;
 
@@ -337,7 +349,8 @@ namespace OmenCore.Services.KeyboardLighting
             // unconditionally would take the display away from a running device effect and freeze
             // it into a static frame - so asking to dim an animation would silently stop it, which
             // is not what anyone means by a brightness change.
-            if (_mcuShowsHostMap && _mapR != null && _mapG != null && _mapB != null)
+            if (ShouldRepaintMapForBrightness(_mcuShowsHostMap, _backlightBlanked, _mapR != null) &&
+                _mapR != null && _mapG != null && _mapB != null)
             {
                 repainted = WriteColorMap(_mapR, _mapG, _mapB);
             }
@@ -370,7 +383,9 @@ namespace OmenCore.Services.KeyboardLighting
                 // A blanked keyboard is not displaying the map even though the MCU still holds it.
                 // Without this a brightness change would re-send the map - and the colour write
                 // carries command 0x09 payload 0x01, so it would turn the backlight back on.
-                if (toggled) _mcuShowsHostMap = enabled && _mapR != null;
+                // Only the blank flag moves here; whether the map or an effect is the base picture
+                // is unchanged by a blank, so unblanking needs no guess about it.
+                if (toggled) _backlightBlanked = !enabled;
 
                 return Task.FromResult(toggled);
             }
@@ -586,6 +601,14 @@ namespace OmenCore.Services.KeyboardLighting
         }
 
         /// <summary>
+        /// Whether a brightness change may re-send the retained colour map: only when that map is
+        /// the MCU's base picture, a map exists, and the backlight is lit. A blanked keyboard must
+        /// stay dark (the colour frame would light it), and a device effect must keep running.
+        /// </summary>
+        internal static bool ShouldRepaintMapForBrightness(bool mapIsBasePicture, bool backlightBlanked, bool mapExists) =>
+            mapIsBasePicture && !backlightBlanked && mapExists;
+
+        /// <summary>
         /// Scale one colour channel by the brightness setting, the way mi_04's intensity channel
         /// scales a lamp: linear, and rounded to nearest rather than truncated so a dim picture
         /// does not lose a step to integer division at every level.
@@ -637,6 +660,9 @@ namespace OmenCore.Services.KeyboardLighting
                 // the lamps this map is a base layer for the Fn overlay to restore to, not what
                 // is on the keyboard now, and brightness must repaint the lamps instead.
                 _mcuShowsHostMap = release && !_hostOwnsLamps;
+
+                // The colour frame carries 0x09 payload 0x01, which lights a blanked keyboard.
+                _backlightBlanked = false;
             }
             return ok;
         }

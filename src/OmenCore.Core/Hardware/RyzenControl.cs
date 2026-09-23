@@ -95,16 +95,27 @@ namespace OmenCore.Hardware
 
         /// <summary>
         /// Check if this CPU supports iGPU Curve Optimizer.
+        ///
+        /// Two gates, both required: the CPU-name allowlist (parts OmenCore has chosen to expose the
+        /// control on) AND <see cref="AmdUndervoltProvider.FamilySupportsIgpuCurveOptimizer"/> (families
+        /// with a cited iGPU CO message). The name list alone let Strix Halo ("RYZEN AI MAX") and
+        /// Dragon Range (7945H/7845H) show a slider whose every write SetIgpuCO then refuses with
+        /// UnknownCmd - a control that cannot move. The intersection only removes parts; it never
+        /// adds one, so no CPU gains an iGPU CO write it did not already have.
         /// </summary>
         public static bool SupportsIgpuUndervolt()
         {
             if (!_initialized) Init();
-            
-            return CpuName.Contains("RYZEN AI MAX", StringComparison.OrdinalIgnoreCase) ||
-                   CpuName.Contains("6900H", StringComparison.OrdinalIgnoreCase) ||
-                   CpuName.Contains("7945H", StringComparison.OrdinalIgnoreCase) ||
-                   CpuName.Contains("7845H", StringComparison.OrdinalIgnoreCase);
+
+            return IsOnIgpuUndervoltNameAllowlist(CpuName) &&
+                   AmdUndervoltProvider.FamilySupportsIgpuCurveOptimizer(Family);
         }
+
+        internal static bool IsOnIgpuUndervoltNameAllowlist(string cpuName) =>
+            cpuName.Contains("RYZEN AI MAX", StringComparison.OrdinalIgnoreCase) ||
+            cpuName.Contains("6900H", StringComparison.OrdinalIgnoreCase) ||
+            cpuName.Contains("7945H", StringComparison.OrdinalIgnoreCase) ||
+            cpuName.Contains("7845H", StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
         /// Get full CPU info for display.

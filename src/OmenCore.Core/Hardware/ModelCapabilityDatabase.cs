@@ -859,8 +859,9 @@ namespace OmenCore.Hardware
                 SupportsGpuPowerBoost = true,
                 HasFourZoneRgb = true,
                 SupportsUndervolt = false,
+                AllowDecoupledWmiThermalPolicyFallback = true,
                 UserVerified = false,
-                Notes = "Community reports: OMEN Gaming Laptop 16-ap0xxx / ProductId 8E35, including Ryzen AI 9 365 + RTX 5060 and Ryzen 9 8940HX + RTX 5060 (system SKU BP1Q1UA#ABA; system product identifying number 1H85430PWY). Same WMI V1 fan profile as 8D24; EC direct remains disabled until validated."
+                Notes = "Community reports: OMEN Gaming Laptop 16-ap0xxx / ProductId 8E35, including Ryzen AI 9 365 + RTX 5060 and Ryzen 9 8940HX + RTX 5060 (system SKU BP1Q1UA#ABA; system product identifying number 1H85430PWY). Same WMI V1 fan profile as 8D24; EC direct remains disabled until validated. GitHub #195 ran a controlled Quiet-vs-Performance test confirming Direct EC writes are disabled AND the WMI thermal-policy fallback was not attempted (AllowDecoupledWmiThermalPolicyFallback was off), matching a 0.0 W CPU package power difference between modes - Performance mode was doing nothing on this board. Enabled here so Performance mode has a path to actually change anything; narrowly conditioned in PerformanceModeService on EC limits being unavailable, so it can't override a working EC path. Awaiting a re-run of the same controlled test on this change to confirm it moves CPU power."
             });
 
             // OMEN 16 (2025) - ap0xxx AMD, lower CPU/GPU tier of the same board family.
@@ -1508,9 +1509,15 @@ namespace OmenCore.Hardware
             AddModel(new ModelCapabilities
             {
                 ProductId = "8BB1-VICTUS15",
-                ModelName = "HP Victus 15-fa1xxx (2022)",
+                // GitHub #202: this board is not year-specific. Reporter's diagnostics resolved
+                // here (WMI model "Victus by HP Gaming Laptop 15-fa1xxx", Baseboard ProductId 8BB1)
+                // on a laptop confirmed by its own model number (fa1082wm) to be a 2024 unit, not
+                // 2022 - the hardcoded "(2022)" this entry used to carry was simply wrong for their
+                // machine. The 15-fa1 name-pattern match cannot distinguish which year of that
+                // range it is looking at, so the name no longer claims one; the capability flags
+                // below are unchanged and were never year-dependent.
+                ModelName = "HP Victus 15-fa1xxx",
                 ModelNamePattern = "15-fa1",
-                ModelYear = 2022,
                 Family = OmenModelFamily.Victus,
                 SupportsFanControlWmi = true,
                 SupportsFanCurves = true,
@@ -1522,7 +1529,7 @@ namespace OmenCore.Hardware
                 HasKeyboardBacklight = true,
                 SupportsUndervolt = false,
                 UserVerified = false,
-                Notes = "Victus 15-fa1xxx — single-color backlight; shares 8BB1 product ID with OMEN 17 (2021)"
+                Notes = "Victus 15-fa1xxx — single-color backlight; shares 8BB1 product ID with OMEN 17 (2021). Spans multiple model years (GitHub #202 confirms a 2024 fa1082wm unit resolves here), so no specific year is claimed."
             });
 
             // GitHub #178: HP Victus 15-fa2303TX (C2JQ3PA), exact ProductId 8E5E. Reporter's own

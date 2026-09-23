@@ -120,9 +120,7 @@ namespace OmenCore.Hardware
 
                 if (igpuCO != 0 && !_cpuInfo.SupportsIgpuUndervolt)
                 {
-                    _lastIgpuSkipReason =
-                        $"The iGPU Curve Optimizer offset was requested but not written: OmenCore has no confirmed " +
-                        $"iGPU CO message for {_cpuInfo.CpuName}, so only the all-core offset was applied.";
+                    _lastIgpuSkipReason = DescribeIgpuSkip(_cpuInfo.CpuName, _cpuInfo.Family);
                 }
                 else if (igpuCO != 0)
                 {
@@ -397,6 +395,20 @@ namespace OmenCore.Hardware
             // which withholds set_cogfx from Strix Point, has it right.
             _ => false
         };
+
+        /// <summary>
+        /// Why an iGPU CO request was dropped before any SMU message, worded for the two different
+        /// reasons that can happen. A family upstream does map (e.g. Phoenix, PSMU 0xB7) but that
+        /// OmenCore has not enabled is not the same fact as a family with no known message at all,
+        /// and the old text told Phoenix/Hawk Point owners the latter.
+        /// </summary>
+        internal static string DescribeIgpuSkip(string cpuName, RyzenFamily family) =>
+            FamilySupportsIgpuCurveOptimizer(family)
+                ? $"The iGPU Curve Optimizer offset was requested but not written: the {family} family has an " +
+                  $"upstream iGPU CO message, but OmenCore has not validated it on {cpuName} yet, so only the " +
+                  "all-core offset was applied."
+                : $"The iGPU Curve Optimizer offset was requested but not written: there is no confirmed iGPU CO " +
+                  $"message for the {family} family ({cpuName}), so only the all-core offset was applied.";
 
         private RyzenSmu.SmuStatus SetIgpuCO(int value)
         {

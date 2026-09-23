@@ -2,9 +2,13 @@
 
 **Release Date:** TBD — just started, nothing shipped yet. Rolling changelog, updated as work lands.
 **Release Status:** In progress. Started 2026-09-16, one day after v4.3.1 shipped.
-**Type:** TBD — currently two field reports, one a straightforward model-database addition and one
-a real, still-open fan/thermal-telemetry investigation. Scope will grow from here the same way past
-cycles have; see the roadmap for full detail as it develops.
+**Type:** Grown well past the original two field reports. Now includes three real v4.3.1 regressions
+(fan control disabled on V0-thermal-policy boards, a watchdog/cadence conflict forcing fans to 90%
+every two minutes, a monitor loop that couldn't be woken) affecting at least seven distinct boards,
+a hardware-worker crash on hot-plugged drives, a large community-contributed port covering 8D87
+keyboard lighting and AMD SMU power-limit corrections, and a handful of model-database identity
+fixes. A hotfix release before the rest of 4.4.0 ships is under consideration given how many users
+the regressions affect. See the roadmap for full detail.
 **Base Version:** v4.3.1
 **Tracking doc:** `docs/ROADMAP_v4.4.0.md` — full investigation detail, rejected options, and evidence trails live there; this file stays short.
 
@@ -185,6 +189,102 @@ limit. It's neither — it's a separate, informational-only threshold with no co
 reply after the fact; the toast and in-app notification history now say so directly, at the moment
 the confusion would actually happen, instead of only after someone asks.
 
+### A Hot-Plugged Unpartitioned Drive Could Crash the Entire Hardware Worker
+
+[#199](https://github.com/theantipopau/omencore/issues/199)'s field bundle showed
+`WORKER CRASH: NullReferenceException` inside LibreHardwareMonitor's SMART backend
+(`DiskInfoToolkit.Smart.SmartAttributeHandler.CheckSmartAttributeCorrect`, via
+`StorageManager.HandleUnpartitionedDrive`) — a background hot-plug listener thread the library
+spins up internally once storage monitoring is enabled, outside any of our own try/catch. An
+unhandled exception there is fatal to the whole worker process, not just SSD-temperature readback,
+so something as ordinary as plugging in a USB drive Windows sees as unpartitioned could take down
+live fan/temperature telemetry until the worker respawned. Storage/SMART monitoring is off by
+default now; the only cost is the SSD-temperature warning, which wasn't feeding any fan logic.
+
+### Community PR #176 Ported: 8D87 Keyboard Lighting, AMD SMU Corrections, a Universal WMI Process-Monitor Fix
+
+From tempestnano — an exceptionally well-evidenced PR, re-applied by hand rather than merged
+because every file it touched had since moved from `src/OmenCoreApp` to `src/OmenCore.Core` (the
+project-extraction refactor happened after it was branched). Four independent tracks, all measured
+on `8D87` (OMEN MAX 16-ak0098nr) except the last:
+
+- **Per-key keyboard brightness was a no-op.** `_brightness` was written on the per-key path and
+  never read — now host-side arithmetic scales the colour map on its way to the MCU, separate from
+  the per-cell level a user can paint into one key. Windows Dynamic Lighting silently repaints the
+  keyboard within 33ms of OmenCore releasing host control (it's the second owner of the device and
+  wins whenever nothing else holds it) — now reported read-only rather than fought over. New
+  Fn+1/Fn+2 cycle staging matches measured firmware behavior (duplicate effect types collapse to
+  the later one at the earlier position; the "Showing" profile is written last). This session's own
+  unconfirmed mi_04 fallback (for when the MCU refuses a uniform fill at runtime, from a separate
+  8D87 Discord report) is preserved and stays explicitly flagged as unconfirmed, distinct from this
+  PR's hardware-measured claims.
+- **"Apply AMD Limits" only ever sent the STAPM message**, which returns `Ok` on Strix Point and
+  moves nothing. Now writes all four limits and verifies by reading the SMU's own power-metrics
+  table back (read-only, measured index layout for table version `0x5D000B`). iGPU Curve Optimizer
+  was being sent to Strix Point, Strix Halo and Mendocino, none of which upstream RyzenAdj supports
+  there — now gated to the families that actually accept it, returning "unknown command" elsewhere
+  instead of a write measured to do nothing. Strix Halo's MP1 mailbox address moved to the correct
+  address set per two independent implementations agreeing (RyzenAdj, UXTU) — **not verified on
+  real Strix Halo hardware**, flagged as such in the code.
+- **Game-launch detection was polling the entire process table twice a second inside
+  `WmiPrvSE.exe`**, invisible to Task Manager's view of our own process — measured at 14.2% of a
+  core continuously. Not board-specific; every install paid this. Switched from the intrinsic WMI
+  event classes (which have no real notification source and are serviced by full re-enumeration) to
+  the extrinsic, kernel-pushed `Win32_ProcessStartTrace`/`Win32_ProcessStopTrace` — measured at 2.6%
+  of a core after.
+- **The hardware worker silently failed to start on exactly the builds users install.** A
+  self-contained single-file publish points `AppDomain.CurrentDomain.BaseDirectory` at a temp
+  extraction directory, not the real exe directory, so the worker lookup failed quietly (logged
+  only at `Debug`) and telemetry degraded to slower in-process readings. Now tries the running exe's
+  own directory first.
+
+**Two bugs from the v4.3.0 review of this PR, fixed after the port.** That review (in
+`ROADMAP_v4.3.0.md`) recommended against merging as-is over two specific defects, and I ported the
+PR before re-reading it — both had survived:
+
+- **A device effect could freeze into a still frame after a backlight toggle.** Unblanking rebuilt
+  "is the painted map what's showing" from `_mapR != null`, which only says a map was *ever*
+  painted. Paint → apply an effect → backlight off → on → change brightness re-sent the stale map
+  over the running effect. The blank is now its own flag, so a blank/unblank never changes which
+  picture is the base. Tested at the decision point; the device end has no colour readback.
+- **The iGPU Curve Optimizer slider was shown on CPUs where every write is refused.** A stale
+  CPU-name allowlist (`RYZEN AI MAX`, `7945H`, `7845H`, `6900H`) ran ahead of the new cited family
+  table, so Strix Halo and Dragon Range showed a slider `SetIgpuCO` always rejects. It's now the
+  intersection of both lists — narrowing only, no CPU gains a write it didn't have. Phoenix/Hawk
+  Point owners were also told there's "no confirmed iGPU CO message" for their CPU, which is false
+  (upstream maps PSMU `0xB7`); the reason now says OmenCore hasn't validated it yet.
+
+Also fixes two CI jobs that were red independently of this work: `linux-qa.yml` pointed at the
+Windows-only solution and had never once passed on Linux; `GameLibraryViewModelTests` was flaky on
+a bare CI runner with no game platforms installed. Full suite: 1476 → 1592 passing (including the review fixes above).
+
+### Board `88ED` (HP Victus 16-e0005np, Ryzen 7 5800H + RTX 3050 Ti) Given an Exact Entry
+
+[#209](https://github.com/theantipopau/omencore/issues/209): exact conservative sibling of
+`88EC`/`88EE`, resolving by ProductId instead of the low-confidence `16-e0` name pattern. Flags
+mirror `88EC`'s, including the WMI thermal-policy fallback that board needed for Performance mode
+to do anything at all — nothing granted beyond that. 1 new test.
+
+### Board `8E35`: WMI Thermal-Policy Fallback Enabled After a Controlled Before/After Test
+
+[#195](https://github.com/theantipopau/omencore/issues/195) (WoofahRayetCode) ran the exact
+controlled test this was waiting on: Quiet vs Performance CPU package power, with the Apply Trace
+confirming Direct EC writes are disabled and the WMI thermal-policy fallback was never attempted —
+a 0.0 W difference between modes. Performance mode was doing nothing on this board.
+`AllowDecoupledWmiThermalPolicyFallback` is now enabled, the same fallback `88EC`/`8CC0` needed for
+the same "EC disabled, no fallback" shape. Narrowly conditioned (only engages when EC limits are
+unavailable), so it can't override a working EC path elsewhere. **Awaiting a re-run of the same
+controlled test to confirm it actually moves CPU power** rather than just being attempted. 1 new
+test.
+
+### Board `8BB1` (Victus 15-fa1xxx): No Longer Claims a Specific Model Year
+
+[#202](https://github.com/theantipopau/omencore/issues/202): the ambiguous-ProductId entry for
+this board's Victus side hardcoded "(2022)" into its name regardless of which year actually
+resolved to it. Reporter's own diagnostics confirmed a `fa1082wm` unit — a 2024 model — resolving
+here, which the name flatly contradicted. The `15-fa1` name pattern spans more than one year and
+can't tell them apart, so it no longer asserts one; capability flags are unchanged. 1 new test.
+
 ### Log Buffer No Longer Rebuilds the Entire Displayed Buffer on Every Single Log Line
 
 Picked up standalone from community [PR #147](https://github.com/theantipopau/omencore/pull/147) —
@@ -204,6 +304,7 @@ original code was wrapped in a WPF `Dispatcher.BeginInvoke` this test suite has 
 - **[#198](https://github.com/theantipopau/omencore/issues/198) — remaining question after the fix above.** Why did this board's WMI BIOS CPU-temperature path get rejected in the first place this session, forcing the fallback chain all the way down through LHM to a broken ACPI zone? Board has no exact database entry yet (resolves via generic Family fallback; the `RequiredCpuVendor` guard correctly prevents it from inheriting the AMD-only `8C2F` profile a sibling board with the same WMI name pattern uses — verified working as intended, not a suspect here).
 - **HP WMI command `0x23`'s sensor-index semantics — now backed by two independent sources, and diagnostics can finally collect the evidence.** Flagged last cycle from Ohman's decompiled OGH device-library strings (`0=IR, 1=Ambient, 2=PCH, 3=VR`). An unrelated, independently-researched community report on `#189` (board `8D87`) reverse-engineered the same firmware command and confirmed index 0 = IR used as Gaming Hub's own fan-curve input — and found no Linux ACPI zone exposes the same reading on that board. The new `wmi-temperature-sensors.txt` diagnostic (above) is the first step toward answering whether OmenCore's own CPU/GPU indices (currently 1/2, per OmenMon's convention) are right for every board this project supports, or only some — no code changed on the indices themselves yet, deliberately, pending real per-board evidence.
 - **Opt-in automatic software fan-curve controller for boards where firmware Auto under-cools (`#189`).** Deferred last cycle for "a dedicated design pass"; now considerably de-risked — the reporter has since built and shared a working reference daemon (`omen-fanctl`) on top of an already-extracted factory fan-curve table and WMI payload format. Still needs OmenCore's own model-allowlist, curve-validation, and crash-safe-recovery design before any code lands.
-- **Tray icon's refresh-rate menu targeting the wrong display when docked**, and **board `8E35`'s family possibly not applying any power-limit change on a Performance-mode switch** — both carried forward from v4.3.1, still blocked on hardware/reporter evidence neither cycle has had.
+- **Tray icon's refresh-rate menu targeting the wrong display when docked** — carried forward from v4.3.1, still blocked on hardware/reporter evidence neither cycle has had.
+- **Board `8D87`'s RTX 5080 stays capped near 80-105 W in Performance mode; OMEN Gaming Hub and third-party tools reach 175 W** (Discord, papap). Not guesswork here — `docs/8D87-OMEN-MAX-16-SUPPORT-PLAN.md` already reverse-engineered the exact mechanism: two EC bits (`OGHP`, `PROH`) gate a configurable-TGP adder that OmenCore has never driven. The same investigation found a real hazard: forcing the unlock on an undersized adapter left the GPU in a degraded state that persisted after the manipulation stopped and only cleared on reboot, on hardware with a history of power-related BSODs. Not implemented pending a deliberate, explicit-opt-in, adapter-wattage-proportional design (the doc's own T3 plan) rather than a blind unlock — this needs a dedicated pass, not a quick patch.
 
 ---

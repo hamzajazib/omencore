@@ -334,6 +334,19 @@ namespace OmenCoreApp.Tests.Hardware
             caps.SupportsUndervolt.Should().BeFalse();
         }
 
+        [Fact]
+        public void GetCapabilities_8E35_AllowsDecoupledWmiThermalPolicyFallback()
+        {
+            // GitHub #195 ran a controlled Quiet-vs-Performance test showing a 0.0 W CPU package
+            // power difference, with the Apply Trace confirming Direct EC writes are disabled and
+            // the WMI thermal-policy fallback was never attempted - Performance mode changed
+            // nothing on this board. Enabling this flag gives it the same fallback path 88EC/8CC0
+            // already have for the same "EC disabled, no fallback" shape.
+            var caps = ModelCapabilityDatabase.GetCapabilities("8E35");
+
+            caps.AllowDecoupledWmiThermalPolicyFallback.Should().BeTrue();
+        }
+
         // GitHub #130/#171: was resolving via OMEN17 family fallback ("Model not in database").
         // MaxFanLevel is pinned at 45 (not the sibling boards' nominal 55) because #171's own
         // Guided Fan Verification measured this exact board's real Max-hold ceiling at 45 -
@@ -619,6 +632,19 @@ namespace OmenCoreApp.Tests.Hardware
             caps!.ProductId.Should().Be("8BB1-VICTUS15");
             caps.Family.Should().Be(OmenModelFamily.Victus);
             ModelCapabilityDatabase.IsAmbiguousProductId("8BB1").Should().BeTrue();
+        }
+
+        [Fact]
+        public void GetPreferredCapabilities_Ambiguous8Bb1_DoesNotClaimASpecificYear()
+        {
+            // GitHub #202: the entry used to say "(2022)" unconditionally, which was simply wrong
+            // for a reporter's confirmed 2024 fa1082wm unit - the 15-fa1 name pattern spans more
+            // than one year and cannot tell them apart, so it should not assert one.
+            var caps = ModelCapabilityDatabase.GetPreferredCapabilities("8BB1", "Victus by HP Gaming Laptop 15-fa1xxx");
+
+            caps.Should().NotBeNull();
+            caps!.ModelName.Should().NotContain("(2022)");
+            caps.ModelName.Should().NotContain("(2024)");
         }
 
         /// <summary>

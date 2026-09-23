@@ -351,5 +351,41 @@ namespace OmenCoreApp.Tests.Hardware
 
             return null;
         }
+
+        [Theory]
+        [InlineData("AMD RYZEN AI MAX+ 395 w/ Radeon 8060S", RyzenFamily.StrixHalo)]
+        [InlineData("AMD Ryzen 9 7945HX with Radeon Graphics", RyzenFamily.RaphaelDragonRange)]
+        [InlineData("AMD Ryzen 7 7845HX with Radeon Graphics", RyzenFamily.RaphaelDragonRange)]
+        public void IgpuSlider_IsNotOffered_WhereEveryWriteWouldBeRefused(string cpuName, RyzenFamily family)
+        {
+            // These names are on the iGPU CO allowlist, but SetIgpuCO has no cited message for their
+            // family and returns UnknownCmd - so showing the slider would offer a control that
+            // cannot move. The gate is the intersection of both lists.
+            RyzenControl.IsOnIgpuUndervoltNameAllowlist(cpuName).Should().BeTrue();
+            AmdUndervoltProvider.FamilySupportsIgpuCurveOptimizer(family).Should().BeFalse(
+                "otherwise SupportsIgpuUndervolt would still show the slider on this part");
+        }
+
+        [Fact]
+        public void IgpuSkipReason_ForAnUpstreamMappedFamily_DoesNotClaimThereIsNoMessage()
+        {
+            // v4.3.0's review of PR #176: Phoenix/Hawk Point owners were told there is "no confirmed
+            // iGPU CO message" for their CPU, when upstream RyzenAdj maps PSMU 0xB7 for both. The
+            // honest reason is that OmenCore has not enabled it yet.
+            var reason = AmdUndervoltProvider.DescribeIgpuSkip(
+                "AMD Ryzen 7 8845HS w/ Radeon 780M Graphics", RyzenFamily.HawkPoint);
+
+            reason.Should().Contain("not validated");
+            reason.Should().NotContain("no confirmed");
+        }
+
+        [Fact]
+        public void IgpuSkipReason_ForAnUnmappedFamily_SaysThereIsNoMessage()
+        {
+            var reason = AmdUndervoltProvider.DescribeIgpuSkip(
+                "AMD Ryzen AI 9 HX 375 w/ Radeon 890M", RyzenFamily.StrixPoint);
+
+            reason.Should().Contain("no confirmed");
+        }
     }
 }
