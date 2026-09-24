@@ -25,30 +25,30 @@ PCH/VR mapping two independent research efforts found and the CPU/GPU indices Om
 Writes nothing to the firmware; exists purely so a future report can show what every index actually
 returns on that board.
 
-### Experimental GPU Power Unlock for Board `8D87` (OMEN MAX 16-ak0xxx)
+### Board `8D87` GPU Power Unlock: Built, Then Switched Off Before Release
 
-Diagnostics → Power Adapter, offered only on `8D87` and only when the connected adapter is well
-above the machine's rated requirement. `docs/8D87-OMEN-MAX-16-SUPPORT-PLAN.md` reverse-engineered
-why this board's RTX 5080 sits at 80-105 W instead of 175 W: two EC bits (`OGHP`, `PROH`) gate a
-configurable-TGP adder that OMEN Gaming Hub holds open and OmenCore never did. This pins both bits
-for the doc's measured ~2 ms window, fires the one WMI command that reads them while they're held,
-then lets go — nothing here is persistent, the firmware takes both bits back on the next resume,
-adapter change, or reboot.
+`docs/8D87-OMEN-MAX-16-SUPPORT-PLAN.md` explains why this board's RTX 5080 sits at 80-105 W where
+OMEN Gaming Hub reaches 175 W: two EC bits (`OGHP`, `PROH`) gate a configurable-TGP adder that OGH
+holds open and OmenCore never did. This cycle added the pieces - `PawnIOEcAccess.HoldByteAndFire`
+(one EC-mutex hold across a pin loop, since the normal write path's trailing sleep alone exceeds the
+window), `GpuTgpUnlockService` (8D87-only, adapter safety bar, outcome verification), and a
+Diagnostics entry behind a confirmation dialog.
 
-Built the way the doc's own §5.2 rules require: verified by measured delivered watts, never by a
-status code (§5.2.1); exact-board-only, no sibling boards added on the strength of sharing a
-firmware base (§5.2.4); a new `PawnIOEcAccess.HoldByteAndFire` primitive holds the EC mutex once for
-the whole pin-and-fire operation instead of the normal per-call path, whose trailing `Thread.Sleep(1)`
-alone would exceed the entire hold window (§5.1). Gated behind a safety bar stricter than the
-existing CPU power clamp's, because the design doc also records the reason for that: forcing this
-same class of unlock on an undersized adapter left a GPU in a degraded state that only cleared on
-reboot, on hardware with a history of driver crashes.
+**It does not ship enabled in 4.4.0.** Pre-release review against the design doc found three problems,
+any one of which is disqualifying:
 
-**Not confirmed on real hardware, and said so in the UI itself** (a confirmation dialog and on-page
-warning text, not just this changelog) — nobody who wrote this code has run it on an 8D87. The pure
-logic (board gating, the safety-bar math, the exact bit masks the design doc specifies) has full
-test coverage; the EC timing and the WMI/firmware interaction do not, because nothing short of the
-real board can exercise them.
+1. **The EC write path is unproven.** The doc proved the ACPI EC ports alias the MMIO window for
+   *reads*, on one adapter state, and says "nothing may write EC RAM that way yet". This writes it.
+2. **The pin model is wrong.** The EC clears `OGHP` on ~98% of 2 ms cycles and the doc's result is
+   "won by repetition" - a loop that keeps re-pinning across the WMI call. This pinned for 2 ms, then
+   fired, then restored the byte, so it would almost certainly never have worked.
+3. **It verified the wrong number.** The doc measures the *enforced* power limit (`>= 170 W`); this read
+   NVAPI power *draw*, which stays low on an idle GPU whether or not the limit moved.
+
+A hard gate (`GpuTgpUnlockService.EcWritePathValidated = false`, pinned by a test) makes `Engage` refuse
+and keeps the UI entry hidden. The adapter figures in the code were also corrected: 8D87 ships with a
+330 W adapter, not 230 W. Re-enabling needs an 8D87 owner to validate EC writes and the rewritten pin
+loop against the enforced limit first.
 
 ### Backlog Swept: 68 Open Issues Closed or Labeled
 
@@ -99,12 +99,13 @@ for `nvidia-smi`, not our NVAPI path) and is now much smaller; whether it's wort
 should be decided by measurement, not by analogy.
 
 **How widespread #1 is.** Every V0-thermal-policy board seen since release lost fan control on 4.3.1,
-not just the two boards in the reports: `8C2F` (#203), `8BB1`/`8C3F`-class Victus 15 (#202, #205),
+not just the two boards in the reports: `8C2F` (#203), `8BB1`/`8C3F`-class Victus 15 (#202),
 `8C30` (#208 - "Fan Verification 5/100, Backend: None"), `8A25` (a Discord report), `88F8`
 (#207) and `8EDC` (#201) all show `SW fan control support: False`, policy V0, and
 `Backend: None (monitoring only)` in their bundles. Any of them that used Custom Fan Curve, linked
-fan profiles to performance modes, or the Max preset was affected. A patch release is warranted
-rather than waiting for the rest of 4.4.0.
+fan profiles to performance modes, or the Max preset was affected. (`#205`, a Victus 15-fa1xxx, was
+first counted here too, but its reporter saw the same problem on 4.3.0, before this regression
+existed - so it is something else, still awaiting a diagnostics export.)
 
 **3. The monitor loop couldn't be woken, so "open the window / show the OSD" waited out the sleep
 already in progress.** Reported on `8A25` (OSD takes minutes to show numbers, fan shows 0 on the

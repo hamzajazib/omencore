@@ -610,6 +610,7 @@ namespace OmenCore.ViewModels
             get
             {
                 if (_gpuTgpUnlockService != null) return _gpuTgpUnlockService;
+                if (!GpuTgpUnlockService.EcWritePathValidated) return null;
                 if (_nvapiService == null) return null;
                 if (!GpuTgpUnlockService.BoardIsSupported(_productId)) return null;
 

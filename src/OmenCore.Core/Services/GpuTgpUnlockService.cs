@@ -53,6 +53,27 @@ namespace OmenCore.Services
         public static bool BoardIsSupported(string? productId) =>
             !string.IsNullOrEmpty(productId) && SupportedBoards.Contains(productId);
 
+        /// <summary>
+        /// Hard off-switch: <see cref="Engage"/> refuses, and the UI does not offer the unlock, while
+        /// this is false. It stays false until all three of these are done on a real 8D87:
+        ///
+        ///   1. WRITES through the ACPI EC ports are shown to reach the MMIO window. Design doc §5.1
+        ///      (T3.1) proved the ports alias it for READS only, on one adapter state, and §2 says in
+        ///      so many words "nothing may write EC RAM that way yet". This class writes it.
+        ///   2. The pin is held CONTINUOUSLY while GC22 runs. The EC clears OGHP on ~98% of 2 ms
+        ///      cycles and the doc's own result is "won by repetition". This class pins for 2 ms,
+        ///      stops, then fires, then restores the original byte - so OGHP is almost certainly
+        ///      gone by the time the firmware reads it. It needs a pin thread that runs across the
+        ///      WMI call, not before it.
+        ///   3. Success is measured as the ENFORCED power limit (nvidia-smi enforced.power.limit
+        ///      &gt;= 170 W), as the doc does. <see cref="Engage"/> reads NVAPI power DRAW, which on an
+        ///      idle GPU stays low whether or not the limit moved, so it would report failure on
+        ///      almost every attempt made outside a game.
+        ///
+        /// Found in review before 4.4.0 shipped. Nothing reached a release with this true.
+        /// </summary>
+        internal static readonly bool EcWritePathValidated = false;
+
         // EC 0x59: OGHP is bit 1. Bit 4 is DBST, which the design doc says this must not disturb -
         // it is a read-modify-write, not a value write. Every other bit is preserved too: nothing
         // here has decoded what they are, and "unknown" is not "safe to clear".
@@ -66,17 +87,20 @@ namespace OmenCore.Services
         internal const byte ProhValue = 0x01;
         internal const byte ProhPreserveMask = 0x00;
 
-        // Design doc §5.1: "Measured minimums: 2 ms hold, 5000 ms settle before re-read. 5 ms hold
-        // fails; 1200 ms settle fails." A longer hold is not safer here - it is measured to fail.
+        // Design doc T3.4: "2 ms hold, 5000 ms settle before re-read. 5 ms hold fails." Read against
+        // §5.1 ("EC clears it on 98% of 2 ms cycles... won by repetition"), the 2 ms is the RE-PIN
+        // interval of a loop that keeps running across the GC22 call, not the total length of a pin
+        // that ends before it - which is how this class currently uses it. See EcWritePathValidated.
         internal static readonly TimeSpan HoldBudget = TimeSpan.FromMilliseconds(2);
         internal static readonly TimeSpan SettleBeforeVerify = TimeSpan.FromMilliseconds(5000);
 
-        // The bar a connected adapter must clear before this runs at all. Design doc §3.3/§5.2.3:
-        // the successful 175 W measurements were on 330 W, 280 W and 200 W adapters against this
-        // board's 230 W shipping requirement (143%/122%/87%) - the degraded-GPU failure was on a
-        // supply this repo cannot identify from the doc text alone. 87% is the lowest point with a
-        // positive result behind it; this sits above that rather than at it, because "the lowest
-        // adapter that worked once" is not the same claim as "the floor of what is safe likelihooked".
+        // The bar a connected adapter must clear before this runs at all. 8D87 ships with a 330 W
+        // adapter (design doc §3.5, Default 0x28 bytes 0-1); the doc measured 330 W, 280 W and 200 W
+        // supplies (100% / 85% / 61%), and the degraded-GPU failure (§5.2.3) was a forced unlock on
+        // an under-rated supply. At 90% only a full-rated adapter passes - which also means the
+        // PROH half does nothing useful when it does (PROH only clamps on non-330 W supplies, §1).
+        // The under-rated case the feature exists for is deliberately excluded until a proportional
+        // cap (design doc T3.5) exists.
         internal const double MinimumSupplyFraction = 0.90;
 
         /// <summary>Delivered watts this counts as "the unlock took". Comfortably below the
@@ -160,6 +184,13 @@ namespace OmenCore.Services
             lock (_sync)
             {
                 _lastEngageSucceeded = false;
+
+                if (!EcWritePathValidated)
+                {
+                    return new Result(Outcome.Refused,
+                        "The GPU power unlock is disabled in this build: its EC write path has not been " +
+                        "validated on real 8D87 hardware yet.");
+                }
 
                 if (!BoardIsSupported(productId))
                 {

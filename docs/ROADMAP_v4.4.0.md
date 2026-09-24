@@ -150,17 +150,23 @@ question with data instead of guessing.
 - **Boards:** `8CC0`, `8DD0`, `88ED` added; `8E35` WMI policy fallback on after `#195`'s controlled
   0.0 W test (awaiting re-test); `8BB1` Victus side no longer claims "(2022)" (`#202`).
 - **`#206`** game-exit restore marshalled to the UI thread (reporter's tested fix).
-- **Board `8D87` GPU TGP unlock implemented** (Diagnostics → Power Adapter, opt-in, board-exact,
-  behind a stricter adapter-safety bar than the CPU clamp): `PawnIOEcAccess.HoldByteAndFire` (single
-  mutex hold across the EC pin loop and the WMI trigger, since the per-call path's own sleep alone
-  exceeds the ~2ms hold window) + `GpuTgpUnlockService` (verifies by delivered watts, never by
-  status code, per the design doc's §5.2 rules). **Not confirmed on real hardware** — logic-only
-  test coverage; see the changelog entry and the class's own remarks for exactly what isn't proven.
+- **Board `8D87` GPU TGP unlock** — built, then gated off in pre-release review (unproven EC write
+  path, wrong pin model, wrong verification target). See Open Investigations.
 - **Backlog swept:** 53 stale pre-4.0 issues closed, model-support requests left open and labeled.
 
 ---
 
 ## Open Investigations
+
+### Board `8D87` GPU TGP unlock — code exists, disabled until validated on hardware
+
+`GpuTgpUnlockService.EcWritePathValidated` stays false until, on a real 8D87: (1) EC writes through
+the ACPI ports are shown to land in the MMIO window (design doc T3.1 covered reads only); (2) the pin
+is rewritten as a loop that keeps re-pinning `OGHP`/`PROH` every <=2 ms across the GC22 call instead of
+before it; (3) success is read from the enforced power limit (`nvidia-smi enforced.power.limit`
+>= 170 W), not NVAPI draw. The under-rated-adapter case (the one users actually hit) also needs the
+doc's T3.5 proportional cap before it can be offered at all. Related: `#123` (8D41, TGP stuck at 80 W
+even though hp-wmi sends 0x22) looks like the same `OGHP` gate on a different board.
 
 ### #198 follow-up — why did WMI BIOS temperature get rejected in the first place?
 

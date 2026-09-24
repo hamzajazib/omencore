@@ -22,7 +22,7 @@ namespace OmenCoreApp.Tests.Services
         private static HpWmiBios.AdapterInfo Barrel330W() =>
             Adapter(new byte[] { 0x01, 0xC2, 0x00, 0x42 });
 
-        // 200 W barrel, BelowRequirement on this board's 230 W shipping rating (87%) - the lowest
+        // 200 W barrel, BelowRequirement against this board's 330 W shipping rating (61%) - the lowest
         // adapter the design doc records a successful 175 W unlock on.
         private static HpWmiBios.AdapterInfo Barrel200W() =>
             Adapter(new byte[] { 0x02, 0xC2, 0x00, 0x28 });
@@ -46,34 +46,40 @@ namespace OmenCoreApp.Tests.Services
             GpuTgpUnlockService.BoardIsSupported(productId).Should().Be(expected);
         }
 
+        // 8D87 ships with a 330 W adapter (design doc §3.5).
+        private const int Board8D87ShippingWatts = 330;
+
         [Fact]
-        public void SafetyBar_Passes_OnTheDesignDocs330WAdapter()
+        public void EcWritePath_IsNotValidated_SoTheUnlockStaysOff()
         {
-            GpuTgpUnlockService.SupplyMeetsSafetyBar(Barrel330W(), 230, out var reason)
+            // Flipping this is a hardware-behaviour change gated on evidence from a real 8D87 - see
+            // the constant's own remarks for the three things that have to be true first. This test
+            // exists so that flip cannot happen without someone reading them.
+            GpuTgpUnlockService.EcWritePathValidated.Should().BeFalse();
+        }
+
+        [Fact]
+        public void SafetyBar_Passes_OnAFullRated330WAdapter()
+        {
+            GpuTgpUnlockService.SupplyMeetsSafetyBar(Barrel330W(), Board8D87ShippingWatts, out var reason)
                 .Should().BeTrue();
             reason.Should().BeEmpty();
         }
 
         [Fact]
-        public void SafetyBar_Passes_OnTheDesignDocsLowest200WAdapter()
+        public void SafetyBar_Refuses_TheUnderRated200WAdapter()
         {
-            // 200/230 = 87%, above this service's 90% floor... this specific capture is exactly at
-            // the boundary the design doc measured success on, so assert it against the documented
-            // 87% figure directly rather than assume which side of an internal constant it lands on.
-            var meetsBar = GpuTgpUnlockService.SupplyMeetsSafetyBar(Barrel200W(), 230, out var reason);
-
-            // 200/230 ≈ 86.9%, which is below this service's deliberately-stricter 90% floor (see
-            // MinimumSupplyFraction's own remarks on why it sits above the lowest tested point rather
-            // than at it). Pin that choice explicitly so a future edit to the floor has to look here.
-            meetsBar.Should().BeFalse("this service's floor is intentionally above the lowest adapter " +
-                                       "the design doc measured a successful unlock on, not equal to it");
-            reason.Should().Contain("207 W", "90% of 230 W, rounded up");
+            // 200/330 = 61%: an under-rated supply, the case the design doc's degraded-GPU failure
+            // came from. Excluded until a proportional cap exists.
+            GpuTgpUnlockService.SupplyMeetsSafetyBar(Barrel200W(), Board8D87ShippingWatts, out var reason)
+                .Should().BeFalse();
+            reason.Should().Contain("297 W", "90% of 330 W, rounded up");
         }
 
         [Fact]
         public void SafetyBar_Refuses_UsbC()
         {
-            GpuTgpUnlockService.SupplyMeetsSafetyBar(UsbCDock100W(), 230, out var reason)
+            GpuTgpUnlockService.SupplyMeetsSafetyBar(UsbCDock100W(), Board8D87ShippingWatts, out var reason)
                 .Should().BeFalse();
             reason.Should().Contain("USB-C");
         }
@@ -84,7 +90,7 @@ namespace OmenCoreApp.Tests.Services
             var unknown = Adapter(new byte[] { 0x01, 0xC2, 0x00, 0xFF });
             unknown.PowerRatingKnown.Should().BeFalse();
 
-            GpuTgpUnlockService.SupplyMeetsSafetyBar(unknown, 230, out var reason)
+            GpuTgpUnlockService.SupplyMeetsSafetyBar(unknown, Board8D87ShippingWatts, out var reason)
                 .Should().BeFalse();
             reason.Should().Contain("not reported");
         }
@@ -127,31 +133,7 @@ namespace OmenCoreApp.Tests.Services
         }
 
         [Fact]
-        public void HoldBudget_MatchesTheDesignDocsMeasuredWorkingWindow()
-        {
-            // "5 ms hold fails; 1200 ms settle fails" - both bounds are measured failures, not
-            // untested guesses, so this pins the values the doc says actually worked.
-            GpuTgpUnlockService.HoldBudget.Should().Be(TimeSpan.FromMilliseconds(2));
-            GpuTgpUnlockService.SettleBeforeVerify.Should().Be(TimeSpan.FromMilliseconds(5000));
-        }
-
-        [Fact]
-        public void Engage_Refuses_OnAnUnsupportedBoard_WithoutTouchingEcAccess()
-        {
-            var logging = new LoggingService();
-            var wmiBios = new HpWmiBios(logging);
-            var nvapi = new NvapiService(logging);
-            var service = new GpuTgpUnlockService(logging, wmiBios, nvapi);
-
-            var result = service.Engage("8D41", ecAccess: null, adapter: null);
-
-            result.Outcome.Should().Be(GpuTgpUnlockService.Outcome.Refused);
-            result.Message.Should().Contain("8D87");
-            service.IsEngaged.Should().BeFalse();
-        }
-
-        [Fact]
-        public void Engage_Refuses_WhenNoEcAccess()
+        public void Engage_Refuses_WhileTheWritePathIsUnvalidated_EvenOnTheRightBoardAndAdapter()
         {
             var logging = new LoggingService();
             var wmiBios = new HpWmiBios(logging);
@@ -161,7 +143,8 @@ namespace OmenCoreApp.Tests.Services
             var result = service.Engage("8D87", ecAccess: null, adapter: Barrel330W());
 
             result.Outcome.Should().Be(GpuTgpUnlockService.Outcome.Refused);
-            result.Message.Should().Contain("PawnIO");
+            result.Message.Should().Contain("disabled in this build");
+            service.IsEngaged.Should().BeFalse();
         }
 
         [Fact]
