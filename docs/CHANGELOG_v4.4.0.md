@@ -16,6 +16,18 @@ long ago that never took effect will take effect now. Check AMD CPU Power Limits
 **Base Version:** v4.3.1
 **Tracking doc:** `docs/ROADMAP_v4.4.0.md` — full investigation detail, rejected options, and evidence trails live there; this file stays short.
 
+
+### Downloads
+
+Computed by the release workflow from the exact files attached to the
+[v4.4.0 release](https://github.com/theantipopau/omencore/releases/tag/v4.4.0).
+
+| Artifact | SHA256 |
+|---|---|
+| `OmenCoreSetup-4.4.0.exe` | `48669974CD1E8DCEBC74AE2C65CCF56F2EFFED62C36B608D2ECFE526705A0321` |
+| `OmenCore-4.4.0-win-x64.zip` | `6494FE3B554451C4EC0590A13C0B6435CA69C6647134BD0A70FCFC48ECC04C5A` |
+| `OmenCore-4.4.0-linux-x64.zip` | `94014717D344C6F408EA86F795B8F6C8188F72E857F6CDED1DD8FBD267198410` |
+
 ---
 
 ## Added

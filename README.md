@@ -61,7 +61,11 @@ It runs without ads, account prompts, cloud telemetry, or OMEN Gaming Hub. Hardw
 **Release notes:** [docs/CHANGELOG_v4.4.0.md](docs/CHANGELOG_v4.4.0.md)<br>
 **Roadmap:** [docs/ROADMAP_v4.4.0.md](docs/ROADMAP_v4.4.0.md)
 
-SHA256 hashes for every artifact are published on the [release page](https://github.com/theantipopau/omencore/releases/tag/v4.4.0), computed by CI from the exact files it attached.
+| Artifact | SHA256 |
+|---|---|
+| `OmenCoreSetup-4.4.0.exe` | `48669974CD1E8DCEBC74AE2C65CCF56F2EFFED62C36B608D2ECFE526705A0321` |
+| `OmenCore-4.4.0-win-x64.zip` | `6494FE3B554451C4EC0590A13C0B6435CA69C6647134BD0A70FCFC48ECC04C5A` |
+| `OmenCore-4.4.0-linux-x64.zip` | `94014717D344C6F408EA86F795B8F6C8188F72E857F6CDED1DD8FBD267198410` |
 
 ### v4.4.0 Highlights
 
