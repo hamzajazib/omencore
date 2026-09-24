@@ -1492,7 +1492,7 @@ namespace OmenCore.ViewModels
             _hotkeyService = hotkeyService ?? new HotkeyService(_logging);
             // _notificationService created earlier (before FanService)
             _powerAutomationService = new PowerAutomationService(_logging, _fanService, _performanceModeService, _configService, _gpuSwitchService);
-            GpuClamp = new GpuClampViewModel(_logging, _configService, _config, _wmiBios, _undervoltService, _notificationService, _powerAutomationService);
+            GpuClamp = new GpuClampViewModel(_logging, _configService, _config, _wmiBios, _undervoltService, _notificationService, _powerAutomationService, _nvapiService, DetectedCapabilities?.ModelConfig?.ProductId);
             _automationService = new AutomationService(
                 _logging,
                 _configService,

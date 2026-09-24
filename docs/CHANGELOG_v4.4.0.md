@@ -7,8 +7,8 @@
 every two minutes, a monitor loop that couldn't be woken) affecting at least seven distinct boards,
 a hardware-worker crash on hot-plugged drives, a large community-contributed port covering 8D87
 keyboard lighting and AMD SMU power-limit corrections, and a handful of model-database identity
-fixes. A hotfix release before the rest of 4.4.0 ships is under consideration given how many users
-the regressions affect. See the roadmap for full detail.
+fixes. No separate 4.3.2 hotfix — 4.4.0 itself is carrying the regression fixes and will ship as
+the combined fix/improvement release. See the roadmap for full detail.
 **Base Version:** v4.3.1
 **Tracking doc:** `docs/ROADMAP_v4.4.0.md` — full investigation detail, rejected options, and evidence trails live there; this file stays short.
 
@@ -24,6 +24,41 @@ documented indices for HP's WMI temperature command (`0x23`), labeled against bo
 PCH/VR mapping two independent research efforts found and the CPU/GPU indices OmenCore itself uses.
 Writes nothing to the firmware; exists purely so a future report can show what every index actually
 returns on that board.
+
+### Experimental GPU Power Unlock for Board `8D87` (OMEN MAX 16-ak0xxx)
+
+Diagnostics → Power Adapter, offered only on `8D87` and only when the connected adapter is well
+above the machine's rated requirement. `docs/8D87-OMEN-MAX-16-SUPPORT-PLAN.md` reverse-engineered
+why this board's RTX 5080 sits at 80-105 W instead of 175 W: two EC bits (`OGHP`, `PROH`) gate a
+configurable-TGP adder that OMEN Gaming Hub holds open and OmenCore never did. This pins both bits
+for the doc's measured ~2 ms window, fires the one WMI command that reads them while they're held,
+then lets go — nothing here is persistent, the firmware takes both bits back on the next resume,
+adapter change, or reboot.
+
+Built the way the doc's own §5.2 rules require: verified by measured delivered watts, never by a
+status code (§5.2.1); exact-board-only, no sibling boards added on the strength of sharing a
+firmware base (§5.2.4); a new `PawnIOEcAccess.HoldByteAndFire` primitive holds the EC mutex once for
+the whole pin-and-fire operation instead of the normal per-call path, whose trailing `Thread.Sleep(1)`
+alone would exceed the entire hold window (§5.1). Gated behind a safety bar stricter than the
+existing CPU power clamp's, because the design doc also records the reason for that: forcing this
+same class of unlock on an undersized adapter left a GPU in a degraded state that only cleared on
+reboot, on hardware with a history of driver crashes.
+
+**Not confirmed on real hardware, and said so in the UI itself** (a confirmation dialog and on-page
+warning text, not just this changelog) — nobody who wrote this code has run it on an 8D87. The pure
+logic (board gating, the safety-bar math, the exact bit masks the design doc specifies) has full
+test coverage; the EC timing and the WMI/firmware interaction do not, because nothing short of the
+real board can exercise them.
+
+### Backlog Swept: 68 Open Issues Closed or Labeled
+
+Most open issues (85 of 124) predated the 4.0 rewrite. Closed 53 with no activity in a long time and
+no board-identity value to keep — a handful with a specific pointer to what's fixed since (the
+antivirus false-positive class, the config-persistence bug, the watchdog/cadence regression, ignored-Max),
+the rest with a plain "reopen with a current diagnostics export if this is still happening." Left
+every model-support/hardware-verification request open regardless of age — those stay useful however
+old they are — and labeled the genuine feature requests and the reports worth a closer look
+(`#60`, `#103`, `#133`) rather than closing them.
 
 ---
 

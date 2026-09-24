@@ -150,17 +150,17 @@ question with data instead of guessing.
 - **Boards:** `8CC0`, `8DD0`, `88ED` added; `8E35` WMI policy fallback on after `#195`'s controlled
   0.0 W test (awaiting re-test); `8BB1` Victus side no longer claims "(2022)" (`#202`).
 - **`#206`** game-exit restore marshalled to the UI thread (reporter's tested fix).
+- **Board `8D87` GPU TGP unlock implemented** (Diagnostics → Power Adapter, opt-in, board-exact,
+  behind a stricter adapter-safety bar than the CPU clamp): `PawnIOEcAccess.HoldByteAndFire` (single
+  mutex hold across the EC pin loop and the WMI trigger, since the per-call path's own sleep alone
+  exceeds the ~2ms hold window) + `GpuTgpUnlockService` (verifies by delivered watts, never by
+  status code, per the design doc's §5.2 rules). **Not confirmed on real hardware** — logic-only
+  test coverage; see the changelog entry and the class's own remarks for exactly what isn't proven.
+- **Backlog swept:** 53 stale pre-4.0 issues closed, model-support requests left open and labeled.
 
 ---
 
 ## Open Investigations
-
-### Board `8D87` GPU TGP capped at 80–105 W where OGH / Ohman reach 175 W (Discord, papap)
-
-Fully explained by `docs/8D87-OMEN-MAX-16-SUPPORT-PLAN.md` (`OGHP`/`PROH` EC bits gating the
-configurable-TGP adder, never driven by OmenCore). Not implemented: the same investigation found a
-forced unlock on an undersized adapter left the GPU degraded until reboot. Needs the doc's T3 design
-(explicit opt-in, adapter-wattage-proportional cap, rollback) and an owner decision before any code.
 
 ### #198 follow-up — why did WMI BIOS temperature get rejected in the first place?
 
