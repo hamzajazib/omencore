@@ -1,14 +1,18 @@
 # OmenCore v4.4.0
 
-**Release Date:** TBD — just started, nothing shipped yet. Rolling changelog, updated as work lands.
-**Release Status:** In progress. Started 2026-09-16, one day after v4.3.1 shipped.
-**Type:** Grown well past the original two field reports. Now includes three real v4.3.1 regressions
-(fan control disabled on V0-thermal-policy boards, a watchdog/cadence conflict forcing fans to 90%
-every two minutes, a monitor loop that couldn't be woken) affecting at least seven distinct boards,
-a hardware-worker crash on hot-plugged drives, a large community-contributed port covering 8D87
-keyboard lighting and AMD SMU power-limit corrections, and a handful of model-database identity
-fixes. No separate 4.3.2 hotfix — 4.4.0 itself is carrying the regression fixes and will ship as
-the combined fix/improvement release. See the roadmap for full detail.
+**Release Date:** 2026-09-24
+**Release Status:** Released.
+**Type:** Bug-fix release with improvements. Fixes three v4.3.1 regressions (fan control disabled on
+V0-thermal-policy boards, a false "monitoring frozen" failsafe forcing fans to 90% every two minutes,
+a monitor loop that couldn't be woken) that affected at least seven boards, a hardware-worker crash
+on hot-plugged drives, and a background worker that silently failed to start on installed builds.
+Adds a large community port for 8D87 keyboard lighting and AMD SMU power limits, and several
+model-database fixes. There was no separate 4.3.2 — this is the fix release for 4.3.1. See the
+roadmap for full detail.
+
+**Upgrade note:** "Apply AMD Limits" now writes all four AMD power limits and reads them back.
+Previously only the STAPM limit was sent, and on Strix Point it did nothing — so a limit you saved
+long ago that never took effect will take effect now. Check AMD CPU Power Limits after updating.
 **Base Version:** v4.3.1
 **Tracking doc:** `docs/ROADMAP_v4.4.0.md` — full investigation detail, rejected options, and evidence trails live there; this file stays short.
 

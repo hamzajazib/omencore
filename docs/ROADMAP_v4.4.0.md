@@ -1,6 +1,6 @@
 # OmenCore v4.4.0 Roadmap
 
-**Status:** In progress. Opened 2026-09-16, one day after v4.3.1 shipped.
+**Status:** Released 2026-09-24 as v4.4.0. Opened 2026-09-16, one day after v4.3.1 shipped.
 **Base version:** v4.3.1
 **Predecessor doc:** `docs/ROADMAP_v4.3.1.md` — carried the 4.3.0 → 4.3.1 cycle. That document is now historical record.
 
