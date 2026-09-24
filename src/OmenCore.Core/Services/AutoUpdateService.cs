@@ -79,49 +79,87 @@ namespace OmenCore.Services
         /// <summary>
         /// Detect whether running from installer or portable mode
         /// </summary>
+        // Inno Setup registers the uninstaller under "<AppId>_is1", where AppId is the GUID in
+        // installer/OmenCoreInstaller.iss - not under the product name.
+        private const string InnoUninstallKey =
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{6F5B6F3F-8FAF-4FC8-A5E0-4E2C0E8F2E2B}_is1";
+        private const string LegacyUninstallKey =
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\OmenCore";
+
         private InstallationType DetectInstallationType()
         {
             try
             {
-                // Check for uninstall registry entry (indicates installer installation)
-                using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\OmenCore");
-                if (key != null)
+                if (InstallerRegistryKeyExists())
                     return InstallationType.Installer;
-                
-                // Check current user registry as well
-                using var keyUser = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\OmenCore");
-                if (keyUser != null)
-                    return InstallationType.Installer;
-                
-                // Check if running from Program Files (typical installer location)
-                // Use AppContext.BaseDirectory for single-file app compatibility
-                var baseDir = AppContext.BaseDirectory;
-                var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-                var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-                
-                if (!string.IsNullOrEmpty(baseDir) && 
-                    (baseDir.StartsWith(programFiles, StringComparison.OrdinalIgnoreCase) ||
-                     baseDir.StartsWith(programFilesX86, StringComparison.OrdinalIgnoreCase)))
-                {
-                    return InstallationType.Installer;
-                }
-                
-                // Check for uninstaller in the same directory
-                if (!string.IsNullOrEmpty(baseDir) && 
-                    (File.Exists(Path.Combine(baseDir, "unins000.exe")) ||
-                     File.Exists(Path.Combine(baseDir, "Uninstall.exe"))))
-                {
-                    return InstallationType.Installer;
-                }
-                
-                // Default to portable if no installer indicators found
-                return InstallationType.Portable;
+
+                return DetectInstallationTypeFromDirectory(
+                    GetRunningExeDirectory(),
+                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                    File.Exists);
             }
             catch (Exception ex)
             {
                 _logging.Warn($"Failed to detect installation type: {ex.Message}");
                 return InstallationType.Unknown;
             }
+        }
+
+        /// <summary>
+        /// The folder the running exe actually lives in. NOT <see cref="AppContext.BaseDirectory"/>:
+        /// release builds are published with IncludeAllContentForSelfExtract, which points that at
+        /// the %TEMP%\.net\OmenCore\&lt;hash&gt; extraction folder - never Program Files and never next
+        /// to the uninstaller. That made every installed release build detect as Portable, download
+        /// the portable zip, and then fail to "install" it as an exe.
+        /// </summary>
+        private static string? GetRunningExeDirectory()
+        {
+            var processPath = Environment.ProcessPath;
+            if (!string.IsNullOrEmpty(processPath))
+                return Path.GetDirectoryName(processPath);
+            return AppContext.BaseDirectory;
+        }
+
+        private static bool InstallerRegistryKeyExists()
+        {
+            foreach (var hive in new[] { RegistryHive.LocalMachine, RegistryHive.CurrentUser })
+            {
+                foreach (var view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
+                {
+                    using var root = RegistryKey.OpenBaseKey(hive, view);
+                    using var inno = root.OpenSubKey(InnoUninstallKey);
+                    if (inno != null) return true;
+                    using var legacy = root.OpenSubKey(LegacyUninstallKey);
+                    if (legacy != null) return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Installer if the exe sits under Program Files or next to Inno Setup's uninstaller,
+        /// otherwise Portable. Pure so it can be tested without a real install.
+        /// </summary>
+        internal static InstallationType DetectInstallationTypeFromDirectory(
+            string? exeDirectory, string? programFiles, string? programFilesX86, Func<string, bool> fileExists)
+        {
+            if (string.IsNullOrEmpty(exeDirectory))
+                return InstallationType.Unknown;
+
+            if ((!string.IsNullOrEmpty(programFiles) && exeDirectory.StartsWith(programFiles, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(programFilesX86) && exeDirectory.StartsWith(programFilesX86, StringComparison.OrdinalIgnoreCase)))
+            {
+                return InstallationType.Installer;
+            }
+
+            if (fileExists(Path.Combine(exeDirectory, "unins000.exe")) ||
+                fileExists(Path.Combine(exeDirectory, "Uninstall.exe")))
+            {
+                return InstallationType.Installer;
+            }
+
+            return InstallationType.Portable;
         }
         
         /// <summary>
@@ -677,6 +715,11 @@ namespace OmenCore.Services
             }
         }
         
+        internal static string PortableUpdateMessage(string zipPath) =>
+            "This is the portable version of OmenCore, which can't replace itself while it's running. " +
+            $"The update has been downloaded to {zipPath}. Close OmenCore, then extract that zip over " +
+            "your current OmenCore folder.";
+
         /// <summary>
         /// Install a downloaded update
         /// </summary>
@@ -699,6 +742,26 @@ namespace OmenCore.Services
                     using var headerStream = new FileStream(installerPath, FileMode.Open, FileAccess.Read, FileShare.Read);
                     var header = new byte[2];
                     headerStream.Read(header, 0, 2);
+
+                    // A portable build downloads the zip, which cannot replace the exe that is
+                    // running it. Say so, and show the file, rather than reporting a zip as a
+                    // "corrupted" installer.
+                    if (header[0] == 0x50 && header[1] == 0x4B) // PK - zip archive
+                    {
+                        result.Success = false;
+                        result.Message = PortableUpdateMessage(installerPath);
+                        _logging.Info($"Portable update downloaded to {installerPath}; manual extraction required.");
+                        try
+                        {
+                            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{installerPath}\"") { UseShellExecute = true });
+                        }
+                        catch (Exception openEx)
+                        {
+                            _logging.Debug($"Could not open Explorer at the portable update: {openEx.Message}");
+                        }
+                        return result;
+                    }
+
                     if (header[0] != 0x4D || header[1] != 0x5A) // MZ header
                     {
                         result.Success = false;
@@ -1132,69 +1195,60 @@ namespace OmenCore.Services
         /// </summary>
         private JsonElement SelectPlatformAwareAsset(JsonElement assets)
         {
-            JsonElement installerAsset = default;
-            JsonElement portableAsset = default;
-            JsonElement fallbackAsset = default;
-            
+            var byName = new System.Collections.Generic.Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
             foreach (var asset in assets.EnumerateArray())
             {
                 var name = asset.GetProperty("name").GetString() ?? string.Empty;
-                var nameLower = name.ToLowerInvariant();
-                
-                // Installer detection: Setup.exe, installer in name
-                    if ((nameLower.Contains("setup") || nameLower.Contains("installer")) && nameLower.EndsWith(".exe"))
-                {
-                    installerAsset = asset;
-                }
-                // Portable detection: .zip files, "portable" in name
-                else if (nameLower.Contains("portable") || 
-                         (nameLower.EndsWith(".zip") && !nameLower.Contains("source")))
-                {
-                    portableAsset = asset;
-                }
-                // Fallback: any .exe file
-                else if (nameLower.EndsWith(".exe") && fallbackAsset.ValueKind == JsonValueKind.Undefined)
-                {
-                    fallbackAsset = asset;
-                }
+                if (name.Length > 0) byName[name] = asset;
             }
-            
-            // Select based on installation type
-            switch (_installationType)
-            {
-                case InstallationType.Installer:
-                    if (installerAsset.ValueKind != JsonValueKind.Undefined)
-                    {
-                            _logging.Info($"Selected installer asset: {installerAsset.GetProperty("name").GetString()}");
-                        return installerAsset;
-                    }
-                        // For installed builds, never fall back to a portable archive — only accept .exe
-                        if (fallbackAsset.ValueKind != JsonValueKind.Undefined)
-                        {
-                            _logging.Warn($"No installer asset found; using fallback .exe: {fallbackAsset.GetProperty("name").GetString()}");
-                            return fallbackAsset;
-                        }
-                        _logging.Warn("No suitable installer asset found in release assets.");
-                        return default;
 
-                case InstallationType.Portable:
-                    if (portableAsset.ValueKind != JsonValueKind.Undefined)
-                    {
-                            _logging.Info($"Selected portable asset: {portableAsset.GetProperty("name").GetString()}");
-                        return portableAsset;
-                    }
-                    break;
+            var selected = SelectAssetName(byName.Keys, _installationType);
+            if (selected == null)
+            {
+                _logging.Warn($"No suitable update asset found for installation type {_installationType}.");
+                return default;
             }
-            
-                // Unknown install type: prefer installer over portable over any exe
-            if (installerAsset.ValueKind != JsonValueKind.Undefined)
-                return installerAsset;
-            if (portableAsset.ValueKind != JsonValueKind.Undefined)
-                return portableAsset;
-            if (fallbackAsset.ValueKind != JsonValueKind.Undefined)
-                return fallbackAsset;
-                
-            return default;
+
+            _logging.Info($"Selected update asset for {_installationType}: {selected}");
+            return byName[selected];
+        }
+
+        /// <summary>
+        /// Pick the release asset for this installation type, by name only.
+        ///
+        /// Installer builds get the Setup .exe and never a zip. Portable builds get the WINDOWS zip:
+        /// releases also carry a Linux zip, and the old "any .zip" rule took whichever zip came last
+        /// in the list. Checksum sidecars (".sha256") never match, since both rules test the extension.
+        /// </summary>
+        internal static string? SelectAssetName(System.Collections.Generic.IEnumerable<string> names, InstallationType installationType)
+        {
+            string? installer = null, windowsZip = null, fallbackExe = null;
+
+            foreach (var name in names)
+            {
+                var n = name.ToLowerInvariant();
+                if (n.EndsWith(".exe") && (n.Contains("setup") || n.Contains("installer")))
+                {
+                    installer ??= name;
+                }
+                else if (n.EndsWith(".zip") && !n.Contains("source") && !n.Contains("linux"))
+                {
+                    // Prefer an explicit Windows zip over any other non-Linux zip.
+                    if (windowsZip == null || (n.Contains("win") && !windowsZip.ToLowerInvariant().Contains("win")))
+                        windowsZip = name;
+                }
+                else if (n.EndsWith(".exe"))
+                {
+                    fallbackExe ??= name;
+                }
+            }
+
+            return installationType switch
+            {
+                InstallationType.Installer => installer ?? fallbackExe,
+                InstallationType.Portable => windowsZip,
+                _ => installer ?? windowsZip ?? fallbackExe
+            };
         }
 
         private static string FormatFileSize(long bytes)

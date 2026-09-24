@@ -68,7 +68,11 @@ namespace OmenCore.Views
                         if (installerPath != null)
                         {
                             SetStatus("Installing update...", "TextSecondaryBrush");
-                            await _updateService.InstallUpdateAsync(installerPath);
+                            var installResult = await _updateService.InstallUpdateAsync(installerPath);
+                            if (!installResult.Success)
+                            {
+                                SetStatus(installResult.Message, "AccentBrush");
+                            }
                         }
                         else
                         {

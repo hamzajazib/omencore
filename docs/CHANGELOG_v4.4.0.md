@@ -17,16 +17,16 @@ long ago that never took effect will take effect now. Check AMD CPU Power Limits
 **Tracking doc:** `docs/ROADMAP_v4.4.0.md` — full investigation detail, rejected options, and evidence trails live there; this file stays short.
 
 
+**Updating from 4.3.1:** the in-app updater in 4.3.1 and earlier cannot install this release — it downloads the portable zip and reports "Downloaded file is not a valid Windows executable". Download the installer from the release page instead; settings are kept. 4.4.0's own updater is fixed (see below).
+
+**Republished:** 4.4.0 was re-published a few hours after first release, on the same day, to include the updater fix. If you installed 4.4.0 before that, install it once more from the release page.
+
 ### Downloads
 
 Computed by the release workflow from the exact files attached to the
 [v4.4.0 release](https://github.com/theantipopau/omencore/releases/tag/v4.4.0).
 
-| Artifact | SHA256 |
-|---|---|
-| `OmenCoreSetup-4.4.0.exe` | `48669974CD1E8DCEBC74AE2C65CCF56F2EFFED62C36B608D2ECFE526705A0321` |
-| `OmenCore-4.4.0-win-x64.zip` | `6494FE3B554451C4EC0590A13C0B6435CA69C6647134BD0A70FCFC48ECC04C5A` |
-| `OmenCore-4.4.0-linux-x64.zip` | `94014717D344C6F408EA86F795B8F6C8188F72E857F6CDED1DD8FBD267198410` |
+Hashes are listed on the release page, computed by CI from the exact files attached.
 
 ---
 
@@ -79,6 +79,26 @@ old they are — and labeled the genuine feature requests and the reports worth 
 ---
 
 ## Fixed
+
+### In-App Updates Never Worked on Release Builds
+
+Reported the day 4.4.0 shipped: updating from 4.3.1 inside the app downloaded fine, passed its hash
+check, then failed with "Downloaded file is not a valid Windows executable". The updater had decided
+the installed copy was portable, so it downloaded the portable zip and tried to run it as an installer.
+All three of its installed-copy checks were wrong:
+
+- It read `AppContext.BaseDirectory`, which on release builds (published with
+  `IncludeAllContentForSelfExtract`) is a `%TEMP%\.net\OmenCore\<hash>` extraction folder - never
+  Program Files, never next to the uninstaller. Same root cause as the hardware-worker startup bug fixed
+  in this release, in a place that fix didn't reach.
+- It looked for the uninstall registry key under `OmenCore`; Inno Setup registers it as `{AppId}_is1`.
+- Portable builds took whichever `.zip` came last in the asset list, which could be the Linux one.
+
+Now: the exe's own folder and the real Inno Setup key decide the install type; portable builds only
+ever pick the Windows zip; and a portable download ends with "close OmenCore and extract this" plus the
+folder opened, instead of a false "corrupted" error. The About window also no longer sticks on
+"Installing update..." when an install fails. Hidden until now because the SHA256 bug fixed in 4.3.1
+(`#192`) stopped every download before it got this far. Tested with the real 4.4.0 asset list.
 
 ### Three v4.3.1 Regressions Found in Field Bundles (All Caused by v4.3.1's Own Changes)
 

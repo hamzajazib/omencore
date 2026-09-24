@@ -385,6 +385,7 @@
         <ul>
           <li>Fan control is back on boards with older firmware, where 4.3.1 wrongly switched to monitoring-only (Custom Fan Curve, linked profiles and Max all affected)</li>
           <li>No more false "monitoring frozen" failsafe forcing fans to 90% about every two minutes while the window is hidden, or cancelling a held Max</li>
+          <li>In-app updates now work: installed copies were being detected as portable. Coming from 4.3.1, download the installer once — its updater can't install this release</li>
           <li>Fixed a hardware-worker crash when some USB drives are plugged in, and a background worker that silently failed to start on installed builds</li>
           <li>Game detection no longer keeps Windows' WMI service busy (about 14% of a CPU core down to about 2.6%)</li>
           <li>Max fan mode now works on firmware that accepts the command but ignores it; tray refresh-rate shortcuts change the laptop screen when docked; the fan-mode hotkey notification shows the right mode</li>

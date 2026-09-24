@@ -200,5 +200,73 @@ Download the installer above.
                 File.Delete(path);
             }
         }
+
+        // The v4.4.0 release's real asset list, in the order GitHub returns it.
+        private static readonly string[] V440Assets =
+        {
+            "OmenCore-4.4.0-linux-x64.zip",
+            "OmenCore-4.4.0-linux-x64.zip.sha256",
+            "OmenCore-4.4.0-win-x64.zip",
+            "OmenCore-4.4.0-win-x64.zip.sha256",
+            "OmenCoreSetup-4.4.0.exe",
+            "OmenCoreSetup-4.4.0.exe.sha256",
+        };
+
+        [Fact]
+        public void InstalledBuild_UnderProgramFiles_IsDetectedAsInstaller()
+        {
+            // The 4.3.1 -> 4.4.0 field failure: detection read AppContext.BaseDirectory, which for an
+            // IncludeAllContentForSelfExtract build is the %TEMP% extraction folder, so an installed
+            // copy looked portable. Detection now takes the running exe's own folder.
+            AutoUpdateService.DetectInstallationTypeFromDirectory(
+                    @"C:\Program Files\OmenCore", @"C:\Program Files", @"C:\Program Files (x86)", _ => false)
+                .Should().Be(InstallationType.Installer);
+        }
+
+        [Fact]
+        public void TempExtractionFolder_LooksPortable_WhichIsWhyDetectionMustUseTheExeFolder()
+        {
+            var extracted = @"C:\Users\u\AppData\Local\Temp\.net\OmenCore\abc123";
+            AutoUpdateService.DetectInstallationTypeFromDirectory(
+                    extracted, @"C:\Program Files", @"C:\Program Files (x86)", _ => false)
+                .Should().Be(InstallationType.Portable, "this is what the old code saw for every installed build");
+        }
+
+        [Fact]
+        public void CustomInstallFolder_WithInnoUninstaller_IsDetectedAsInstaller()
+        {
+            AutoUpdateService.DetectInstallationTypeFromDirectory(
+                    @"D:\Apps\OmenCore", @"C:\Program Files", @"C:\Program Files (x86)",
+                    path => path.EndsWith("unins000.exe", StringComparison.OrdinalIgnoreCase))
+                .Should().Be(InstallationType.Installer);
+        }
+
+        [Fact]
+        public void InstallerBuild_SelectsTheSetupExe_NeverAZipOrAChecksum()
+        {
+            AutoUpdateService.SelectAssetName(V440Assets, InstallationType.Installer)
+                .Should().Be("OmenCoreSetup-4.4.0.exe");
+        }
+
+        [Fact]
+        public void PortableBuild_SelectsTheWindowsZip_NeverTheLinuxOne()
+        {
+            AutoUpdateService.SelectAssetName(V440Assets, InstallationType.Portable)
+                .Should().Be("OmenCore-4.4.0-win-x64.zip");
+
+            // Order-independent: the old rule took whichever zip came last.
+            var reversed = (string[])V440Assets.Clone();
+            Array.Reverse(reversed);
+            AutoUpdateService.SelectAssetName(reversed, InstallationType.Portable)
+                .Should().Be("OmenCore-4.4.0-win-x64.zip");
+        }
+
+        [Fact]
+        public void PortableUpdateMessage_TellsTheUserToExtract_NotThatTheFileIsCorrupt()
+        {
+            var message = AutoUpdateService.PortableUpdateMessage(@"C:\t\OmenCore-4.4.0-win-x64.zip");
+            message.Should().Contain("extract");
+            message.Should().NotContain("corrupt");
+        }
     }
 }
