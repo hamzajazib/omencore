@@ -1783,6 +1783,17 @@ namespace OmenCore.Hardware
                 // Re-apply current fan settings to prevent BIOS reversion (OmenMon approach)
                 if (IsManualControlActive || (_lastMode != HpWmiBios.FanMode.Default && _lastMode != HpWmiBios.FanMode.LegacyDefault))
                 {
+                    // Guided Fan Diagnostic intentionally writes fan levels of its own; this
+                    // keepalive must not fight it on any of the three branches below. Previously
+                    // only the preset-mode branch had this guard, so a diagnostic run started
+                    // while Max mode or manual control was active could still get its writes
+                    // overridden by this timer.
+                    if (FanService.IsAnyDiagnosticModeActive)
+                    {
+                        TryExtendFanCountdown(DateTime.UtcNow);
+                        return;
+                    }
+
                     // For Max mode, re-apply SetFanMax(true) to ensure it stays active
                     if (_isMaxModeActive)
                     {
@@ -1907,11 +1918,7 @@ namespace OmenCore.Hardware
                     else
                     {
                         var nowUtc = DateTime.UtcNow;
-                        if (FanService.IsAnyDiagnosticModeActive)
-                        {
-                            TryExtendFanCountdown(nowUtc);
-                            return;
-                        }
+                        // IsAnyDiagnosticModeActive already checked above, ahead of the branch.
 
                         if ((nowUtc - _lastPresetModeReapplyUtc).TotalMilliseconds < PresetModeReapplyIntervalMs)
                         {
