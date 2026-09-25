@@ -260,11 +260,13 @@ namespace OmenCore.Services
                 
                 // Convert percent to level
                 result.AppliedLevel = result.ExpectedLevel;
-                
+                var usedSetFanMax = false;
+
                 // For 100%, use SetFanMax which achieves true maximum RPM
-                // SetFanLevel(55) may be capped by BIOS on some models
+                // SetFanLevel(ExpectedLevel) may be capped by BIOS on some models
                 if (targetPercent >= 100)
                 {
+                    usedSetFanMax = true;
                     result.WmiCallSucceeded = _wmiBios.SetFanMax(true);
                     if (result.WmiCallSucceeded)
                     {
@@ -272,9 +274,13 @@ namespace OmenCore.Services
                     }
                     else
                     {
-                        // Fallback to SetFanLevel
-                        result.WmiCallSucceeded = _wmiBios.SetFanLevel(55, 55);
-                        _logging.Info($"Fan {fanIndex} set to 100% via SetFanLevel(55) fallback");
+                        // Fallback to SetFanLevel. GitHub #207 (board 88F8): a hardcoded 55 here
+                        // sent the wrong level entirely on a board whose real ceiling differs -
+                        // this board's own ExpectedLevel (== GetEffectiveMaxLevel() at 100%) is
+                        // what every other write in this method already uses.
+                        usedSetFanMax = false;
+                        result.WmiCallSucceeded = _wmiBios.SetFanLevel((byte)result.ExpectedLevel, (byte)result.ExpectedLevel);
+                        _logging.Info($"Fan {fanIndex} set to 100% via SetFanLevel({result.ExpectedLevel}) fallback");
                     }
                 }
                 else
@@ -378,7 +384,43 @@ namespace OmenCore.Services
                         await Task.Delay(RetryDelayMs, ct);
                     }
                 }
-                
+
+                // GitHub #207 (board 88F8): SetFanMax returned true on every call, but the 100%
+                // test's RPM estimate never moved past the 60% test's value - the same "firmware
+                // accepts Max and ignores it" class already fixed in WmiFanController's maintenance
+                // loop (Ohman cross-check, boards 8A26/8E5E), just reached through this method's own
+                // one-shot apply instead. One direct-level write is a cheap thing to try before
+                // reporting a board as failing its 100% test outright.
+                if (!result.VerificationPassed && usedSetFanMax)
+                {
+                    _logging.Warn($"Fan {fanIndex}: SetFanMax accepted but never verified after {totalAttempts} attempts - retrying via direct SetFanLevel({result.ExpectedLevel}).");
+                    if (_wmiBios.SetFanLevel((byte)result.ExpectedLevel, (byte)result.ExpectedLevel))
+                    {
+                        await Task.Delay(FanResponseDelayMs, ct);
+                        var rpmSamples = new int[VerificationSamples];
+                        for (int i = 0; i < VerificationSamples; i++)
+                        {
+                            rpmSamples[i] = GetCurrentRpm(fanIndex);
+                            if (i < VerificationSamples - 1) await Task.Delay(SampleDelayMs, ct);
+                        }
+                        result.ActualRpmAfter = (int)rpmSamples.Average();
+                        result.RpmSource = GetCurrentRpmSource(fanIndex);
+                        result.ActualLevelAfter = ReadCurrentLevel(fanIndex);
+                        if (result.RpmSource == RpmSource.Estimated)
+                            result.ActualRpmAfter = result.ActualLevelAfter * 100;
+
+                        result.LevelReadbackMatched = IsLevelReadbackMatch(result);
+                        var rpmMatched = VerifyRpm(result);
+                        var levelEvidenceAccepted = IsLevelOnlyEvidenceAcceptable(result);
+                        result.VerificationEvidence = DetermineVerificationEvidence(rpmMatched, levelEvidenceAccepted);
+                        result.VerificationPassed = rpmMatched || levelEvidenceAccepted;
+                        if (result.VerificationPassed)
+                        {
+                            _logging.Info($"Fan {fanIndex}: direct-level fallback confirmed 100% ({DescribeVerificationPass(fanIndex, result)})");
+                        }
+                    }
+                }
+
                 // Final diagnostic message if verification still failed
                 if (!result.VerificationPassed)
                 {

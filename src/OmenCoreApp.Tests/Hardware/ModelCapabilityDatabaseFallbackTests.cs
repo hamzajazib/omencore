@@ -185,25 +185,45 @@ namespace OmenCoreApp.Tests.Hardware
         [Fact]
         public void GetCapabilitiesByModelName_MismatchedVendor_DoesNotReturnRestrictedEntry()
         {
-            // GitHub #172: board 8BBE reports the same WMI name pattern as the AMD-only 8C2F
-            // entry ("Victus by HP Gaming Laptop 16-r0xxx") but is an Intel system. The
-            // name-pattern fallback must not hand it 8C2F's AMD-derived capability flags
-            // (e.g. SupportsUndervolt = false, which assumes Ryzen).
+            // GitHub #172 (then): board 8BBE reported the same WMI name pattern as the AMD-only
+            // 8C2F entry ("Victus by HP Gaming Laptop 16-r0xxx") but is an Intel system, and had
+            // no entry of its own - so an Intel machine reaching this name pattern had to resolve
+            // to null (Family fallback), never to 8C2F's AMD-derived flags (e.g.
+            // SupportsUndervolt = false, which assumes Ryzen). GitHub #211 (now): 8BBE has its own
+            // exact, Intel-gated entry, so the SAME lookup correctly matches IT instead of null -
+            // the guard is proven by checking it lands on the Intel entry, not the AMD one.
             var caps = ModelCapabilityDatabase.GetCapabilitiesByModelName(
                 "Victus by HP Gaming Laptop 16-r0xxx", CpuUndervoltProviderFactory.CpuVendor.Intel);
 
-            caps.Should().BeNull("a vendor-restricted entry must not match a system of a different CPU vendor");
+            caps.Should().NotBeNull();
+            caps!.ProductId.Should().Be("8BBE");
+            caps.RequiredCpuVendor.Should().Be(CpuUndervoltProviderFactory.CpuVendor.Intel);
         }
 
         [Fact]
         public void GetPreferredCapabilities_MismatchedVendor_DoesNotCrossVendorViaNamePattern()
         {
-            // Same scenario via the full resolution path used by CapabilityDetectionService,
-            // with an unknown ProductId (as board 8BBE has no entry of its own).
+            // Same scenario via the full resolution path used by CapabilityDetectionService.
+            // ProductId 8BBE now has its own entry (GitHub #211), so this is an exact match, not
+            // a name-pattern fallback - stronger evidence than before, same non-null outcome.
             var caps = ModelCapabilityDatabase.GetPreferredCapabilities(
                 "8BBE", "Victus by HP Gaming Laptop 16-r0xxx", CpuUndervoltProviderFactory.CpuVendor.Intel);
 
-            caps.Should().BeNull("an unknown ProductId on a mismatched-vendor system must not silently inherit a vendor-restricted entry");
+            caps.Should().NotBeNull();
+            caps!.ProductId.Should().Be("8BBE");
+        }
+
+        [Fact]
+        public void GetCapabilitiesByModelName_AmdOnTheSameNamePattern_DoesNotCrossVendorIntoTheNewIntelEntry()
+        {
+            // The reverse direction #211 introduces: 8BBE (Intel) and 8C2F (AMD) now share the
+            // "16-r0" name pattern from opposite vendor guards. An AMD machine with an unknown
+            // ProductId reaching this name pattern must still land on 8C2F, never on 8BBE.
+            var caps = ModelCapabilityDatabase.GetCapabilitiesByModelName(
+                "Victus by HP Gaming Laptop 16-r0xxx", CpuUndervoltProviderFactory.CpuVendor.AMD);
+
+            caps.Should().NotBeNull();
+            caps!.ProductId.Should().Be("8C2F");
         }
 
         // ─── GetCapabilitiesByFamily: always returns non-null ─────────────────

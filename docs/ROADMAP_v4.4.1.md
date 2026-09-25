@@ -1,0 +1,158 @@
+# OmenCore v4.4.1 Roadmap
+
+**Status:** In progress. Opened 2026-09-25, one day after v4.4.0 shipped (and was republished the
+same day for the in-app updater fix — see `docs/CHANGELOG_v4.4.0.md`).
+**Base version:** v4.4.0
+**Predecessor doc:** `docs/ROADMAP_v4.4.0.md` — carried the 4.3.1 → 4.4.0 cycle. That document is now
+historical record.
+
+---
+
+## Why This Cycle Exists
+
+The day after 4.4.0 shipped, real field data started coming back against it: three new GitHub
+issues with diagnostics exports (`#211`, `#212`, `#213`), a new Guided Fan Verification result on
+an existing report (`#207`), and a mode-switch confirmation on another (`#195`). Also reviewed the
+project's active community forks for anything worth pulling into `main`, and worked through a
+Discord report about fan presets not surviving a reboot.
+
+---
+
+## Done
+
+### GitHub #211: Board `8BBE` (Victus 16-r0xxx, Intel) Given an Exact Entry
+
+Was resolving via generic Family fallback (`IsKnownModel: no` in its own diagnostics trace) since
+first being noted in `#172` and traced further in `#198`. This export finally provided real data:
+WMI fan control and V1 thermal policy confirmed live (`FanCommandHistoryCount: 80`, thermal
+protection engaging/releasing correctly). Fan curves, GPU Power Boost, RGB and undervolt weren't
+exercised, so those stay conservative. `RequiredCpuVendor = Intel` mirrors the guard `8C2F` already
+carries in the other direction — the two entries now share the `16-r0` WMI name pattern from
+opposite vendor guards, so the existing vendor-mismatch tests were updated to check both directions
+resolve to the correct entry instead of the old "must return null" assertion (which was pinning the
+*absence* of an `8BBE` entry, not a property worth keeping once it has one). 3 tests.
+
+### GitHub #212: Found a Real Architecture Gap in Zone-Colour RGB — Not Fixed, Documented Precisely
+
+An exceptionally thorough report: board `8BD4`'s own firmware topology probe reports
+`OneZoneWithNumpad`, not four-zone, and every RGB backend tested (WMI, explicit Wmi, forced EC)
+failed colour verification the same way (accepted write, black or mismatched readback). Traced to
+source: `WmiBiosBackend.ZoneCount` and `EcDirectBackend.ZoneCount` are both hardcoded to `4` -
+neither reads the model database's `HasFourZoneRgb` flag or the live topology probe result before
+building the colour payload, so a 4-zone, 12-byte `ColorTable` is sent regardless of what the
+keyboard controller actually is.
+
+**Explicitly did not "fix" this by flipping `HasFourZoneRgb` to `false` for `8BD4`.** That flag has
+never gated zone *count* anywhere in the write path - it only gates whether
+`CapabilityDetectionService` offers zone lighting *at all*. Flipping it trips the "no zone lighting"
+branch and falls back to `LightingCapability.SingleColor`, which per `IKeyboardBackend` means
+`SetBacklight` on/off only, no colour whatsoever - strictly worse than the wrong-zone-count write
+this board already has, on a board OMEN Gaming Hub colours correctly. Reverted that change before it
+landed; documented the real finding in the model database's own Notes instead, and asked the
+reporter for one cheap diagnostic (does a uniform same-colour-in-all-four-slots write verify where
+four different colours didn't) that would narrow down the real single-zone byte layout without
+guessing at it. 1 test pins `HasFourZoneRgb` staying `true` with the reasoning attached.
+
+**This is very likely NOT unique to `8BD4`.** Any board in the model database whose live topology
+probe reports `OneZoneWithNumpad`/`OneZoneWithoutNumpad` is exposed to the identical bug - see
+"Open Investigations" below.
+
+### GitHub #207: Guided Fan Verification's 100% Test Had the Same "Max Ignored" Gap Already Fixed Elsewhere
+
+A fresh Guided Fan Verification run on board `88F8` showed CPU@100%/GPU@100% both reading the exact
+same RPM estimate as the 60% test just before them, with `evidence: None`. The 30/60% tests write a
+discrete fan level and pass; the 100% test uses `SetFanMax(true)` instead (to reach the board's true
+mechanical ceiling rather than a BIOS-capped level), and this board's firmware accepted that command
+and never moved past wherever the fan already was - the same "firmware accepts Max, ignores it"
+class of bug already fixed this cycle in `WmiFanController`'s maintenance loop (Ohman cross-check,
+boards `8A26`/`8E5E`), reached through a completely different code path
+(`FanVerificationService.ApplyAndVerifyFanSpeedAsync`'s one-shot apply, which has no equivalent
+fallback). Fixed: after all verification retries fail with `SetFanMax`, one direct
+`SetFanLevel(ExpectedLevel, ...)` write is tried before giving up. Also fixed in the same pass: the
+existing "`SetFanMax` returned false" fallback path sent a hardcoded level of `55` regardless of the
+board's real ceiling - now uses the same `ExpectedLevel` every other write in this method already
+does. Needs real hardware to confirm; the retry logic can't be exercised without a live
+`HpWmiBios`/`FanService`, same limitation as the `WmiFanController` fix it mirrors.
+
+### Community Fork Reviewed: `ujjawalkaushik1110/omencore` — Two Real Gaps in `HardwareWatchdogService`
+
+Not merged as-is (the branch also carried a duplicate, conflicting `8DD0` database entry claiming
+`UserVerified = true` off one local diagnostic, and an unrelated ~1,300-line window-management CLI
+feature) - reimplemented the watchdog fix directly against current `main` instead, with full credit
+in the code and commit. Two real gaps found and fixed:
+
+1. **The freeze failsafe released on the very next telemetry sample, regardless of what that sample
+   actually read.** "The monitoring pipeline is alive again" was being treated as "safe to hand fans
+   back to BIOS Auto" - the one thing the failsafe exists to prevent (BIOS Auto reclaiming a hot
+   machine) was exactly what an inopportunely-timed release could do. Release now requires
+   temperatures at or below 65°C - deliberately well under both `FanService`'s real ~90°C thermal-
+   protection ramp and the 85°C informational-toast threshold - held for 15 continuous seconds.
+2. **Once the failsafe activated, nothing ever touched the fans again.** `CheckWatchdog`'s own
+   freeze-detection branch returned immediately on every subsequent tick while `_failsafeActive` was
+   true, so the 90% fan speed was applied exactly once. Anything that reset fan state in the
+   meantime (OGH, a firmware reassert, another controller) could silently undo it with nothing
+   watching. The failsafe now reapplies itself every 15 seconds for as long as it stays active - the
+   same "don't just fire once and hope" principle as the `WmiFanController`/`FanVerificationService`
+   fixes above, applied to a third code path that had the same gap.
+
+4 new tests cover the pure temperature-validity helper; the timer-driven reapply/release-hold
+behavior needs a real `FanService` and real elapsed time, which this suite doesn't have.
+
+### Discord: Fan Preset Not Surviving Reboot — Not a Bug, a Discoverability Gap
+
+Two independent reports (Lune, board Victus 16-s0117nq; WilliamM404) described the same thing: a
+custom fan preset reverts to Auto after a reboot, read as "fans suddenly go crazy." Traced the
+actual code path (`StartupRestorePolicy`) rather than assuming a bug: `EnableStartupHardwareRestore`
+alone is not enough on Victus or OMEN 16-class laptops - a second guardrail
+(`AllowStartupRestoreOnOmen16OrVictus`) has to be explicitly enabled too, "for models that have
+reported firmware sensitivity during boot." Both toggles already exist in Settings with real
+explanatory text; the feature works as designed once both are found. No code change - this is a
+support answer, not a fix, and changing the safety gate itself was never on the table without new
+evidence about why it exists.
+
+---
+
+## Open Investigations
+
+### Zone-colour RGB likely broken on every single-zone-topology board, not just `8BD4`
+
+`WmiBiosBackend.ZoneCount`/`EcDirectBackend.ZoneCount` hardcode `4` unconditionally - nothing reads
+`HasFourZoneRgb`, `FanZoneCount`-equivalent, or the live `HpWmiBios.KeyboardLightingType` topology
+probe before building the colour payload. Any board resolving to `OneZoneWithNumpad`/
+`OneZoneWithoutNumpad` (see `CapabilityDetectionService.ApplyLightingTopology`) is exposed. Needs:
+(1) the real single-zone WMI/EC byte layout, from a board owner willing to test the cheap uniform-
+colour diagnostic asked for in `#212`; (2) once known, making `ZoneCount` actually board-aware
+instead of a hardcoded constant on two backends; (3) a survey of which model-database entries with
+`HasFourZoneRgb = true` have never had their zone count independently confirmed, since this bug
+would have been silently misattributed as "keyboard may not support this method" on every one of
+them rather than traced to its real cause.
+
+### GitHub #213 — fans stuck at max regardless of preset, board `8DD0`
+
+No diagnostics export attached, only a screenshot. `8DD0` already has a real, evidence-backed entry
+(fan curves and RPM readback both confirmed by a prior contributor's PR), so this reads as a genuine
+behavior bug rather than a missing-model report - but nothing can be traced from a screenshot alone.
+Asked for an export captured while the symptom is happening.
+
+### Carried forward from v4.4.0, unchanged
+
+- Board `8E35` Performance mode (`#195`) — WMI policy fallback confirmed to fire correctly during a
+  live game session; actual wattage movement still unconfirmed (RyzenAdj couldn't initialize the
+  Dragon Range power table in the reporter's environment).
+- The `#199` sidebar/dashboard performance-mode label mismatch — traced, not fixed.
+- `#189` automatic fan curves — still the most-cited gap, no code yet.
+- The `8D87` GPU power unlock — still gated off (`EcWritePathValidated = false`), needs an 8D87
+  owner to validate the EC write path and the rewritten pin-loop model before any of it can turn on.
+
+---
+
+## Standing Rules (unchanged, carried from v4.4.0)
+
+- **Evidence gate.** Fan/EC/thermal/OC/UV *behavior* changes need field validation before shipping.
+  Architecture, performance, display-honesty, and pure-UI items do not.
+- **A fix that isn't confirmed yet is not the same claim as a fix that is.** Say which one it is,
+  every time, including in this document.
+- **Reviewing a fork or a PR means reading what it actually changes, not just what it says it
+  does.** Two of `ujjawalkaushik1110`'s four branches carried a duplicate, unverified board entry
+  bundled in with a genuinely good fix - taking the good part meant not taking the branch.
+- **Update this document as you go.**

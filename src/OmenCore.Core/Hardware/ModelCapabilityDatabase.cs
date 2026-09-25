@@ -1994,10 +1994,16 @@ namespace OmenCore.Hardware
                 SupportsGpuPowerBoost = false,
                 SupportsUndervolt = false,
                 AllowV1AutoModeFloorClear = false,
+                // Left TRUE deliberately, even though GitHub #212 shows it is not the whole truth -
+                // see the long note below. Flipping this to false does not make the write path
+                // correct; it trips CapabilityDetectionService's "no zone lighting" branch (line
+                // ~266) and falls back to LightingCapability.SingleColor, which per IKeyboardBackend
+                // means "SetBacklight on/off only, no colour AT ALL" - strictly worse than the wrong-
+                // zone-count write this board has now, on a board OMEN Gaming Hub colours correctly.
                 HasFourZoneRgb = true,
                 HasKeyboardBacklight = true,
                 UserVerified = false,
-                Notes = "RC1 field log - Victus 16-s0xxx (8BD4), Ryzen 7 7840HS + RTX 4060. Conservative WMI V1 fan profile; GPU boost disabled pending verification. Discord 2026-06-08 / 7Z5Z2EA reports basic keyboard RGB should be controllable through WMI ColorTable; EC keyboard writes remain disabled. Discord 2026-06-03 reported fans stuck at max after long gaming session; v3.7.1 Discord 2026-06-07 logs showed non-reactive/0 RPM fan behavior after SetFanLevel(0,0), so V1 manual-zero floor clear is disabled pending a safer handoff sequence."
+                Notes = "RC1 field log - Victus 16-s0xxx (8BD4), Ryzen 7 7840HS + RTX 4060. Conservative WMI V1 fan profile; GPU boost disabled pending verification. GitHub #212 (2026-09-24, BIOS F.29): this board's own live topology probe reports OneZoneWithNumpad, not four-zone, and every RGB write backend tested (Auto/WmiBios, explicit Wmi, forced EC) failed colour verification the same way (\"readback is all black\" / \"readback mismatch\") - consistent with WmiBiosBackend.ZoneCount/EcDirectBackend.ZoneCount both being hardcoded to 4 regardless of firmware topology (neither reads HasFourZoneRgb or the live probe result), so a 4-zone ColorTable payload is sent to a keyboard whose controller almost certainly expects something else. This is an architecture gap, not a fixable flag: HasFourZoneRgb has never gated zone COUNT, only whether zone lighting is offered at all, and the only alternative on this board's LightingCapability enum removes colour entirely. Not fixed - needs the real single-zone WMI byte layout before a protocol change ships; see the reply on #212 for the cheap diagnostic requested first. Discord 2026-06-03 reported fans stuck at max after long gaming session; v3.7.1 Discord 2026-06-07 logs showed non-reactive/0 RPM fan behavior after SetFanLevel(0,0), so V1 manual-zero floor clear is disabled pending a safer handoff sequence."
             });
 
             // Victus 16 S/R (2023/2024), AMD Ryzen 7 8845HS + Radeon 780M + RTX 4070.
@@ -2057,6 +2063,35 @@ namespace OmenCore.Hardware
                 HasFourZoneRgb = true,
                 UserVerified = false,
                 Notes = "GitHub #110 (16-r0xxx) + #155 (15-fb2082wm) — ProductId 8C2F is shared across the 15\" and 16\" Victus Ryzen 2024+ chassis. Capabilities were inferred from the 16\" report and are not yet confirmed on the 15\" chassis. Keyboard entry 8C2F already present in KeyboardModelDatabase. RequiredCpuVendor=AMD added after GitHub #172 (board 8BBE) showed the same \"16-r0\" WMI name pattern also matches an Intel machine, which must not inherit this AMD-only capability profile via the name-pattern fallback."
+            });
+
+            // Victus 16-r0xxx, Intel — the machine the RequiredCpuVendor guard above exists for.
+            // GitHub #172 first showed this board sharing 8C2F's "16-r0" name pattern; #198 traced a
+            // real ACPI-thermal-zone flip-flop bug on it (fixed in 4.4.0, not a database gap); #211
+            // finally provided a real diagnostics export. Was Family fallback (IsKnownModel: no)
+            // until this entry. Flags below are read directly from #211's export, not inherited from
+            // a sibling: WMI fan writes confirmed available (FanCommandHistoryCount: 80, thermal
+            // protection engaging/releasing correctly), V1 policy, SW fan control true. Curves, GPU
+            // boost, RGB and undervolt are NOT in that export - stay conservative pending evidence.
+            AddModel(new ModelCapabilities
+            {
+                ProductId = "8BBE",
+                ModelName = "HP Victus 16-r0xxx Intel",
+                ModelNamePattern = "16-r0",
+                RequiredCpuVendor = CpuUndervoltProviderFactory.CpuVendor.Intel,
+                ModelYear = 2023,
+                Family = OmenModelFamily.Victus,
+                SupportsFanControlWmi = true,
+                SupportsFanControlEc = false,
+                SupportsFanCurves = false,
+                FanZoneCount = 2,
+                HasMuxSwitch = false,
+                SupportsGpuPowerBoost = false,
+                SupportsUndervolt = false,
+                HasFourZoneRgb = false,
+                HasKeyboardBacklight = true,
+                UserVerified = false,
+                Notes = "GitHub #211 (2026-09-24) — Victus 16-r0xxx Intel, ProductId 8BBE (RTX 4060, BIOS F.31). Previously resolved only via Family fallback (see #172, #198). WMI fan control and V1 thermal policy confirmed live in this export; fan curves, GPU boost, RGB and undervolt are unconfirmed and left conservative. RequiredCpuVendor=Intel mirrors the guard 8C2F already carries for this board, from the other direction."
             });
 
             AddModel(new ModelCapabilities

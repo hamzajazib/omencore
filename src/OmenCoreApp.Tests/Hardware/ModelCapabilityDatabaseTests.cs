@@ -647,6 +647,35 @@ namespace OmenCoreApp.Tests.Hardware
             caps.ModelName.Should().NotContain("(2024)");
         }
 
+        [Fact]
+        public void GetCapabilities_8BBE_ResolvesExactly_NoLongerFamilyFallback()
+        {
+            // GitHub #211: this board was Family fallback only (IsKnownModel: no) until its own
+            // diagnostics export confirmed WMI fan control and V1 policy live.
+            var caps = ModelCapabilityDatabase.GetCapabilities("8BBE");
+
+            caps.ProductId.Should().Be("8BBE");
+            caps.RequiredCpuVendor.Should().Be(CpuUndervoltProviderFactory.CpuVendor.Intel,
+                "8C2F already guards against this exact board's WMI name pattern matching its AMD-only profile");
+            caps.SupportsFanControlWmi.Should().BeTrue();
+            caps.SupportsFanCurves.Should().BeFalse("not exercised in the #211 export");
+            caps.UserVerified.Should().BeFalse();
+        }
+
+        [Fact]
+        public void GetCapabilities_8BD4_KeepsHasFourZoneRgbTrue_DespiteTheOneZoneFirmwareReport()
+        {
+            // GitHub #212: flipping this to false does not make the RGB write correct - it trips
+            // CapabilityDetectionService's zone-lighting-disabled branch and falls back to
+            // LightingCapability.SingleColor, which means "on/off only, no colour", strictly worse
+            // than the wrong-zone-count write this board already has. See the long Notes on this
+            // entry for the real (still open) architecture gap.
+            var caps = ModelCapabilityDatabase.GetCapabilities("8BD4");
+
+            caps.HasFourZoneRgb.Should().BeTrue();
+            caps.Notes.Should().Contain("#212");
+        }
+
         /// <summary>
         /// GitHub #163 / Discord (Trirez): HP OMEN 16 XF0079AX, Ryzen 7 7840HS + RTX 4070,
         /// resolved to the Intel wf0xxx 8BCA entry via exact ProductId - same board/ProductId
