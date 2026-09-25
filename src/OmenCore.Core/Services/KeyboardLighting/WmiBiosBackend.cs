@@ -22,7 +22,14 @@ namespace OmenCore.Services.KeyboardLighting
         public KeyboardMethod Method => KeyboardMethod.ColorTable2020;
         public bool IsAvailable => _initialized && (_wmiBios?.IsAvailable ?? false);
         public bool SupportsReadback => true; // GetColorTable supported
-        public int ZoneCount => 4;
+
+        /// <summary>
+        /// The number of colour zones this write path treats as real, from the firmware's own
+        /// lighting topology probe (see GitHub #212) - not always 4. Re-queried each call rather
+        /// than cached, since it's cheap (one WMI round trip) and this can be read before a
+        /// keyboard swap or firmware update would otherwise go stale for the life of the process.
+        /// </summary>
+        public int ZoneCount => _wmiBios == null ? 4 : HpWmiBios.MapLightingTypeToZoneCount(_wmiBios.GetKeyboardLightingType());
         public bool IsPerKey => false;
         
         public WmiBiosBackend(HpWmiBios? wmiBios, LoggingService logging)
@@ -117,8 +124,13 @@ namespace OmenCore.Services.KeyboardLighting
                 // unless backlight state is explicitly re-armed first.
                 _wmiBios.SetBacklight(true);
                 await Task.Delay(30);
-                
-                result.BackendReportedSuccess = _wmiBios.SetColorTable(colorTable);
+
+                // Declare the real zone count (see GitHub #212 / HpWmiBios.SetColorTable's remarks)
+                // instead of the historical hardcoded 4. The 12-byte, 4-slot payload itself is left
+                // unchanged - the real single-zone byte layout isn't confirmed, so this only fixes
+                // the one thing there IS hard evidence for: byte 0 lying about the topology.
+                var effectiveZoneCount = (byte)Math.Clamp(ZoneCount, 1, 4);
+                result.BackendReportedSuccess = _wmiBios.SetColorTable(colorTable, zoneCount: effectiveZoneCount);
                 
                 if (!result.BackendReportedSuccess)
                 {

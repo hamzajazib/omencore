@@ -1751,6 +1751,21 @@ namespace OmenCore.Hardware
             KeyboardLightingType.RgbPerKey => KbdType.PerKeyRgb,
             _ => null
         };
+
+        /// <summary>
+        /// Map the lighting topology onto how many <see cref="SetColorTable"/> zone slots the
+        /// firmware actually declared for itself - the count that should go in the ColorTable's
+        /// own byte 0 (see <see cref="SetColorTable"/>'s remarks on GitHub #212). Falls back to 4
+        /// (the historical unconditional default, and still correct for the common case) when the
+        /// topology is unknown or doesn't say - RgbPerKey and Normal/None never reach this path
+        /// (per-key has its own command surface; unlit keyboards send nothing).
+        /// </summary>
+        internal static byte MapLightingTypeToZoneCount(KeyboardLightingType? lighting) => lighting switch
+        {
+            KeyboardLightingType.OneZoneWithNumpad => 1,
+            KeyboardLightingType.OneZoneWithoutNumpad => 1,
+            _ => 4
+        };
         
         /// <summary>
         /// Check if keyboard backlight is supported.
@@ -1975,7 +1990,17 @@ namespace OmenCore.Hardware
         /// </summary>
         /// <param name="zoneColors">12-byte array: [R0,G0,B0,R1,G1,B1,R2,G2,B2,R3,G3,B3]</param>
         /// <param name="ensureBacklightOn">If true, ensures backlight is enabled first</param>
-        public bool SetColorTable(byte[] zoneColors, bool ensureBacklightOn = true)
+        /// <param name="zoneCount">
+        /// Byte 0 of the payload - what this command tells the firmware the keyboard is. Defaults
+        /// to 4 (every caller before this parameter existed sent exactly that, unconditionally,
+        /// regardless of the actual keyboard). GitHub #212 (board 8BD4): a firmware-reported
+        /// single-zone keyboard rejected every colour write this way, INCLUDING one where all four
+        /// RGB slots carried the identical colour - ruling out "only slot 0 is read" and leaving
+        /// "the firmware checks byte 0 against its own real zone count and discards the whole
+        /// payload on a mismatch" as the standing hypothesis. Unconfirmed until a board owner tests
+        /// it with the real count.
+        /// </param>
+        public bool SetColorTable(byte[] zoneColors, bool ensureBacklightOn = true, byte zoneCount = 4)
         {
             if (!_isAvailable)
             {
@@ -1996,8 +2021,8 @@ namespace OmenCore.Hardware
                 // Build proper 128-byte ColorTable structure per OmenMon format
                 var data = new byte[128];
                 
-                // Byte 0: Zone count (always 4 for standard 4-zone keyboards)
-                data[0] = 4;
+                // Byte 0: zone count, per the caller - see SetColorTable's own remarks on #212.
+                data[0] = zoneCount;
                 
                 // Bytes 1-24: Padding (leave as zeros)
                 const int COLOR_TABLE_PAD = 24;

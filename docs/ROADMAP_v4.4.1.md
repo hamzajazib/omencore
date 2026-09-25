@@ -32,7 +32,7 @@ opposite vendor guards, so the existing vendor-mismatch tests were updated to ch
 resolve to the correct entry instead of the old "must return null" assertion (which was pinning the
 *absence* of an `8BBE` entry, not a property worth keeping once it has one). 3 tests.
 
-### GitHub #212: Found a Real Architecture Gap in Zone-Colour RGB — Not Fixed, Documented Precisely
+### GitHub #212: Zone-Colour RGB Architecture Gap — Targeted Fix Implemented, Pending Confirmation
 
 An exceptionally thorough report: board `8BD4`'s own firmware topology probe reports
 `OneZoneWithNumpad`, not four-zone, and every RGB backend tested (WMI, explicit Wmi, forced EC)
@@ -51,11 +51,35 @@ this board already has, on a board OMEN Gaming Hub colours correctly. Reverted t
 landed; documented the real finding in the model database's own Notes instead, and asked the
 reporter for one cheap diagnostic (does a uniform same-colour-in-all-four-slots write verify where
 four different colours didn't) that would narrow down the real single-zone byte layout without
-guessing at it. 1 test pins `HasFourZoneRgb` staying `true` with the reasoning attached.
+guessing at it.
+
+**Follow-up evidence (2026-09-25):** the reporter ran that diagnostic - identical colour in all four
+zone slots - and it failed exactly the same way. That rules out "only slot 0 is read" and leaves the
+more precise hypothesis: `HpWmiBios.SetColorTable`'s own 128-byte payload hardcoded byte 0 (its own
+declared zone count) to `4` for every board, unconditionally, and the firmware may be validating that
+byte against its own real topology and silently discarding the whole write on a mismatch - which
+matches the exact failure signature (WMI-transport-level success, firmware-level silent rejection)
+even with a correctly-formed uniform-colour write.
+
+**Implemented, pending confirmation:** `HpWmiBios.SetColorTable` takes a `zoneCount` parameter
+instead of hardcoding `4` into byte 0; a new `HpWmiBios.MapLightingTypeToZoneCount` maps the live
+topology probe onto it (`OneZoneWithNumpad`/`OneZoneWithoutNumpad` → 1, everything else → the
+historical default of 4); `WmiBiosBackend.ZoneCount` now reads that mapping live instead of
+returning a hardcoded `4`, and `SetZoneColorsAsync` passes it through to `SetColorTable`. Everything
+else about the write - the 12-byte, 4-slot colour payload itself - is deliberately **unchanged**,
+because the real single-zone byte layout is still not known; this tests only the one piece there is
+hard evidence for. `EcDirectBackend` was deliberately left untouched: its hardcoded EC registers
+(0xB1-0xBC) are a different, older-generation mechanism (OMEN 15/16/17 2020-2022) with no declared-
+zone-count byte at all, and `8BD4` (a 2023 board) has no `EcColorRegisters` override, so its EC-path
+failure is a separate, expected limitation, not this bug. 10 new tests (8 for the zone-count mapping,
+covering every topology value; the existing `HasFourZoneRgb` pin stays in place). **Not yet confirmed
+on real hardware** - if colour still fails after this ships, the byte-0 hypothesis is wrong and the
+real single-zone layout remains unknown; asked the reporter to test once a build is available.
 
 **This is very likely NOT unique to `8BD4`.** Any board in the model database whose live topology
-probe reports `OneZoneWithNumpad`/`OneZoneWithoutNumpad` is exposed to the identical bug - see
-"Open Investigations" below.
+probe reports `OneZoneWithNumpad`/`OneZoneWithoutNumpad` is exposed to the identical bug, and now
+gets the same byte-0 fix automatically the next time it's queried live - see "Open Investigations"
+below for what's still unconfirmed.
 
 ### GitHub #207: Guided Fan Verification's 100% Test Had the Same "Max Ignored" Gap Already Fixed Elsewhere
 
@@ -114,18 +138,20 @@ evidence about why it exists.
 
 ## Open Investigations
 
-### Zone-colour RGB likely broken on every single-zone-topology board, not just `8BD4`
+### Zone-colour RGB: byte-0 fix shipped for `WmiBiosBackend`, EC path and the real payload layout still open
 
-`WmiBiosBackend.ZoneCount`/`EcDirectBackend.ZoneCount` hardcode `4` unconditionally - nothing reads
-`HasFourZoneRgb`, `FanZoneCount`-equivalent, or the live `HpWmiBios.KeyboardLightingType` topology
-probe before building the colour payload. Any board resolving to `OneZoneWithNumpad`/
-`OneZoneWithoutNumpad` (see `CapabilityDetectionService.ApplyLightingTopology`) is exposed. Needs:
-(1) the real single-zone WMI/EC byte layout, from a board owner willing to test the cheap uniform-
-colour diagnostic asked for in `#212`; (2) once known, making `ZoneCount` actually board-aware
-instead of a hardcoded constant on two backends; (3) a survey of which model-database entries with
-`HasFourZoneRgb = true` have never had their zone count independently confirmed, since this bug
-would have been silently misattributed as "keyboard may not support this method" on every one of
-them rather than traced to its real cause.
+`WmiBiosBackend.ZoneCount` is now live and board-aware (done above); `EcDirectBackend.ZoneCount`
+still hardcodes `4` unconditionally and was deliberately left alone this pass - see #212 above for
+why. Even with the `WmiBiosBackend` fix, the real single-zone `ColorTable` byte *layout* (as opposed
+to just the declared count in byte 0) is still unconfirmed - if HP's firmware wants something other
+than "12 bytes, 4 RGB triples" for a 1-zone board, this fix alone won't be enough. Needs: (1)
+hardware confirmation the byte-0 fix actually resolves `#212`, or evidence it doesn't; (2) if it
+doesn't, the real single-zone WMI byte layout from a board owner; (3) a decision on `EcDirectBackend`
+once the WMI path is settled - it has no declared-zone-count byte at all, so any fix there would be a
+different shape entirely; (4) a survey of which model-database entries with `HasFourZoneRgb = true`
+have never had their zone count independently confirmed, since this bug would have been silently
+misattributed as "keyboard may not support this method" on every one of them rather than traced to
+its real cause.
 
 ### GitHub #213 — fans stuck at max regardless of preset, board `8DD0`
 

@@ -62,6 +62,32 @@ namespace OmenCoreApp.Tests.Hardware
             HpWmiBios.MapLightingTypeToKbdType(null).Should().BeNull();
         }
 
+        [Theory]
+        [InlineData(HpWmiBios.KeyboardLightingType.OneZoneWithNumpad, 1)]
+        [InlineData(HpWmiBios.KeyboardLightingType.OneZoneWithoutNumpad, 1)]
+        [InlineData(HpWmiBios.KeyboardLightingType.FourZoneWithNumpad, 4)]
+        [InlineData(HpWmiBios.KeyboardLightingType.FourZoneWithoutNumpad, 4)]
+        [InlineData(HpWmiBios.KeyboardLightingType.RgbPerKey, 4)]
+        [InlineData(HpWmiBios.KeyboardLightingType.Normal, 4)]
+        [InlineData(HpWmiBios.KeyboardLightingType.None, 4)]
+        public void MapLightingTypeToZoneCount_OnlySingleZoneTopologiesDeviateFromFour(
+            HpWmiBios.KeyboardLightingType topology, byte expectedZoneCount)
+        {
+            // GitHub #212 (board 8BD4): a firmware-reported single-zone keyboard rejected every
+            // ColorTable write that declared 4 zones in byte 0. Only the two single-zone topologies
+            // should report anything other than the historical default of 4 - RgbPerKey has its own
+            // command surface and never reaches SetColorTable, and Normal/None have no colour
+            // control to write at all, so their zone count is moot but stays at the old default
+            // rather than inventing a new meaning for it.
+            HpWmiBios.MapLightingTypeToZoneCount(topology).Should().Be(expectedZoneCount);
+        }
+
+        [Fact]
+        public void MapLightingTypeToZoneCount_NoAnswerStaysAtTheHistoricalDefault()
+        {
+            HpWmiBios.MapLightingTypeToZoneCount(null).Should().Be(4);
+        }
+
         [Fact]
         public void DecodeKeyboardType_RejectsTheAccumulatorValues()
         {

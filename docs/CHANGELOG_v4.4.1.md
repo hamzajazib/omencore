@@ -38,17 +38,28 @@ fixed: the existing fallback path sent a hardcoded level regardless of the board
 [#211](https://github.com/theantipopau/omencore/issues/211): was Family fallback only since `#172`;
 WMI fan control and V1 policy confirmed live in a real diagnostics export.
 
+### Zone-Colour RGB: WMI Backend Now Declares Its Real Zone Count — Implemented, Pending Confirmation
+
+[#212](https://github.com/theantipopau/omencore/issues/212) (board `8BD4`): the firmware's own
+topology probe reports a single RGB zone, but `WmiBiosBackend`/`EcDirectBackend` both hardcoded
+"4 zones" and never checked, so `HpWmiBios.SetColorTable`'s own payload told the firmware something
+it wasn't — even on a follow-up test sending the identical colour into all four zone slots.
+`WmiBiosBackend.ZoneCount` now reads the live topology probe and passes the real count into
+`SetColorTable`'s byte 0 instead of a hardcoded `4`; the 4-slot colour payload itself is unchanged,
+since the real single-zone byte layout still isn't known — this tests only the one piece there's hard
+evidence for. `EcDirectBackend` untouched (different, older-generation mechanism, no declared-zone-
+count byte). **Not yet confirmed on real hardware.** The flag that looked like a quick fix
+(`HasFourZoneRgb`) still doesn't control zone count at all and was left at `true`; flipping it
+removes colour control entirely instead of correcting it. See the roadmap for the full write-up.
+
 ---
 
 ## Investigated, Not Fixed
 
-### Zone-Colour RGB Is Very Likely Broken on Every Single-Zone-Topology Board
+### Zone-Colour RGB On `EcDirectBackend`, and the Real Single-Zone Byte Layout If the Above Doesn't Confirm
 
-[#212](https://github.com/theantipopau/omencore/issues/212) (board `8BD4`): the firmware's own
-topology probe reports a single RGB zone, but `WmiBiosBackend`/`EcDirectBackend` both hardcode
-"4 zones" and never check. Not fixed — the real single-zone byte layout isn't known, and the one
-flag that looked like a quick fix (`HasFourZoneRgb`) doesn't control zone count at all; flipping it
-removes colour control entirely instead of correcting it. See the roadmap for the full write-up and
-what's needed to actually fix it.
+`EcDirectBackend.ZoneCount` still hardcodes `4` — deliberately left alone this pass, see above. And
+if the `WmiBiosBackend` byte-0 fix doesn't resolve `#212` on real hardware, the real single-zone
+`ColorTable` layout is still unknown. See the roadmap for what's needed either way.
 
 ---
