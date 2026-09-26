@@ -251,12 +251,15 @@ Older release notes ([v3.8.0](docs/CHANGELOG_v3.8.0.md) and earlier) are kept in
 
 **v4.4.0 was the fix release for 4.3.1.** It started as field reports right after 4.3.1 shipped (#197, #198) and grew once diagnostics bundles showed three 4.3.1 changes were wrong — fan control disabled on older-firmware boards and a false "monitoring frozen" failsafe forcing fans to 90% — across at least seven boards. It also took in two large community contributions (PR #176, PR #196), a pass over Ohman's recent fixes, and a backlog sweep.
 
+**In progress: v4.4.1** ([changelog](docs/CHANGELOG_v4.4.1.md), [roadmap](docs/ROADMAP_v4.4.1.md)) — a follow-up from 4.4.0 field reports: a safer watchdog failsafe, Victus boards no longer offered a GPU Power Boost the firmware refuses, exact entries for `8BBE` and `88F8`, and a candidate fix for zone-colour RGB on single-zone keyboards ([#212](https://github.com/theantipopau/omencore/issues/212)). Not released yet.
+
 **Next:** the most-reported gap is firmware Auto under-cooling during games ([#189](https://github.com/theantipopau/omencore/issues/189) has a design doc for an opt-in automatic fan curve). The OMEN MAX 16 (`8D87`) GPU power unlock is written but off until an owner can validate its EC writes. Several 4.4.0 fixes are waiting on their reporters to confirm them on real hardware.
 
 The active work is tracked in:
 
 - [docs/CHANGELOG_v4.4.0.md](docs/CHANGELOG_v4.4.0.md) - the current release notes.
 - [docs/ROADMAP_v4.4.0.md](docs/ROADMAP_v4.4.0.md) - the full scope, investigations, and evidence trails for this cycle.
+- [docs/CHANGELOG_v4.4.1.md](docs/CHANGELOG_v4.4.1.md) / [docs/ROADMAP_v4.4.1.md](docs/ROADMAP_v4.4.1.md) - the in-progress 4.4.1 cycle.
 
 Prior-release work is kept for historical reference:
 
@@ -423,6 +426,8 @@ New this cycle (4.4.0):
 - **Firmware Auto can under-cool during sustained load** on some boards (reported on `8D87` and `8BA9`) — OmenCore's Auto mode hands fans to the firmware and doesn't steer them. Use a custom curve or a Performance/Gaming preset for heavy workloads; [#189](https://github.com/theantipopau/omencore/issues/189) tracks an opt-in automatic curve.
 - **The performance-mode label can disagree between the sidebar and the dashboard** after a hotkey mode change ([#199](https://github.com/theantipopau/omencore/issues/199)). Traced, not yet fixed; display only.
 - **Whether HP's WMI temperature command (`0x23`) means what this codebase assumes for its sensor-index parameter is still unconfirmed.** Diagnostics exports now capture all four indices to settle it from real data.
+- **Zone-colour RGB doesn't apply on keyboards whose firmware reports a single zone** (confirmed on `8BD4`, [#212](https://github.com/theantipopau/omencore/issues/212)) — the write is accepted but nothing changes. A candidate fix is on `main` for 4.4.1, pending the reporter's test.
+- **Victus boards may show a GPU Power Boost option in the tray that does nothing** — the backend refuses it on every Victus without a database opt-in. Hidden in 4.4.1.
 - **Board `8C9C`'s database entry has real field confirmation for fan control only** — GPU Power Boost, undervolt, and RGB stay conservative.
 
 Carried forward from 4.1.7-4.3.1 (untouched by 4.4.0's work unless noted — all still gated on field evidence):

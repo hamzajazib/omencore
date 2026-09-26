@@ -2,8 +2,10 @@
 
 **Release Date:** TBD — in progress. Rolling changelog, updated as work lands.
 **Release Status:** In progress. Started 2026-09-25, one day after v4.4.0 shipped.
-**Type:** Field-report follow-up to 4.4.0. Fixes two real bugs found from post-release diagnostics,
-adds one board entry, and pulls in a genuine fix found reviewing a community fork.
+**Type:** Field-report follow-up to 4.4.0. Four fixes (watchdog failsafe, fan-verification Max
+fallback, Victus GPU Power Boost display, diagnostic keepalive guard), two new board entries (`8BBE`,
+`88F8`), and one RGB fix awaiting hardware confirmation (`#212`). Sources: post-release diagnostics
+exports, a community fork, PR `#210`, and a sweep of older unanswered issues.
 **Base Version:** v4.4.0
 **Tracking doc:** `docs/ROADMAP_v4.4.1.md` — full investigation detail, evidence trails, and what's
 still open live there; this file stays short.
@@ -90,5 +92,13 @@ removes colour control entirely instead of correcting it. See the roadmap for th
 `EcDirectBackend.ZoneCount` still hardcodes `4` — deliberately left alone this pass, see above. And
 if the `WmiBiosBackend` byte-0 fix doesn't resolve `#212` on real hardware, the real single-zone
 `ColorTable` layout is still unknown. See the roadmap for what's needed either way.
+
+---
+
+## Issue Housekeeping
+
+Closed during this cycle as already resolved in 4.4.0 or duplicated elsewhere: `#170` (`8A3E`
+already in the database), `#188` (`8D26` entry shipped), `#174` (duplicate of `#199`), `#156`
+(duplicate of `#149`). `#115` and `#172` close when this release ships.
 
 ---
