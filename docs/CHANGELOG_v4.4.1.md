@@ -37,6 +37,7 @@ and [#184](https://github.com/theantipopau/omencore/issues/184), `88F8` in
 beside the backend's own "skipped - HP Victus does not support WMI TGP/PPAB control". The display
 gate treated "WMI BIOS is present" as GPU-power evidence. It now mirrors the backend's Victus rule
 exactly: hidden unless the board's entry explicitly opts in. Non-Victus boards are unchanged.
+First raised in PR [#210](https://github.com/theantipopau/omencore/pull/210); narrowed to Victus here.
 
 ### Guided Fan Diagnostic Could Be Overridden by the Keepalive From Max or Manual Mode
 
