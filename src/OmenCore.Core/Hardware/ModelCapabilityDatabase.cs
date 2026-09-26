@@ -1928,6 +1928,35 @@ namespace OmenCore.Hardware
                 Notes = "GitHub PR #200 - HP Victus 15-fb3xxx, ProductId 8DD0, Ryzen 7 7445HS + RTX 2050, BIOS F.15. Contributor verified Max fan via WMI with level/RPM readback, manual level writes and keepalive on this board. Flags mirror 8DD2; UserVerified withheld pending a full verification pass."
             });
 
+            // Victus 16-d0xxx (2021), Intel + RTX 3060, board 88F8. GitHub #207: 4.4.0 export, BIOS
+            // F.32. Flags come from that export, not a sibling: V0 policy (SW-fan-control bit reads
+            // false, but Guided Fan Verification passed 30%/60% on both fans with level evidence),
+            // firmware Fan Count 2 (the Victus family default was cutting this to 1), max level 55,
+            // keyboard topology Normal (backlit, not colour-addressable). The 100% step failed with
+            // Max accepted-but-ignored, addressed by FanVerificationService's level fallback in 4.4.1.
+            // No ModelNamePattern: exact ProductId only, so no other 16-d0 board inherits this.
+            AddModel(new ModelCapabilities
+            {
+                ProductId = "88F8",
+                ModelName = "HP Victus 16 (2021) d0xxx Intel",
+                ModelYear = 2021,
+                Family = OmenModelFamily.Victus,
+                SupportsFanControlWmi = true,
+                SupportsFanControlEc = false,
+                SupportsFanCurves = false,
+                SupportsIndependentFanCurves = false,
+                SupportsRpmReadback = false,
+                FanZoneCount = 2,
+                MaxFanLevel = 55,
+                HasMuxSwitch = false,
+                SupportsGpuPowerBoost = false,
+                SupportsUndervolt = false,
+                HasFourZoneRgb = false,
+                HasKeyboardBacklight = true,
+                UserVerified = false,
+                Notes = "GitHub #207 - Victus 16-d0xxx (88F8), Intel + RTX 3060, BIOS F.32, 4.4.0 diagnostics export. WMI fan level writes verified 30%/60% by Guided Fan Verification (level evidence, RPM estimated - no tachometer readback). Keyboard topology Normal: backlight only, no RGB. Fan curves, GPU boost, MUX and undervolt not exercised - left off pending evidence."
+            });
+
             // Victus 16 (2023/2024) - d1xxx series
             // GitHub Issue #66: Product ID 8A26 requested for capability DB.
             AddModel(new ModelCapabilities

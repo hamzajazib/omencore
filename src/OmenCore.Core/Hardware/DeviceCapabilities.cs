@@ -55,8 +55,13 @@ namespace OmenCore.Hardware
         /// <summary>Whether to show GPU Power Boost controls in UI.</summary>
         /// Runtime detection wins; ModelConfig is only consulted for known models
         /// to prevent unknown/non-OMEN devices from showing OMEN-specific controls.
-        public bool ShowGpuPowerBoost => HasGpuPowerControl ||
-                                          (IsKnownModel && (ModelConfig?.SupportsGpuPowerBoost ?? false));
+        /// Exception: Victus mirrors SystemControlViewModel.DetectGpuPowerBoost's blanket deny
+        /// (lifted only by an explicit SupportsGpuPowerBoost=true opt-in). HasGpuPowerControl is
+        /// set whenever WMI BIOS is present, so without this the tray offered a control the backend
+        /// always refuses (8C2F exports in #155/#184, Discord 8A25).
+        public bool ShowGpuPowerBoost =>
+            (ModelFamily != OmenModelFamily.Victus || ModelConfig?.SupportsGpuPowerBoost == true) &&
+            (HasGpuPowerControl || (IsKnownModel && (ModelConfig?.SupportsGpuPowerBoost ?? false)));
         
         /// <summary>Whether to show RGB lighting controls in UI.</summary>
         /// Runtime detection (HasZoneLighting/HasPerKeyLighting) always applies.

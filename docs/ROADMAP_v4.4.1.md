@@ -134,6 +134,29 @@ explanatory text; the feature works as designed once both are found. No code cha
 support answer, not a fix, and changing the safety gate itself was never on the table without new
 evidence about why it exists.
 
+### Backlog Audit (2026-09-26): GPU Boost Display Gate, `88F8`, and Old Model Requests
+
+Went back through the open backlog against current code, and analyzed three diagnostics exports that
+had never been read (`#155`, `#184` on `8C2F`; `#207` on `88F8`).
+
+- **GPU Power Boost display gate (fixed).** All three exports showed "Show GPU Power Boost: Yes" on a
+  Victus while `SystemControlViewModel.DetectGpuPowerBoost` logged that it refuses every Victus
+  without an explicit opt-in. Root cause: `HasGpuPowerControl` is set whenever WMI BIOS exists, so
+  "runtime detection wins" meant "always shown". This is the concern behind PR `#210`'s
+  `ShowGpuPowerBoost` change; that change applied the model flag to every family, which would also
+  have hidden the tray entry on 10 known non-Victus OMEN boards whose backend still probes WMI and
+  can enable it. Narrowed to exactly the backend's Victus rule instead. 4 tests.
+- **`88F8` entry (added).** From the `#207` export - see changelog. The family fallback had also been
+  overriding the firmware's Fan Count 2 down to 1; the exact entry corrects that for this board.
+  Other unknown Victus boards still get the family default of 1 - worth revisiting separately.
+- **`#115`/`#172`** are the same misidentification the `8BBE` entry fixes.
+- **`8C2F` 15" chassis (`#155`, `#184`)**: neither export exercised fans beyond a mode switch, so no
+  promotion. `#184` shows keyboard topology `Normal` (backlight only) on the 15" while the entry
+  claims `HasFourZoneRgb = true` from the 16" report - one ProductId, two keyboards. Not changed:
+  flipping it would cost the 16" colour control (see `#212` on why that flag can't be per-chassis).
+  The WMI topology probe already reports the truth at runtime.
+- **`8C58` (`#149`/`#156`)**: fan curves are off on purpose, no export to justify enabling them.
+
 ---
 
 ## Open Investigations

@@ -204,6 +204,65 @@ namespace OmenCoreApp.Tests.Hardware
             caps.ShowGpuPowerBoost.Should().BeFalse("unknown model must not show GPU power boost without runtime confirmation");
         }
 
+        [Fact]
+        public void ShowGpuPowerBoost_IsFalse_OnVictus_WhenWmiPresentButModelDoesNotOptIn()
+        {
+            // 8C2F exports (#155, #184): "Show GPU Power Boost: Yes" beside the backend's
+            // "skipped - HP Victus does not support WMI TGP/PPAB control".
+            var caps = new DeviceCapabilities
+            {
+                HasGpuPowerControl = true,
+                IsKnownModel = true,
+                ModelFamily = OmenModelFamily.Victus,
+                ModelConfig = ModelCapabilityDatabase.GetCapabilities("8C2F")
+            };
+
+            caps.ShowGpuPowerBoost.Should().BeFalse();
+        }
+
+        [Fact]
+        public void ShowGpuPowerBoost_IsFalse_OnUnknownVictus_EvenWithWmiPresent()
+        {
+            var caps = new DeviceCapabilities
+            {
+                HasGpuPowerControl = true,
+                IsKnownModel = false,
+                ModelFamily = OmenModelFamily.Victus
+            };
+
+            caps.ShowGpuPowerBoost.Should().BeFalse();
+        }
+
+        [Fact]
+        public void ShowGpuPowerBoost_IsTrue_OnVictus_WithExplicitModelOptIn()
+        {
+            var caps = new DeviceCapabilities
+            {
+                HasGpuPowerControl = true,
+                IsKnownModel = true,
+                ModelFamily = OmenModelFamily.Victus,
+                ModelConfig = new ModelCapabilities { SupportsGpuPowerBoost = true }
+            };
+
+            caps.ShowGpuPowerBoost.Should().BeTrue();
+        }
+
+        [Fact]
+        public void ShowGpuPowerBoost_KnownOmenWithFlagFalse_StillFollowsRuntimeDetection()
+        {
+            // Non-Victus backends probe WMI rather than consult the DB, so the tray must not hide
+            // a control the main page can still enable.
+            var caps = new DeviceCapabilities
+            {
+                HasGpuPowerControl = true,
+                IsKnownModel = true,
+                ModelFamily = OmenModelFamily.OMEN16,
+                ModelConfig = new ModelCapabilities { SupportsGpuPowerBoost = false }
+            };
+
+            caps.ShowGpuPowerBoost.Should().BeTrue();
+        }
+
         #endregion
 
         #region Backend degradation classification

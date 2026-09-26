@@ -29,6 +29,22 @@ the same "accepts Max, ignores it" bug already fixed elsewhere this cycle, reach
 method's own one-shot apply instead. Now retries with a direct level write before giving up. Also
 fixed: the existing fallback path sent a hardcoded level regardless of the board's real ceiling.
 
+### Tray Offered GPU Power Boost on Victus Boards Whose Backend Always Refuses It
+
+Three independent Victus exports (`8C2F` in [#155](https://github.com/theantipopau/omencore/issues/155)
+and [#184](https://github.com/theantipopau/omencore/issues/184), `88F8` in
+[#207](https://github.com/theantipopau/omencore/issues/207)) showed "Show GPU Power Boost: Yes"
+beside the backend's own "skipped - HP Victus does not support WMI TGP/PPAB control". The display
+gate treated "WMI BIOS is present" as GPU-power evidence. It now mirrors the backend's Victus rule
+exactly: hidden unless the board's entry explicitly opts in. Non-Victus boards are unchanged.
+
+### Guided Fan Diagnostic Could Be Overridden by the Keepalive From Max or Manual Mode
+
+The fan keepalive timer already stood down during a Guided Fan Diagnostic, but only from preset
+modes. Started from Max or manual control, its reasserts could fight the diagnostic's own writes.
+Now covers all three. Found reviewing PR
+[#210](https://github.com/theantipopau/omencore/pull/210).
+
 ---
 
 ## Added
@@ -37,6 +53,18 @@ fixed: the existing fallback path sent a hardcoded level regardless of the board
 
 [#211](https://github.com/theantipopau/omencore/issues/211): was Family fallback only since `#172`;
 WMI fan control and V1 policy confirmed live in a real diagnostics export.
+
+### Board `88F8` (Victus 16-d0xxx, Intel) Given an Exact Entry
+
+[#207](https://github.com/theantipopau/omencore/issues/207): was Family fallback, which also cut the
+firmware's two fans down to one. Flags from the reporter's 4.4.0 export: WMI level writes verified at
+30%/60%, two fans, backlight-only keyboard. Curves, GPU boost and undervolt left off pending evidence.
+
+### Victus 16-r0xxx Intel No Longer Misidentified as the Ryzen Board
+
+[#115](https://github.com/theantipopau/omencore/issues/115),
+[#172](https://github.com/theantipopau/omencore/issues/172): board `8BBE` resolved to the AMD `8C2F`
+profile by name pattern. The new `8BBE` entry above resolves it by ProductId.
 
 ### Zone-Colour RGB: WMI Backend Now Declares Its Real Zone Count — Implemented, Pending Confirmation
 

@@ -648,6 +648,21 @@ namespace OmenCoreApp.Tests.Hardware
         }
 
         [Fact]
+        public void GetCapabilities_88F8_ResolvesExactly_WithFirmwareFanCountAndNoRgb()
+        {
+            var caps = ModelCapabilityDatabase.GetCapabilities("88F8");
+
+            caps.ProductId.Should().Be("88F8");
+            caps.Family.Should().Be(OmenModelFamily.Victus);
+            caps.SupportsFanControlWmi.Should().BeTrue();
+            caps.FanZoneCount.Should().Be(2, "firmware reports two fans; the family default of 1 was wrong here");
+            caps.HasFourZoneRgb.Should().BeFalse("the topology probe reports Normal - backlight only");
+            caps.HasKeyboardBacklight.Should().BeTrue();
+            caps.SupportsGpuPowerBoost.Should().BeFalse();
+            caps.UserVerified.Should().BeFalse();
+        }
+
+        [Fact]
         public void GetCapabilities_8BBE_ResolvesExactly_NoLongerFamilyFallback()
         {
             // GitHub #211: this board was Family fallback only (IsKnownModel: no) until its own
