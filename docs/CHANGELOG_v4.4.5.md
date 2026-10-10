@@ -91,9 +91,13 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
 
 ## Planned for this release (see the roadmap)
 
-- 8BD4 single-zone keyboard (#212), 8E35 SMU table (#222), new boards 8E9A and
-  HyperX OMEN 15, per-key keyboard routing for 8D41/8D87, automatic fan curve (#189, default off).
-- Linux reliability and keyboard work from saikiranworks' fork.
+- 8BD4 single-zone keyboard (#212: the RGB payload probe is in, the fix waits on the owner's result), 8E35 SMU
+  table (#222, needs a PM-table dump), board 8E9A (waiting on its export).
+- Automatic fan curve for 8D87 (#189, default off): the curve engine and the `0x2F` fan-mapping parser are written and
+  tested against the numbers in the issue (`FactoryFanCurveTests`). Not yet wired into the fan loop: it still needs a
+  live IR sensor reading, the `0x2C`/`0x2F` queries, a `SupportsAutomaticFanCurve` flag and a Settings switch, and then
+  the reporter to try it on an 8D87.
+- Linux per-key RGB for the 2025 MAX boards (#179, #151, #87): Windows already drives these; the Linux port waits on a tester.
 
 ## Contributors
 
