@@ -1831,6 +1831,11 @@ namespace OmenCore.ViewModels
                 
                 // Restore fan preset only when the fan category is explicitly enabled.
                 var savedFanPreset = _config.LastFanPresetName;
+                var requestedFanPreset = savedFanPreset;
+                var savedModeIsMax = _config.FanPresets?.Any(p => p.Name.Equals(savedFanPreset, StringComparison.OrdinalIgnoreCase) && p.Mode == FanMode.Max) == true;
+                savedFanPreset = StartupRestorePolicy.ResolveStartupFanName(_config, savedFanPreset, savedModeIsMax);
+                if (!string.Equals(requestedFanPreset, savedFanPreset, StringComparison.OrdinalIgnoreCase))
+                    _logging.Info("Saved Fan Max requires explicit startup opt-in; Auto is selected when fan restore is enabled. Enable Restore saved Fan Max in Settings to opt in.");
                 if (!string.IsNullOrEmpty(savedFanPreset) && _fanService != null)
                 {
                     if (!startupFanRestoreEnabled)

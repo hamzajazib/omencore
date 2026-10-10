@@ -51,6 +51,7 @@ namespace OmenCore.ViewModels
         private bool _linkFanToPerformanceMode;
         private bool _enableStartupHardwareRestore;
         private bool _startupRestoreFansEnabled;
+        private bool _restoreMaxFanOnStartup;
         private bool _startupRestorePerformanceEnabled;
         private bool _startupRestoreRgbEnabled;
         private bool _startupRestoreTuningEnabled;
@@ -424,6 +425,12 @@ namespace OmenCore.ViewModels
 
         public bool StartupRestoreCategoryTogglesEnabled => EnableStartupHardwareRestore;
 
+        public bool RestoreMaxFanOnStartup
+        {
+            get => _restoreMaxFanOnStartup;
+            set { if (_restoreMaxFanOnStartup != value) { _restoreMaxFanOnStartup = value; OnPropertyChanged(); } }
+        }
+
         public bool StartupRestoreFansEnabled
         {
             get => _startupRestoreFansEnabled;
@@ -510,6 +517,7 @@ namespace OmenCore.ViewModels
         {
             EnableStartupHardwareRestore = EnableStartupHardwareRestore,
             StartupRestoreFansEnabled = StartupRestoreFansEnabled,
+            RestoreMaxFanOnStartup = RestoreMaxFanOnStartup,
             StartupRestorePerformanceEnabled = StartupRestorePerformanceEnabled,
             StartupRestoreRgbEnabled = StartupRestoreRgbEnabled,
             StartupRestoreTuningEnabled = StartupRestoreTuningEnabled
@@ -3088,6 +3096,7 @@ namespace OmenCore.ViewModels
             _linkFanToPerformanceMode = _config.LinkFanToPerformanceMode;
             _enableStartupHardwareRestore = _config.EnableStartupHardwareRestore;
             _startupRestoreFansEnabled = StartupRestorePolicy.IsEnabled(_config, StartupRestoreCategory.Fans);
+            _restoreMaxFanOnStartup = _config.RestoreMaxFanOnStartup;
             _startupRestorePerformanceEnabled = StartupRestorePolicy.IsEnabled(_config, StartupRestoreCategory.Performance);
             _startupRestoreRgbEnabled = StartupRestorePolicy.IsEnabled(_config, StartupRestoreCategory.Rgb);
             _startupRestoreTuningEnabled = StartupRestorePolicy.IsEnabled(_config, StartupRestoreCategory.Tuning);
@@ -3141,6 +3150,7 @@ namespace OmenCore.ViewModels
             _config.LinkFanToPerformanceMode = _linkFanToPerformanceMode;
             _config.EnableStartupHardwareRestore = _enableStartupHardwareRestore;
             _config.StartupRestoreFansEnabled = _startupRestoreFansEnabled;
+            _config.RestoreMaxFanOnStartup = _restoreMaxFanOnStartup;
             _config.StartupRestorePerformanceEnabled = _startupRestorePerformanceEnabled;
             _config.StartupRestoreRgbEnabled = _startupRestoreRgbEnabled;
             _config.StartupRestoreTuningEnabled = _startupRestoreTuningEnabled;

@@ -16,6 +16,7 @@ field evidence that became a board entry. If you contributed and are missing, op
 | **ujjawalkaushik1110** ([@ujjawalkaushik1110](https://github.com/ujjawalkaushik1110)) | The `8DD0` (Victus 15-fb3xxx) entry and diagnostics (PRs #200, #210): two fans, 55-level ceiling, backlight-only keyboard; the watchdog-failsafe review. |
 | **Neutron-0** ([@Neutron-0](https://github.com/Neutron-0)) | PR #147: the log-buffer change that cut UI-thread work. |
 | **saikiranworks** ([@saikiranworks](https://github.com/saikiranworks)) | The OMEN Slim 16 (`8D40`) Linux fork: the DKMS `fourzone_color` / `fourzone_brightness` interface and the brightness-gate finding that the Linux keyboard support is built on. |
+| **bobshmo** ([@bobshmo](https://github.com/bobshmo)) | The OmenCore-Prophecy fork: found and fixed saved Fan Max being restored at startup and a stale Max preset coming back after sleep/resume (`RestoreMaxFanOnStartup`, resume preset update). |
 | **murilopontes** ([@murilopontes](https://github.com/murilopontes)) | OMEN 15-dc0xxx (`84DB`) EC fan-boost test results for the Linux guide. |
 
 ## Research this project learns from

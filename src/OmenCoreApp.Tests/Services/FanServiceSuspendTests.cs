@@ -25,6 +25,26 @@ namespace OmenCoreApp.Tests.Services
 {
     public class FanServiceSuspendTests
     {
+        // Leaving Max via Quiet/Auto must update the preset that resume reapplies, otherwise
+        // sleep/wake brings full-speed fans back (credit: bobshmo's fork found this).
+        [Theory]
+        [InlineData(true, "Quiet")]
+        [InlineData(false, "Auto")]
+        public void LeavingMax_ResumeReappliesTheNewMode(bool quiet, string expected)
+        {
+            var controller = new TrackingFanController();
+            using var service = CreateFanService(controller);
+            service.ApplyPreset(new FanPreset { Name = "Max", Mode = FanMode.Max });
+            if (quiet) service.ApplyQuietMode(); else service.ApplyAutoMode();
+            service.ActivePresetName.Should().Be(expected);
+            controller.AppliedPresetNames.Clear();
+
+            service.HandleSystemSuspend();
+            service.HandleSystemResume();
+
+            controller.AppliedPresetNames.Should().ContainSingle().Which.Should().Be(expected);
+        }
+
         private static FanService CreateFanService(TrackingFanController controller)
         {
             var logging = new LoggingService();
@@ -115,7 +135,8 @@ namespace OmenCoreApp.Tests.Services
             public bool IsAvailable => IsAvailableOverride;
             public string Status => "Test";
             public string Backend => "Test";
-            public bool ApplyPreset(FanPreset preset) => true;
+            public List<string> AppliedPresetNames { get; } = new();
+            public bool ApplyPreset(FanPreset preset) { AppliedPresetNames.Add(preset.Name); return true; }
             public bool ApplyCustomCurve(IEnumerable<FanCurvePoint> curve) => true;
             public bool SetFanSpeed(int percent) => true;
             public bool SetFanSpeeds(int cpuPercent, int gpuPercent) => true;

@@ -28,6 +28,10 @@ namespace OmenCore.Models
 
     public static class StartupRestorePolicy
     {
+        /// <summary>Maps a saved Max preset to Auto unless the user opted in to restoring Max at launch.</summary>
+        public static string? ResolveStartupFanName(AppConfig config, string? savedName, bool savedModeIsMax = false) =>
+            !config.RestoreMaxFanOnStartup && (savedModeIsMax || FanModeNameResolver.IsMaxAlias(savedName)) ? "Auto" : savedName;
+
         public static bool IsEnabled(AppConfig config, StartupRestoreCategory category)
         {
             if (!config.EnableStartupHardwareRestore)

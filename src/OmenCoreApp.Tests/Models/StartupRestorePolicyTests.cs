@@ -6,6 +6,29 @@ namespace OmenCoreApp.Tests.Models
 {
     public class StartupRestorePolicyTests
     {
+        [Theory]
+        [InlineData("Max")]
+        [InlineData("MAX")]
+        public void SavedMax_DefaultsToAutoWithoutExplicitOptIn(string name)
+        {
+            var config = new AppConfig { EnableStartupHardwareRestore = true, StartupRestoreFansEnabled = true };
+            StartupRestorePolicy.ResolveStartupFanName(config, name).Should().Be("Auto");
+            config.RestoreMaxFanOnStartup = true;
+            StartupRestorePolicy.ResolveStartupFanName(config, name).Should().Be(name);
+        }
+
+        [Fact]
+        public void CustomNamedMaxMode_RequiresTheSameOptIn() =>
+            StartupRestorePolicy.ResolveStartupFanName(new AppConfig(), "Full cooling", savedModeIsMax: true).Should().Be("Auto");
+
+        [Theory]
+        [InlineData("Quiet")]
+        [InlineData("Balanced")]
+        [InlineData("Performance")]
+        [InlineData("Auto")]
+        public void NonMaxStartupPresets_AreRetained(string name) =>
+            StartupRestorePolicy.ResolveStartupFanName(new AppConfig(), name).Should().Be(name);
+
         [Fact]
         public void IsEnabled_ReturnsFalseForEveryCategory_WhenGlobalGateDisabled()
         {

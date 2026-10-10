@@ -1254,6 +1254,21 @@
                                                   AutomationProperties.Name="Fans"/>
                                 </Grid>
 
+                                <Grid Margin="0,0,0,8" IsEnabled="{Binding StartupRestoreFansEnabled}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Restore saved Fan Max" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="Allow a saved Max preset to start fans at full speed on launch. Off by default; BIOS Auto is used instead." FontSize="11"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="1" Style="{StaticResource ModernToggleButton}"
+                                                  IsChecked="{Binding RestoreMaxFanOnStartup, Mode=TwoWay}"
+                                                  AutomationProperties.Name="Restore saved Fan Max"/>
+                                </Grid>
+
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
