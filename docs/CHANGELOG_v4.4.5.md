@@ -41,6 +41,10 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
   (an OEM/firmware policy holding the GPU down, as in #181, #123, #142). The same line is in the
   diagnostics export. It never wakes a sleeping dGPU. Tests: `NvmlPowerPolicyTests`.
 
+- **Board entries from field exports** (all unverified until a reporter confirms): `8E9F` HyperX OMEN MAX
+  16-ak1xxx (#224) and `8EEC` HyperX OMEN 15-gb0xxx (#223). Each records only what the export measured (thermal
+  policy, fan count, keyboard topology) and leaves curves, undervolt and RGB off.
+
 ## Planned for this release (see the roadmap)
 
 - NVIDIA laptop power unlock (MAX/CURRENT), opt-in and gated, with the permission of the original authors.

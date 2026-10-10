@@ -201,6 +201,36 @@ namespace OmenCoreApp.Tests.Hardware
         }
 
         [Fact]
+        public void GetPreferredCapabilities_8E9F_MaxAk1_IsExactAndConservative()
+        {
+            // GitHub #224: HyperX OMEN MAX 16-ak1xxx previously fell to the unverified OMEN16 family default.
+            var caps = ModelCapabilityDatabase.GetPreferredCapabilities(
+                "8E9F", "HyperX OMEN MAX Gaming Laptop 16-ak1xxx", CpuUndervoltProviderFactory.CpuVendor.AMD);
+
+            caps.Should().NotBeNull();
+            caps!.ProductId.Should().Be("8E9F");
+            caps.FanZoneCount.Should().Be(2);
+            caps.SupportsGpuPowerBoost.Should().BeTrue();
+            caps.SupportsFanCurves.Should().BeFalse("curves are unconfirmed on this board");
+            caps.UserVerified.Should().BeFalse();
+        }
+
+        [Fact]
+        public void GetPreferredCapabilities_8EEC_HyperxOmen15_IsExactAndConservative()
+        {
+            // GitHub #223: HyperX OMEN 15-gb0xxx previously fell to the unverified family default.
+            var caps = ModelCapabilityDatabase.GetPreferredCapabilities(
+                "8EEC", "HyperX OMEN Gaming Laptop 15-gb0xxx", CpuUndervoltProviderFactory.CpuVendor.AMD);
+
+            caps.Should().NotBeNull();
+            caps!.ProductId.Should().Be("8EEC");
+            caps.FanZoneCount.Should().Be(2);
+            caps.SupportsFanCurves.Should().BeFalse();
+            caps.SupportsUndervolt.Should().BeFalse();
+            caps.UserVerified.Should().BeFalse();
+        }
+
+        [Fact]
         public void GetPreferredCapabilities_MismatchedVendor_DoesNotCrossVendorViaNamePattern()
         {
             // Same scenario via the full resolution path used by CapabilityDetectionService.

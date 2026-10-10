@@ -2215,6 +2215,58 @@ namespace OmenCore.Hardware
                 Notes = "GitHub #211 (2026-09-24) — Victus 16-r0xxx Intel, ProductId 8BBE (RTX 4060, BIOS F.31). Previously resolved only via Family fallback (see #172, #198). WMI fan control and V1 thermal policy confirmed live in this export; fan curves, GPU boost, RGB and undervolt are unconfirmed and left conservative. RequiredCpuVendor=Intel mirrors the guard 8C2F already carries for this board, from the other direction."
             });
 
+            // GitHub #223 (2026-10-06): HyperX OMEN 15-gb0xxx, Ryzen 7 260 / RTX 5060, BIOS F.05. Measured in the
+            // export: thermal policy V0, firmware fan count 2, keyboard topology FourZoneWithNumpad (0x01) with the
+            // WMI colour table readable. Not measured: fan RPM (readback null), any colour write, curves, the AMD
+            // SMU power-table layout (the CPU provider detects Phoenix; STAPM limits are not confirmed).
+            AddModel(new ModelCapabilities
+            {
+                ProductId = "8EEC",
+                ModelName = "HyperX OMEN 15-gb0xxx",
+                ModelNamePattern = "15-gb0",
+                ModelYear = 2026,
+                Family = OmenModelFamily.OMEN2024Plus,
+                SupportsFanControlWmi = true,
+                SupportsFanControlEc = false,
+                SupportsFanCurves = false,
+                SupportsRpmReadback = false,
+                FanZoneCount = 2,
+                SupportsPerformanceModes = true,
+                HasMuxSwitch = false,
+                SupportsUndervolt = false,
+                HasFourZoneRgb = true,
+                HasKeyboardBacklight = true,
+                UserVerified = false,
+                Notes = "GitHub #223 (2026-10-06) - HyperX OMEN 15-gb0xxx, Ryzen 7 260 / RTX 5060, BIOS F.05. Thermal policy V0, 2 fans and a four-zone-with-numpad keyboard topology read live; no colour write, RPM readback or SMU power-table evidence yet, so curves, undervolt and AMD power limits stay off until a Guided Fan Verification and an RGB check come back."
+            });
+
+            // GitHub #224 (2026-10-08): HyperX OMEN MAX 16-ak1xxx, Ryzen AI 7 450 / RTX 5070 Ti, BIOS F.03.
+            // Measured in the export: thermal policy V1, firmware fan count 2, WMI GPU Power Boost readable (Maximum),
+            // keyboard topology RgbPerKey (0x03). Not measured: fan RPM (readback null, estimated only), the per-key
+            // keyboard path (no Primax HID device found), curves, MUX, undervolt. Kept conservative until a
+            // Guided Fan Verification and an RGB check come back from the reporter.
+            AddModel(new ModelCapabilities
+            {
+                ProductId = "8E9F",
+                ModelName = "HyperX OMEN MAX 16-ak1xxx",
+                ModelNamePattern = "16-ak1",
+                ModelYear = 2026,
+                Family = OmenModelFamily.OMEN2024Plus,
+                SupportsFanControlWmi = true,
+                SupportsFanControlEc = false,
+                SupportsFanCurves = false,
+                SupportsRpmReadback = false,
+                FanZoneCount = 2,
+                SupportsPerformanceModes = true,
+                SupportsGpuPowerBoost = true,
+                HasMuxSwitch = false,
+                SupportsUndervolt = false,
+                HasFourZoneRgb = false,
+                HasKeyboardBacklight = true,
+                UserVerified = false,
+                Notes = "GitHub #224 (2026-10-08) - HyperX OMEN MAX 16-ak1xxx, Ryzen AI 7 450 / RTX 5070 Ti, BIOS F.03. Thermal policy V1, 2 fans and WMI GPU Power Boost (Maximum) read live; keyboard reports RgbPerKey (0x03) but no Primax HID device was found, so colour control is not claimed. Fan curves, RPM readback, MUX, undervolt and RGB are unconfirmed and left off."
+            });
+
             AddModel(new ModelCapabilities
             {
                 ProductId = "88DB",
