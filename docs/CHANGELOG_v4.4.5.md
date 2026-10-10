@@ -20,6 +20,14 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
   passes `/RELAUNCH=1` and the installer starts the new version. *Pending a real end-to-end update.* A UAC
   prompt on relaunch is expected (the app requires administrator rights). Reported by Yak on Discord.
 
+- **OMEN key action now applies immediately.** The action was read once at startup, so picking a different
+  one in Settings did nothing until OmenCore was restarted. It is re-read on every key press. Test:
+  `OmenKeyActionReloadTests`.
+- **OMEN key can now be set to every action the service supports.** Settings only offered four of the nine
+  actions. It now also offers Cycle Performance, Cycle Fan Mode, Toggle Max Cooling, Do Nothing and
+  **Launch program or script**, with fields for the path and optional arguments. Requested on Discord
+  (Rave-TZ).
+
 ## Added
 
 - **Reversible HP telemetry switch** (Advanced). Stops and disables HP's analytics and diagnostics
@@ -39,7 +47,7 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
   Read-only telemetry and the HP-side controls land first.
 - 8BD4 single-zone keyboard (#212), 8E35 fan latency and SMU table (#222), new boards 8E9F, 8E9A and
   HyperX OMEN 15, per-key keyboard routing for 8D41/8D87, automatic fan curve (#189, default off).
-- OMEN key "run a command" action; Linux reliability and keyboard work from saikiranworks' fork.
+- Linux reliability and keyboard work from saikiranworks' fork.
 
 ## Contributors
 

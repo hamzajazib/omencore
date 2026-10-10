@@ -1396,12 +1396,47 @@ namespace OmenCore.ViewModels
                 {
                     _config.Features.OmenKeyAction = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(OmenKeyLaunchesApp));
                     SaveSettings();
                 }
             }
         }
 
-        public string[] OmenKeyActionOptions => new[] { "ShowQuickPopup", "ShowWindow", "ToggleFanMode", "TogglePerformanceMode" };
+        public string[] OmenKeyActionOptions => new[]
+        {
+            "ShowQuickPopup", "ShowWindow", "ToggleFanMode", "TogglePerformanceMode",
+            "CyclePerformance", "CycleFanMode", "ToggleMaxCooling", "LaunchExternalApp", "DoNothing"
+        };
+
+        public bool OmenKeyLaunchesApp => OmenKeyAction == "LaunchExternalApp";
+
+        public string OmenKeyExternalApp
+        {
+            get => _config.OmenKeyExternalApp ?? "";
+            set
+            {
+                if ((_config.OmenKeyExternalApp ?? "") != value)
+                {
+                    _config.OmenKeyExternalApp = value;
+                    OnPropertyChanged();
+                    SaveSettings();
+                }
+            }
+        }
+
+        public string OmenKeyExternalArgs
+        {
+            get => _config.OmenKeyExternalArgs ?? "";
+            set
+            {
+                if ((_config.OmenKeyExternalArgs ?? "") != value)
+                {
+                    _config.OmenKeyExternalArgs = value;
+                    OnPropertyChanged();
+                    SaveSettings();
+                }
+            }
+        }
 
         public bool ExperimentalEcKeyboardEnabled
         {

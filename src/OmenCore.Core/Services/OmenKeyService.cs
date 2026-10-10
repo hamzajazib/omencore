@@ -33,6 +33,7 @@ namespace OmenCore.Services
         private bool _disposed;
         private OmenKeyAction _currentAction = OmenKeyAction.ToggleOmenCore;
         private string _externalAppPath = string.Empty;
+        private string _externalAppArgs = string.Empty;
         private long _lastKeyPressTicks = 0; // Use ticks for thread-safe Interlocked operations
         private const int DebounceMs = 300;
         private long _lastNeverInterceptKeyTicks = 0;
@@ -669,6 +670,9 @@ namespace OmenCore.Services
         
         private void ExecuteAction()
         {
+            // The action, path and arguments are edited in Settings while the hook is running; re-read them so a
+            // change applies to the next key press instead of only after a restart.
+            LoadSettings();
             _logging.Info($"OMEN key pressed - executing: {_currentAction}");
             
             switch (_currentAction)
@@ -718,6 +722,7 @@ namespace OmenCore.Services
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = _externalAppPath,
+                    Arguments = _externalAppArgs,
                     UseShellExecute = true
                 });
                 _logging.Info($"Launched external app: {_externalAppPath}");
@@ -737,6 +742,7 @@ namespace OmenCore.Services
                 // Check both old and new config locations for backwards compatibility
                 _isEnabled = _configService.Config.Features?.OmenKeyInterceptionEnabled ?? _configService.Config.OmenKeyEnabled;
                 _externalAppPath = _configService.Config.OmenKeyExternalApp ?? string.Empty;
+                _externalAppArgs = _configService.Config.OmenKeyExternalArgs ?? string.Empty;
                 
                 // Try Features.OmenKeyAction first, fall back to OmenKeyAction.
                 // Map both old enum names (ToggleOmenCore, CycleFanMode…) and the UI display

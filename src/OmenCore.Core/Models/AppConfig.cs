@@ -287,6 +287,9 @@ namespace OmenCore.Models
         
         /// <summary>Path to external app when OmenKeyAction is LaunchExternalApp</summary>
         public string? OmenKeyExternalApp { get; set; }
+
+        /// <summary>Optional command-line arguments passed to <see cref="OmenKeyExternalApp"/>.</summary>
+        public string? OmenKeyExternalArgs { get; set; }
         
         /// <summary>
         /// EXPERIMENTAL: Enable direct EC writes for keyboard RGB control.

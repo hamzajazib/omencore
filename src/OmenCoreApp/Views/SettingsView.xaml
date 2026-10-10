@@ -2380,6 +2380,16 @@
                                               ItemsSource="{Binding OmenKeyActionOptions}"
                                               IsEnabled="{Binding OmenKeyInterceptionEnabled}"/>
                                 </Grid>
+
+                                <StackPanel Margin="0,8,0,0" IsEnabled="{Binding OmenKeyInterceptionEnabled}"
+                                            Visibility="{Binding OmenKeyLaunchesApp, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="Program or script to run" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                    <TextBox AutomationProperties.Name="OMEN key program or script" Margin="0,4,0,8"
+                                             Text="{Binding OmenKeyExternalApp, UpdateSourceTrigger=LostFocus}"/>
+                                    <TextBlock Text="Arguments (optional)" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                    <TextBox AutomationProperties.Name="OMEN key arguments" Margin="0,4,0,0"
+                                             Text="{Binding OmenKeyExternalArgs, UpdateSourceTrigger=LostFocus}"/>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
 
