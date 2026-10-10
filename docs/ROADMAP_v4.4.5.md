@@ -88,3 +88,18 @@ Related power tooling:
 - Add `bobshmo` and `saikiranworks` (already listed) to `CONTRIBUTORS.md` on merge; credit `mbilykov` for #189.
 - Reply on #224, #223, #222, #212, #142 asking only for what is missing.
 - Keep `docs/V4.4.5_IMPLEMENTATION_STATUS.md` once work starts; update `CLAUDE.md` open threads.
+
+## 5. Status (2026-10-10)
+- **Done and pushed:** Fan Max startup opt-in and resume-preset fix; updater relaunch; reversible HP telemetry
+  service switch; read-only NVML GPU power policy; OMEN key action reload, all actions and program/arguments
+  fields; boards `8E9F` (#224) and `8EEC` (#223); Linux keyboard suspend hook.
+- **NVIDIA power unlock:** a first port of the Prophecy backend (without the voltage code, with a
+  `PowerBackend.CurrentWriteGuard` hook for the Victus preparation) is in `src/OmenCore.NvidiaPower/`, untracked and
+  not yet in the solution. Remaining: add it to the solution and build, the Victus guard, an opt-in Tuning panel
+  with the section 3 safety checks, and the `THIRD-PARTY-NOTICES` entry. The authors' permission came by Discord.
+- **PR #147** reviewed and declined as written (it drops the uptime timer start and can stall the tray); the author
+  was invited to rework the tray change-detection alone.
+- **#212 (8BD4):** still open. The zone-count byte now reaches the hardware but the colour table reads back black;
+  needs single-variable experiments with the reporter.
+- **Not taken from saikiranworks' fork:** the world-writable fan PWM udev rule, because any local user could stop
+  the fans.
