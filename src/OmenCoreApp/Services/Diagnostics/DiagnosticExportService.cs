@@ -2264,6 +2264,10 @@ namespace OmenCore.Services.Diagnostics
                 sb.AppendLine($"CustomGpuOcProfileCount: {config.GpuOcProfiles?.Count ?? 0}");
                 sb.AppendLine();
 
+                sb.AppendLine("[GPU Power Policy (NVML, read-only)]");
+                sb.AppendLine(NvmlPowerPolicy.Read(new GpuPowerStateProbe()).Describe());
+                sb.AppendLine();
+
                 sb.AppendLine("[AMD Power Limits]");
                 if (config.AmdPowerLimits == null)
                 {

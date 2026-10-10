@@ -32,7 +32,7 @@ loosening the evidence gate. Anything unconfirmed on hardware stays labelled as 
 - Dynamic Lighting banner and Primax experimental path: collect confirmations before widening.
 
 ### C. GPU power, boost and tuning
-- Read-only first: live GPU power/limit telemetry through the NVML/NVAPI already in `OmenCore.Core` (`NvapiService`), shown beside the HP TGP/PCF state. Fixes the "TGP ceiling inherited from OGH" confusion (#181, #123, #142).
+- Read-only first (**started**: `NvmlPowerPolicy`, in the diagnostics export; UI display next): live GPU power/limit telemetry through NVML and the NVAPI already in `OmenCore.Core` (`NvapiService`), shown beside the HP TGP/PCF state. Fixes the "TGP ceiling inherited from OGH" confusion (#181, #123, #142).
 - HP-side controls (PCF GPU max, PLGPU, TPP) only where a board entry and a readback exist.
 - Overclock/undervolt: keep Test Apply with 30 s auto-revert and exit revert; no new write path ships without readback.
 
@@ -47,6 +47,11 @@ New or changed entries need the evidence gate (diagnostics export plus a verific
 ### F. Linux
 - Port from the saikiranworks fork: udev rule for hp-wmi, kbd suspend/idle scripts, single-writer lock, reliability diagnostics.
 - #219 / #84 / #26: kernel limits, so document the distro/kernel steps and the hp-wmi allowlist, no code workaround.
+
+### G. User requests (Discord, Rave-TZ, 2026-10-10)
+- **Speed profiles (Unleashed etc.):** already in Tuning/Performance modes; Unleashed is gated by board. Check the labels and the board gating read clearly, no new backend.
+- **OMEN key reassignment:** `OmenKeyService` already offers ShowQuickPopup/ShowWindow/CyclePerformance/CycleFanMode/ToggleMaxCooling/LaunchExternalApp/DoNothing. Gap: no "run a command/script" and no way to see the key is captured. Add both.
+- **Disable HP telemetry/services:** the only path today is the destructive OGH cleanup (`sc delete`). Add a **reversible** option: stop and set the HP analytics/helper services (`HpTouchpointAnalyticsService`, `HPAppHelperCap`, `HPDiagsCap`, ...) to Disabled, remember each original start type, one-click restore. Never touch services OmenCore needs.
 
 ## 3. NVIDIA power unlock: approved for 4.4.5
 The Discord thread (RTX 5060 raised from 90 W to 115-140 W) shows real demand. `timmyy123`
