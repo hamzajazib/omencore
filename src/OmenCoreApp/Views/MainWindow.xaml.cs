@@ -533,6 +533,32 @@ namespace OmenCore.Views
                 WindowState == WindowState.Maximized ? "Icon.WindowRestore" : "Icon.WindowMaximize");
         }
 
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            (PresentationSource.FromVisual(this) as HwndSource)?.AddHook(MaximizeHook);
+        }
+
+        // Keeps a thin strip of an auto-hidden taskbar's edge uncovered when maximised, so the taskbar can still pop up.
+        private IntPtr MaximizeHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            const int WmGetMinMaxInfo = 0x24;
+            if (msg != WmGetMinMaxInfo || !TaskbarAutoHide.TryGetState(out var autoHide, out var edge) || !autoHide)
+                return IntPtr.Zero;
+
+            var monitor = NativeMonitor.FromWindow(hwnd);
+            if (monitor == null) return IntPtr.Zero;
+            var (m, w) = monitor.Value;
+
+            var info = System.Runtime.InteropServices.Marshal.PtrToStructure<NativeMonitor.MinMaxInfo>(lParam);
+            var fit = TaskbarAutoHide.Fit(w.left - m.left, w.top - m.top, w.right - w.left, w.bottom - w.top, true, edge);
+            info.ptMaxPosition = new NativeMonitor.Point { x = fit.Left, y = fit.Top };
+            info.ptMaxSize = new NativeMonitor.Point { x = fit.Width, y = fit.Height };
+            System.Runtime.InteropServices.Marshal.StructureToPtr(info, lParam, true);
+            handled = true;
+            return IntPtr.Zero;
+        }
+
         private void UpdateMaximizedBounds()
         {
             var workArea = SystemParameters.WorkArea;

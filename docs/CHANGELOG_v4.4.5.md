@@ -35,6 +35,11 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
   no longer than the tick no longer costs an extra tick. Ramp-down, the dead-zone and long custom delays are
   unchanged. *Pending confirmation on the reporter's 8E35.* Tests: `FanCurveResponseTests`.
 
+- **Maximised window no longer covers an auto-hidden taskbar.** Windows reports the whole screen as the work area
+  when the taskbar auto-hides, so a maximised OmenCore sat on top of it. A 2 px strip on the taskbar's edge is now
+  left free so it still pops up. Requested on Reddit (Mega_duck_duck). *Pending confirmation on an auto-hide setup.*
+  Tests: `TaskbarAutoHideTests` (geometry only).
+
 ## Performance
 
 - **GPU load fallback reads one counter set instead of ~290.** When NVAPI has no GPU load (a hybrid laptop with the
