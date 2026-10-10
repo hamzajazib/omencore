@@ -96,8 +96,20 @@ public static class FanCommand
             return;
         }
         
+        // A command that changes the fans must not race the daemon's curve engine (or another CLI call).
+        var writes = profile != null || speed != null || curve != null || fan1 != null ||
+                     fan2 != null || boost != null || batteryAware;
+        var heldBy = "";
+        using var writerLock = writes ? WriterLock.TryAcquire(WriterLock.DefaultPath(), "cli fan", out heldBy) : null;
+        if (writes && writerLock == null)
+        {
+            PrintError($"Another OmenCore process is controlling the fans right now: {heldBy}.");
+            Console.WriteLine("Stop the daemon first (systemctl stop omencore) or wait for the other command to finish.");
+            return;
+        }
+
         var ec = new LinuxEcController();
-        
+
         // Check EC access
         if (!ec.IsAvailable)
         {

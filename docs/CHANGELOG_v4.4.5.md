@@ -52,6 +52,8 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
 
 ## Added
 
+- **Linux: single fan writer.** The daemon and `omencore-cli fan` set/curve/boost commands now share one lock (`/run/omencore/writer.lock`, or the temp folder when not root), so a CLI command no longer races the daemon's curve engine and gets overwritten seconds later. The second caller is refused with who holds it; the kernel drops the lock if the owner crashes. `omencore-cli diagnose` shows "Fan writer: free / held by ...". Idea from saikiranworks' fork, written fresh. Tests: `WriterLockTests`.
+
 - **RGB payload probe** (Diagnostics > Keyboard, advanced) for boards whose keyboard ignores the standard colour command (#212, 8BD4). It sends five candidate single-zone colour tables one at a time (pure red, 4 s apart), logs each with the firmware readback, and the owner reports which numbered step lit the keyboard. Step 1 is the control (what 4.4.1 sends). These are hypotheses to test, not fixes. Tests: `ColorTableProbeTests`.
 
 - **Reversible HP telemetry switch** (Advanced). Stops and disables HP's analytics and diagnostics

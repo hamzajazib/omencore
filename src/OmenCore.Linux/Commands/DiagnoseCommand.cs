@@ -105,6 +105,8 @@ public static class DiagnoseCommand
         }
 
         info.IsRoot = LinuxEcController.CheckRootAccess();
+        using (var probe = WriterLock.TryAcquire(WriterLock.DefaultPath(), "diagnose", out var heldBy))
+            info.FanWriter = probe != null ? "free" : $"held by {heldBy}";
 
         info.OsPrettyName = await ReadOsPrettyNameAsync() ?? "Unknown";
         info.KernelRelease = await ReadTextAsync("/proc/sys/kernel/osrelease") ?? "Unknown";
@@ -800,6 +802,7 @@ public static class DiagnoseCommand
         Console.WriteLine($"║  Board ID:  {info.BoardId,-76}║");
         Console.WriteLine(midBorder);
         Console.WriteLine($"║  Root:      {(info.IsRoot ? "✓" : "✗"),-76}║");
+        Console.WriteLine($"║  Fan writer:{info.FanWriter,-76}║");
         Console.WriteLine($"║  debugfs:   {(info.DebugFsMounted ? "✓ mounted" : "✗ not mounted"),-76}║");
         Console.WriteLine($"║  ec_io:     {(info.EcIoPathExists ? "✓ present" : "✗ missing"),-76}║");
         Console.WriteLine($"║  ec_sys:    {(info.EcSysModuleLoaded ? "✓ loaded" : "✗ not loaded"),-76}║");
@@ -906,6 +909,7 @@ public static class DiagnoseCommand
         WriteLine("Board ID:", info.BoardId);
         Console.WriteLine(border);
         WriteLine("Root:", info.IsRoot ? "OK" : "NO");
+        WriteLine("Fan writer:", info.FanWriter);
         WriteLine("debugfs:", State(info.DebugFsMounted, "mounted", "not mounted"));
         WriteLine("ec_io:", State(info.EcIoPathExists));
         WriteLine("ec_sys:", State(info.EcSysModuleLoaded, "loaded", "not loaded"));
@@ -1156,6 +1160,8 @@ public class DiagnoseInfo
     public string Runtime { get; set; } = "";
     public bool IsLinux { get; set; }
     public bool IsRoot { get; set; }
+    /// <summary>"free", or who holds the single fan-writer lock (daemon or another CLI call).</summary>
+    public string FanWriter { get; set; } = "";
 
     public string OsPrettyName { get; set; } = "";
     public string KernelRelease { get; set; } = "";

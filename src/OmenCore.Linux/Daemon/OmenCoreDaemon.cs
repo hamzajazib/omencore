@@ -19,6 +19,7 @@ namespace OmenCore.Linux.Daemon;
 public class OmenCoreDaemon : IDisposable
 {
     private const string PidFilePath = "/var/run/omencore.pid";
+    private WriterLock? _writerLock;
     private const string LogFilePath = "/var/log/omencore.log";
     
     private readonly OmenCoreConfig _config;
@@ -85,6 +86,16 @@ public class OmenCoreDaemon : IDisposable
             return;
         }
         
+        // Only one fan writer at a time: a CLI fan command run against a live daemon would be overwritten
+        // by the curve engine within seconds.
+        _writerLock = WriterLock.TryAcquire(WriterLock.DefaultPath(), "daemon", out var heldBy);
+        if (_writerLock == null)
+        {
+            Log($"Error: another fan writer is already active: {heldBy}");
+            _isRunning = false;
+            return;
+        }
+
         // Create PID file
         WritePidFile();
         
@@ -407,7 +418,9 @@ public class OmenCoreDaemon : IDisposable
         
         // Remove PID file
         RemovePidFile();
-        
+        _writerLock?.Dispose();
+        _writerLock = null;
+
         // Stop config watcher
         _configWatcher?.Dispose();
         
