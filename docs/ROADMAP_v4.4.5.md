@@ -89,17 +89,17 @@ Related power tooling:
 - Reply on #224, #223, #222, #212, #142 asking only for what is missing.
 - Keep `docs/V4.4.5_IMPLEMENTATION_STATUS.md` once work starts; update `CLAUDE.md` open threads.
 
-## 5. Status (2026-10-10)
-- **Done and pushed:** Fan Max startup opt-in and resume-preset fix; updater relaunch; reversible HP telemetry
-  service switch; read-only NVML GPU power policy; OMEN key action reload, all actions and program/arguments
-  fields; boards `8E9F` (#224) and `8EEC` (#223); Linux keyboard suspend hook.
-- **NVIDIA power unlock:** a first port of the Prophecy backend (without the voltage code, with a
-  `PowerBackend.CurrentWriteGuard` hook for the Victus preparation) is in `src/OmenCore.NvidiaPower/`, untracked and
-  not yet in the solution. Remaining: add it to the solution and build, the Victus guard, an opt-in Tuning panel
-  with the section 3 safety checks, and the `THIRD-PARTY-NOTICES` entry. The authors' permission came by Discord.
+## 5. Status (2026-10-11): release candidate
+- **In the build (software-tested, see `CHANGELOG_v4.4.5.md` for what is still unconfirmed):** Fan Max startup opt-in
+  and resume-preset fix; updater relaunch; reversible HP telemetry switch; read-only NVML GPU power policy; OMEN key
+  action reload, all actions and program/arguments; faster spike response (#222); auto-hidden taskbar fix; boards
+  `8E9F`, `8EEC`, `8A13`; Darfon `0D62:30BF` keyboard route for `8E9F`; Linux keyboard suspend hook and single fan
+  writer; GPU engine counters replaced by one category read; memory breakdown in the diagnostics export; RGB payload
+  probe for #212; opt-in NVIDIA power unlock (Resolve VBIOS, MAX, CURRENT, Victus guard, update-proof state);
+  opt-in factory fan curve for `8D87` (#189).
+- **Open, waiting on people:** #212 (probe result), #222 (PM-table dump), #142/8E9A (export), 8BB3 (export), #221
+  (reporter reply on the temperature source), Linux per-key RGB (tester).
 - **PR #147** reviewed and declined as written (it drops the uptime timer start and can stall the tray); the author
   was invited to rework the tray change-detection alone.
-- **#212 (8BD4):** still open. The zone-count byte now reaches the hardware but the colour table reads back black;
-  needs single-variable experiments with the reporter.
 - **Not taken from saikiranworks' fork:** the world-writable fan PWM udev rule, because any local user could stop
   the fans.

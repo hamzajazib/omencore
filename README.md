@@ -265,11 +265,14 @@ Older release notes ([v3.8.0](docs/CHANGELOG_v3.8.0.md) and earlier) are kept in
 
 **v4.4.1 is the field-report follow-up to 4.4.0**, built from the diagnostics exports, issues, forks and PRs that arrived in the week after it shipped. It is the first release delivered by the repaired in-app updater. The reconciliation of every item to its code, tests and confirmation state is in [docs/V4.4.1_IMPLEMENTATION_STATUS.md](docs/V4.4.1_IMPLEMENTATION_STATUS.md).
 
+**v4.4.5 is the next release and is built, tested and waiting on field confirmation** (not yet tagged; the downloads below stay on 4.4.1 until it is). It adds an opt-in NVIDIA laptop GPU power unlock, a Linux single-fan-writer lock, an opt-in factory fan curve for the OMEN MAX 16 (`8D87`, [#189](https://github.com/theantipopau/omencore/issues/189)), OMEN key and telemetry-switch improvements, faster fan response to a temperature spike, fixes for the in-app updater relaunch and a stale saved Fan Max, and boards `8A13`, `8E9F`, `8EEC`. Everything that is not yet confirmed on real hardware is marked so in [docs/CHANGELOG_v4.4.5.md](docs/CHANGELOG_v4.4.5.md).
+
 **Next:** the most-reported gap is firmware Auto under-cooling during games ([#189](https://github.com/theantipopau/omencore/issues/189) has a design doc for an opt-in automatic fan curve). The OMEN MAX 16 (`8D87`) GPU power unlock is written but off until an owner can validate its EC writes. Several 4.4.1 fixes are waiting on their reporters to confirm them on real hardware.
 
 The active work is tracked in:
 
-- [docs/CHANGELOG_v4.4.1.md](docs/CHANGELOG_v4.4.1.md) - the current release notes.
+- [docs/CHANGELOG_v4.4.5.md](docs/CHANGELOG_v4.4.5.md) / [docs/ROADMAP_v4.4.5.md](docs/ROADMAP_v4.4.5.md) - the next release (unreleased).
+- [docs/CHANGELOG_v4.4.1.md](docs/CHANGELOG_v4.4.1.md) - the current released notes.
 - [docs/ROADMAP_v4.4.1.md](docs/ROADMAP_v4.4.1.md) - the full scope, investigations, and evidence trails for this cycle.
 - [docs/CHANGELOG_v4.4.0.md](docs/CHANGELOG_v4.4.0.md) / [docs/ROADMAP_v4.4.0.md](docs/ROADMAP_v4.4.0.md) - the previous cycle.
 

@@ -1,7 +1,7 @@
 # OmenCore v4.4.5
 
-**Release Date:** TBD
-**Type:** In development. Folds in field evidence, fork contributions and user requests received after v4.4.1.
+**Release Date:** TBD (release candidate, built and tested, not yet tagged)
+**Type:** Feature and field-report release. Folds in field evidence, fork contributions and user requests received after v4.4.1.
 **Roadmap:** `docs/ROADMAP_v4.4.5.md`
 
 Nothing below is called confirmed unless a reporter has verified it on real hardware. Items marked
@@ -91,12 +91,24 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
   v4.4.1-prophecy.5). *Pending hardware confirmation in OmenCore itself* (its author
   reported it working on an RTX 5060 laptop at 140 W). Tests: `NvidiaPowerServiceTests`.
 
-## Planned for this release (see the roadmap)
+## Needs field confirmation
 
-- 8BD4 single-zone keyboard (#212: the RGB payload probe is in, the fix waits on the owner's result), 8E35 SMU
-  table (#222, needs a PM-table dump), board 8E9A (waiting on its export).
-- Widening the automatic fan curve beyond 8D87 needs that board's own tables and a hardware check.
+Everything here is implemented and tested in software. Please report what you see.
+
+- **8BD4 owners (#212):** run Diagnostics > Keyboard > RGB Payload Probe and say which numbered step lit the keyboard.
+- **8E9F owners (#224):** try the Lighting page; the Darfon `0D62:30BF` route is a guess from HP's device list.
+- **8D87 owners (#189):** try the factory fan curve in Performance mode and compare temperatures with firmware Auto.
+- **8A13 owners (#225):** MUX is still off for this board; a later build will offer a test.
+- **NVIDIA laptops:** the power unlock has been run by its authors, not yet through OmenCore. MAX needs a restart; CURRENT resets on reboot.
+- **Everyone:** an in-app update from 4.4.1 should reopen OmenCore (a UAC prompt is expected); an auto-hidden taskbar should
+  stay reachable with OmenCore maximised; a saved Max fan preset should no longer return after a restart or sleep.
+
+## Not in this release
+
+- 8BD4 single-zone keyboard fix (#212): waits on the probe result.
+- 8E35 SMU table (#222): needs a PM-table dump. Board 8E9A (#142): waiting on its export. 8BB3 (OMEN Transcend 16): needs an export.
 - Linux per-key RGB for the 2025 MAX boards (#179, #151, #87): Windows already drives these; the Linux port waits on a tester.
+- The automatic fan curve for boards other than 8D87 needs each board's own tables and a hardware check.
 
 ## Contributors
 
