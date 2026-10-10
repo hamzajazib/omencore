@@ -2565,6 +2565,16 @@ namespace OmenCore.Services
             return success;
         }
 
+        private const double ThermalSpikeBypassC = 8.0;
+        private const int ThermalSpikeMinGapMs = 1000;
+
+        /// <summary>True when the hottest sensor is at least 8 C above the temperature the fans were last set for.</summary>
+        public static bool IsThermalSpike(double rawMaxTempC, double lastAppliedTempC) =>
+            lastAppliedTempC > 0 && rawMaxTempC - lastAppliedTempC >= ThermalSpikeBypassC;
+
+        /// <summary>A ramp delay no longer than the evaluation tick adds nothing but a lost tick, so it is skipped.</summary>
+        public static bool RampDelayFitsWithinTick(double delaySeconds, int tickMs) => delaySeconds * 1000.0 <= tickMs;
+
         private Task ApplyCurveIfNeededAsync(double cpuTemp, double gpuTemp, bool immediate = false, CancellationToken ct = default)
         {
             ct.ThrowIfCancellationRequested();
@@ -2593,7 +2603,12 @@ namespace OmenCore.Services
             // This combats BIOS countdown timer that may reset fan control
             bool forceRefresh = timeSinceForceRefresh >= forceRefreshIntervalMs;
             
-            if (timeSinceLastUpdate < CurveUpdateIntervalMs && !forceRefresh && !immediate)
+            // A sudden jump (alt-tab, shader compile, a game loading) must not wait out the 5 s tick: on WMI-only
+            // boards that, plus the ramp delay below, was the ~7 s fan response reported in #222.
+            bool spike = IsThermalSpike(Math.Max(cpuTemp, gpuTemp), _lastHysteresisTemp)
+                         && timeSinceLastUpdate >= ThermalSpikeMinGapMs;
+
+            if (timeSinceLastUpdate < CurveUpdateIntervalMs && !forceRefresh && !immediate && !spike)
                 return Task.CompletedTask;
                 
             // Route to appropriate curve handler
@@ -2676,8 +2691,12 @@ namespace OmenCore.Services
                         // Apply ramp delay for speed changes
                         bool isIncrease = targetFanPercent > _lastAppliedFanPercent;
                         double requiredDelay = isIncrease ? _hysteresis.RampUpDelay : _hysteresis.RampDownDelay;
-                        
-                        if (_pendingFanPercent != (int)targetFanPercent)
+
+                        // Ramp-up delay shorter than the evaluation tick used to cost a whole extra tick: the first
+                        // pass only started the timer and the write happened on the next pass, 5 s later.
+                        bool applyIncreaseNow = isIncrease && (spike || RampDelayFitsWithinTick(requiredDelay, CurveUpdateIntervalMs));
+
+                        if (!applyIncreaseNow && _pendingFanPercent != (int)targetFanPercent)
                         {
                             // New target, start delay timer
                             _pendingFanPercent = (int)targetFanPercent;
@@ -2689,7 +2708,7 @@ namespace OmenCore.Services
                         
                         // Check if delay has elapsed
                         var timeSinceRequest = (now - _lastFanChangeRequest).TotalSeconds;
-                        if (timeSinceRequest < requiredDelay)
+                        if (!applyIncreaseNow && timeSinceRequest < requiredDelay)
                         {
                             _lastCurveUpdate = now;
                             return Task.CompletedTask;

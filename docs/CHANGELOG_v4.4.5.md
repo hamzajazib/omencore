@@ -28,6 +28,13 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
   **Launch program or script**, with fields for the path and optional arguments. Requested on Discord
   (Rave-TZ).
 
+- **Faster fan response to a temperature spike** (#222, 8E35). A custom curve was evaluated every 5 s, and a
+  needed fan increase waited for a ramp-up timer that only started on one pass and was checked on the next, so
+  a brief jump (alt-tab, a game loading) was answered about 7 s late and often after the heat had gone. A rise of
+  8 C or more over the last applied temperature now bypasses the tick and the ramp-up delay, and a ramp-up delay
+  no longer than the tick no longer costs an extra tick. Ramp-down, the dead-zone and long custom delays are
+  unchanged. *Pending confirmation on the reporter's 8E35.* Tests: `FanCurveResponseTests`.
+
 ## Added
 
 - **Reversible HP telemetry switch** (Advanced). Stops and disables HP's analytics and diagnostics
