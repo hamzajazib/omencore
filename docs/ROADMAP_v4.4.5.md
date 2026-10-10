@@ -9,7 +9,7 @@ loosening the evidence gate. Anything unconfirmed on hardware stays labelled as 
 | Source | What is in it | Decision |
 |---|---|---|
 | `bobshmo/OmenCore-Prophecy` (4 commits on 4.4.1) | Fan Max no longer restored at startup without an opt-in; Quiet/Auto now update the resume preset (stale-Max-on-resume bug); tests for both | **Take.** OmenCore-authored MIT code, real root cause, matches the "fans stuck high/low after resume" family. Port by hand with tests. |
-| same fork | Native NVIDIA power backend: VBIOS MAX override via driver registry `romOverride00`, CURRENT via NVAPI, voltage/clock tuning, mVolt import, 22 PCI maps | **Do not merge code.** Derives from `timmyy123/nvidia-power-control`, which ships **no licence** (all rights reserved by default) and whose repo is full of driver-patching/vulnerable-driver tooling. The override also lifts limits far past OEM spec (hardware/warranty risk). See section 3. |
+| same fork | Native NVIDIA power backend: VBIOS MAX override via driver registry `romOverride00`, CURRENT via NVAPI, voltage/clock tuning, mVolt import, 22 PCI maps (~3,500 lines in `src/Prophecy.Integration`) | **Approved, with conditions (section 3).** Derives from `timmyy123/nvidia-power-control`, which ships no licence; both authors have agreed to inclusion with credit. The override lifts limits well past OEM spec, so it ships opt-in with the fork's safety checks. |
 | same fork | Extra Victus CPU limits (STAPM/Fast/Slow/APU/skin), HP TPP / PCF GPU max / PLGPU controls | **Re-implement independently** from HP WMI/SMU facts, gated by model, Test Apply and auto-revert. Facts only, no code copy. |
 | same fork | TuningView rewritten into tabs (GPU power, GPU tuning, CPU, Victus, Profiles, Device) | **Reference only.** The layout idea is worth a pass; the XAML is coupled to the Prophecy backend. |
 | `saikiranworks/omencore` (24 commits, Linux, MIT) | Reliability mode (diagnostics store, watchdog, single-writer lock), daemon/user-prefs store, keyboard animation engine and idle/suspend backlight handling, live NVIDIA GPU power telemetry on Linux, udev rule for hp-wmi, Avalonia theme/Longevity tab | **Take selectively.** udev rule, kbd suspend/idle scripts, single-writer lock and reliability diagnostics first. Avalonia theme churn and the committed `.avalonia-build-tasks` files are excluded. Branch is 348 commits behind; port, do not merge. |
@@ -48,11 +48,36 @@ New or changed entries need the evidence gate (diagnostics export plus a verific
 - Port from the saikiranworks fork: udev rule for hp-wmi, kbd suspend/idle scripts, single-writer lock, reliability diagnostics.
 - #219 / #84 / #26: kernel limits, so document the distro/kernel steps and the hp-wmi allowlist, no code workaround.
 
-## 3. NVIDIA power unlock: open decision
-The Discord thread (RTX 5060 raised from 90 W to 115-140 W) shows real demand, but the only working backend is unlicensed and registry/VBIOS-based. Options, in order of preference:
-1. Ship read-only telemetry plus HP-side controls (section 2C).
-2. Ask `timmyy123` and `bobshmo` for an explicit MIT-compatible licence; if granted, revisit with an opt-in "advanced" gate, Test Apply, reboot-state checks and clear damage/warranty warnings.
-3. Point users to the fork, credited, as a separate build. Do not bundle it.
+## 3. NVIDIA power unlock: approved for 4.4.5
+The Discord thread (RTX 5060 raised from 90 W to 115-140 W) shows real demand. `timmyy123`
+(nvidia-power-control) and `bobshmo` (Prophecy) have both agreed to its inclusion, with credit
+(maintainer-confirmed 2026-10-10).
+
+Conditions for shipping it:
+1. **Written permission on record.** The upstream repo has no licence file, so get each author's
+   approval written down (an issue comment, or a LICENSE/NOTICE in their repo) and link it from
+   `THIRD-PARTY-NOTICES`. Credit both in `CONTRIBUTORS.md` and the changelog.
+2. **Opt-in "advanced" feature, default off.** Warn plainly: limits above OEM spec, thermal and
+   power-delivery risk, may void warranty. Windows only, laptop RTX 40/50 only, one NVIDIA GPU.
+3. **Keep the fork's safety model:** driver and VBIOS identity validation, no-op CURRENT write to
+   validate, registry backup before any MAX override, rollback on readback mismatch, writes only
+   while the GPU is idle, CURRENT never above live MAX, reboot-state checks, one writer at a time.
+4. **Use OmenCore's own Test Apply / exit-revert pattern** so a bad value does not survive a crash.
+5. **Do not bundle** NVFlash, ROMs, driver binaries or personal profiles. `LLT.NvAPIWrapper.Net`
+   is LGPL-3.0: keep it as a replaceable DLL with notices.
+6. **Evidence gate:** nothing is called confirmed beyond what was run on hardware (the fork's author
+   exercised an RTX 5060 laptop; the other 10 models are identification-only).
+7. Land read-only telemetry and the HP-side controls first, then the write path behind the gate.
+
+Related power tooling:
+- **AMD CPU:** already covered. `RyzenSmu`/`AmdPmTable` (PawnIO) is the RyzenAdj equivalent, with
+  STAPM/Fast/Slow/Tctl and Curve Optimizer, and it refuses unmapped CPUs. Widening it means mapping
+  more SMU layouts from PM-table exports (Ryzen 7 260, 9 8940HX).
+- **AMD GPU:** no equivalent. The nearest tool, MorePowerTool, is Windows-only and AMD has blocked
+  it for RDNA 3 and later. Mobile Radeon limits are enforced by the vBIOS/EC, so there is nothing
+  to port.
+- **Intel:** PL1/PL2 and undervolt are separate from this and already handled in the existing tuning code.
+- **mVolt (b00nz):** optional external profile editor. Link to it; do not bundle.
 
 ## 4. Housekeeping
 - Add `bobshmo` and `saikiranworks` (already listed) to `CONTRIBUTORS.md` on merge; credit `mbilykov` for #189.
