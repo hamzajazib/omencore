@@ -470,6 +470,31 @@
                 </StackPanel>
             </Border>
             
+            <!-- HP Telemetry Services Section -->
+            <Border CornerRadius="12" Padding="20" Margin="0,0,0,16">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#161B28" Offset="0"/>
+                        <GradientStop Color="#1A2035" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <StackPanel>
+                    <TextBlock Text="HP TELEMETRY &amp; BACKGROUND SERVICES" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                    <TextBlock Text="Stops and disables HP's analytics and diagnostics services. Reversible: the original start type of each service is saved and Restore puts it back. Needs administrator rights. Nothing OmenCore depends on is touched."
+                               TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,0,0,12"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Disable HP telemetry" Style="{StaticResource ModernButton}" Padding="16,8" Margin="0,0,8,0"
+                                Command="{Binding SystemControl.Maintenance.DisableHpTelemetryCommand}"
+                                AutomationProperties.Name="Disable HP telemetry services"/>
+                        <Button Content="Restore" Style="{StaticResource ModernButton}" Padding="16,8"
+                                Command="{Binding SystemControl.Maintenance.RestoreHpTelemetryCommand}"
+                                AutomationProperties.Name="Restore HP telemetry services"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding SystemControl.Maintenance.HpTelemetryStatus}" TextWrapping="Wrap"
+                               Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="0,8,0,0"/>
+                </StackPanel>
+            </Border>
+
             <!-- Display Overdrive Section -->
             <Border CornerRadius="12" Padding="20" Margin="0,0,0,16"
                     Visibility="{Binding SystemControl.Maintenance.DisplayOverdriveSupported, Converter={StaticResource BoolToVisibility}}">

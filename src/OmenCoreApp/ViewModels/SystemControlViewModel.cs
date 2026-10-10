@@ -862,6 +862,30 @@ namespace OmenCore.ViewModels
             }
         }
         
+        private string _gpuPowerPolicyText = "";
+        /// <summary>Read-only NVML view of the limit the NVIDIA driver is enforcing (empty when unavailable).</summary>
+        public string GpuPowerPolicyText
+        {
+            get => _gpuPowerPolicyText;
+            private set
+            {
+                if (_gpuPowerPolicyText != value)
+                {
+                    _gpuPowerPolicyText = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(GpuPowerPolicyAvailable));
+                }
+            }
+        }
+        public bool GpuPowerPolicyAvailable => !string.IsNullOrEmpty(_gpuPowerPolicyText);
+
+        private void RefreshGpuPowerPolicy() => Task.Run(() =>
+        {
+            var policy = NvmlPowerPolicy.Read(new GpuPowerStateProbe());
+            var text = policy.HasData ? policy.Describe() : "";
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => GpuPowerPolicyText = text);
+        });
+
         private string _gpuPowerBoostStatus = "Detecting...";
         public string GpuPowerBoostStatus
         {
@@ -2784,6 +2808,7 @@ namespace OmenCore.ViewModels
 
             // Detect GPU Power Boost availability
             DetectGpuPowerBoost();
+            RefreshGpuPowerPolicy();
 
             // Initialize TCC offset (Intel CPU temperature limit)
             InitializeTccOffset();

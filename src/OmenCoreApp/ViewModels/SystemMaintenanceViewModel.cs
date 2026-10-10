@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -104,6 +105,56 @@ namespace OmenCore.ViewModels
         public bool CleanupKillProcesses { get; set; } = true;
         public string CleanupStatusText => CleanupStatus;
         public ICommand RunCleanupCommand { get; }
+
+        // Reversible alternative to the cleanup above: stops and disables HP analytics services, remembers
+        // each original start type, and can put everything back.
+        private readonly HpTelemetryServiceControl _telemetryServices =
+            new(System.IO.Path.Combine(SessionSentinel.DefaultDirectory(), "hp-services-backup.json"));
+        public ICommand DisableHpTelemetryCommand { get; }
+        public ICommand RestoreHpTelemetryCommand { get; }
+
+        private string _hpTelemetryStatus = "";
+        public string HpTelemetryStatus
+        {
+            get => _hpTelemetryStatus;
+            private set { if (_hpTelemetryStatus != value) { _hpTelemetryStatus = value; OnPropertyChanged(); } }
+        }
+
+        private void RefreshHpTelemetryStatus()
+        {
+            try
+            {
+                var states = _telemetryServices.Query();
+                if (states.Count == 0) { HpTelemetryStatus = "No HP telemetry services found on this system."; return; }
+                var off = states.Count(s => s.StartType == HpTelemetryServiceControl.Disabled);
+                HpTelemetryStatus = $"{states.Count} HP service(s) found, {off} disabled" +
+                                    (states.Any(s => s.Managed) ? " (Restore available)." : ".");
+            }
+            catch (Exception ex)
+            {
+                _logging.Warn($"HP telemetry status failed: {ex.Message}");
+                HpTelemetryStatus = "Could not read HP service state.";
+            }
+        }
+
+        private Task RunHpTelemetryAsync(bool disable) => Task.Run(() =>
+        {
+            try
+            {
+                var result = disable ? _telemetryServices.DisableAll() : _telemetryServices.RestoreAll();
+                _logging.Info($"HP telemetry services: {result.Describe(disable ? "disabled" : "restored")}");
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    RefreshHpTelemetryStatus();
+                    HpTelemetryStatus += " " + result.Describe(disable ? "Disabled" : "Restored");
+                });
+            }
+            catch (Exception ex)
+            {
+                _logging.Warn($"HP telemetry change failed: {ex.Message}");
+                System.Windows.Application.Current?.Dispatcher.Invoke(() => HpTelemetryStatus = "Failed: " + ex.Message);
+            }
+        });
 
         private bool _cleanupInProgress;
         public bool CleanupInProgress
@@ -228,6 +279,9 @@ namespace OmenCore.ViewModels
             // BIOS doesn't expose GPU mode switching and saw nothing happen at all.
             SwitchGpuModeCommand = new AsyncRelayCommand(_ => SwitchGpuModeAsync(), _ => GpuModeSwitchingSupported);
             RunCleanupCommand = new AsyncRelayCommand(_ => RunCleanupAsync(), _ => !CleanupInProgress);
+            DisableHpTelemetryCommand = new AsyncRelayCommand(_ => RunHpTelemetryAsync(true));
+            RestoreHpTelemetryCommand = new AsyncRelayCommand(_ => RunHpTelemetryAsync(false));
+            RefreshHpTelemetryStatus();
             CreateRestorePointCommand = new AsyncRelayCommand(_ => CreateRestorePointAsync());
 
             GpuSwitchModes.Add(GpuSwitchMode.Hybrid);
