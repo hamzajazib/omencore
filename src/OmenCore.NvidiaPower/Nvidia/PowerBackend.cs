@@ -526,7 +526,7 @@ namespace NvpwrControlBlackwell
             if (String.IsNullOrEmpty(exePath) || !File.Exists(exePath))
                 return OperationResult.Fail("Application executable path is unavailable for autostart.");
 
-            string stateDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "prophecy-state");
+            string stateDir = Path.Combine(StatePaths.Dir);
             Directory.CreateDirectory(stateDir);
 
             string userName = System.Security.Principal.WindowsIdentity.GetCurrent().Name;
@@ -562,7 +562,7 @@ namespace NvpwrControlBlackwell
 
             try
             {
-                string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "prophecy-state");
+                string dir = Path.Combine(StatePaths.Dir);
                 string f = Path.Combine(dir, "autostart-target.txt");
                 if (File.Exists(f)) File.Delete(f);
             }
@@ -574,7 +574,7 @@ namespace NvpwrControlBlackwell
         {
             try
             {
-                string f = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "prophecy-state", "autostart-target.txt");
+                string f = Path.Combine(StatePaths.Dir, "autostart-target.txt");
                 if (!File.Exists(f)) return null;
                 int v;
                 if (Int32.TryParse(File.ReadAllText(f).Trim(), out v)) return v;
@@ -841,7 +841,7 @@ namespace NvpwrControlBlackwell
             error = "";
             try
             {
-                string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "prophecy-state");
+                string dir = Path.Combine(StatePaths.Dir);
                 Directory.CreateDirectory(dir);
                 string file = Path.Combine(dir, "backup-" + reason + "-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".reg");
                 int rc;

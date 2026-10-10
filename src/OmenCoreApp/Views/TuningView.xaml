@@ -906,7 +906,7 @@
                 <StackPanel>
                     <TextBlock Text="NVIDIA POWER UNLOCK (advanced, off by default)" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
                     <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8"
-                               Text="Raises the GPU's power limit above the laptop maker's setting. MAX is stored in the NVIDIA driver's registry and needs a restart; CURRENT is applied live and resets on reboot. More power means more heat. Based on timmyy123's nvidia-power-control and bobshmo's OmenCore-Prophecy, used with their permission."/>
+                               Text="Order: 1) Resolve VBIOS, 2) Apply MAX, 3) restart Windows, 4) Apply CURRENT. Raises the GPU's power limit above the laptop maker's setting. MAX is stored in the NVIDIA driver's registry and needs a restart; CURRENT is applied live and resets on reboot. More power means more heat. Based on timmyy123's nvidia-power-control and bobshmo's OmenCore-Prophecy, used with their permission."/>
                     <CheckBox Content="Enable NVIDIA power unlock" IsChecked="{Binding SystemControl.NvidiaPower.Enabled}"
                               Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8"/>
                     <StackPanel Visibility="{Binding SystemControl.NvidiaPower.Enabled, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -916,6 +916,9 @@
                             <ComboBox ItemsSource="{Binding SystemControl.NvidiaPower.Targets}" SelectedItem="{Binding SystemControl.NvidiaPower.SelectedTarget}" MinWidth="80"/>
                         </StackPanel>
                         <WrapPanel>
+                            <Button Content="1. Resolve VBIOS" Command="{Binding SystemControl.NvidiaPower.ResolveVbiosCommand}" Style="{StaticResource ModernButton}" Padding="16,8" Margin="0,0,8,4"
+                                    ToolTip="Reads the VBIOS power table. Needs nvflash64.exe next to OmenCore.exe, or use 'From file'."/>
+                            <Button Content="From file..." Command="{Binding SystemControl.NvidiaPower.ResolveVbiosFromFileCommand}" Style="{StaticResource ModernButton}" Padding="16,8" Margin="0,0,8,4"/>
                             <Button Content="Apply MAX (restart)" Command="{Binding SystemControl.NvidiaPower.ApplyMaxCommand}" Style="{StaticResource ModernButton}" Padding="16,8" Margin="0,0,8,4"/>
                             <Button Content="Apply CURRENT" Command="{Binding SystemControl.NvidiaPower.ApplyCurrentCommand}" Style="{StaticResource ModernButton}" Padding="16,8" Margin="0,0,8,4"/>
                             <Button Content="Remove MAX override" Command="{Binding SystemControl.NvidiaPower.RemoveMaxCommand}" Style="{StaticResource ModernButton}" Padding="16,8" Margin="0,0,8,4"/>

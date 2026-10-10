@@ -2291,7 +2291,7 @@ namespace OmenCore.Hardware
                 HasFourZoneRgb = true,
                 HasKeyboardBacklight = true,
                 UserVerified = false,
-                Notes = "GitHub #225 (2026-10-10) - OMEN 16-b1xxx, i7-12700H / RTX 3060 Laptop, BIOS F.25. Thermal policy V1, 2 fans, max fan level 55, WMI GPU power set and verified (Medium) and a four-zone keyboard topology (0x02) read live. Fan RPM is estimated only, MUX was reported available but never exercised, undervolt state is unclear, and no visual RGB confirmation yet, so curves, MUX and undervolt stay off until a Guided Fan Verification and RGB check come back."
+                Notes = "GitHub #225 (2026-10-10) - OMEN 16-b1xxx, i7-12700H / RTX 3060 Laptop, BIOS F.25. Thermal policy V1, 2 fans, max fan level 55, WMI GPU power set and verified (Medium) and a four-zone keyboard topology (0x02) read live. Guided Fan Verification 6/6 passed on 4.4.1 (second report, same day), and the reporter saw the RGB test pattern visibly change the keyboard colours, so four-zone colour via WMI is confirmed by eye. Fan RPM is estimated only, MUX was reported available but never exercised and undervolt state is unclear, so curves, MUX and undervolt stay off."
             });
 
             AddModel(new ModelCapabilities

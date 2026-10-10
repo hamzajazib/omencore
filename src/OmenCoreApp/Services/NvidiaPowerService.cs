@@ -44,6 +44,9 @@ namespace OmenCore.Services
         }
 
         public Outcome ApplyMax(int watts) => Run("MAX " + watts + " W", () => _backend.SetMaxOverride(watts));
+        /// <summary>Reads the VBIOS power table so MAX can be written. Uses nvflash64.exe if the user placed it next to OmenCore.</summary>
+        public Outcome ResolveVbiosAuto() => Run("resolve VBIOS", () => _backend.TryAutoResolveVbios(out _));
+        public Outcome ResolveVbiosFromRom(string romPath) => Run("resolve VBIOS from file", () => _backend.ResolveVbiosFromRom(romPath));
         public Outcome RemoveMax() => Run("remove MAX override", () => _backend.RemoveMaxOverride());
         public Outcome ApplyCurrent(int watts) => Run("CURRENT " + watts + " W", () => _backend.SetCurrent(watts));
 

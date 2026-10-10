@@ -38,7 +38,31 @@ namespace OmenCore.ViewModels
                 _ => Enabled && !_busy && SelectedTarget > 0 && _status?.CurrentReady == true);
             RemoveMaxCommand = new AsyncRelayCommand(_ => RunAsync("remove MAX override", _ => _service.RemoveMax(), true),
                 _ => Enabled && !_busy && _status?.MaxReady == true);
+            ResolveVbiosCommand = new AsyncRelayCommand(_ => ResolveAsync(null), _ => Enabled && !_busy);
+            ResolveVbiosFromFileCommand = new AsyncRelayCommand(_ =>
+            {
+                var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Select a VBIOS dump", Filter = "VBIOS dump (*.rom;*.bin)|*.rom;*.bin|All files|*.*" };
+                return dlg.ShowDialog() == true ? ResolveAsync(dlg.FileName) : Task.CompletedTask;
+            }, _ => Enabled && !_busy);
             if (Enabled) _ = RefreshAsync();
+        }
+
+        public ICommand ResolveVbiosCommand { get; }
+        public ICommand ResolveVbiosFromFileCommand { get; }
+
+        private async Task ResolveAsync(string? romPath)
+        {
+            _busy = true; RaiseCommands();
+            try
+            {
+                var r = await Task.Run(() => romPath == null ? _service.ResolveVbiosAuto() : _service.ResolveVbiosFromRom(romPath));
+                ResultText = (r.Success ? "Done: " : "Not resolved: ") + r.Message;
+            }
+            finally
+            {
+                _busy = false;
+                await RefreshAsync();
+            }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -123,7 +147,7 @@ namespace OmenCore.ViewModels
 
         private void RaiseCommands()
         {
-            foreach (var c in new[] { RefreshCommand, ApplyMaxCommand, ApplyCurrentCommand, RemoveMaxCommand })
+            foreach (var c in new[] { RefreshCommand, ApplyMaxCommand, ApplyCurrentCommand, RemoveMaxCommand, ResolveVbiosCommand, ResolveVbiosFromFileCommand })
                 (c as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         }
 

@@ -558,6 +558,24 @@ namespace OmenCore.Services.KeyboardLighting
                     "running device effect cannot be dimmed."
             });
 
+            // HyperX OMEN MAX 16-ak1xxx (GitHub #224). The reporter's keyboard did not light for the standard
+            // WMI colour test, and Device Manager shows Darfon 0D62:30BF (HID interfaces MI_00/02/03) plus
+            // 03F0:01C5. DojoPerKeyBackend already lists 0x30BF from HP's own device table but has only been
+            // driven against 0x54BF on 8D87, so this routes to it as an unverified guess and the UI says so.
+            AddModel(new KeyboardModelConfig
+            {
+                ProductId = "8E9F",
+                ModelName = "HyperX OMEN MAX 16-ak1xxx",
+                ModelNamePattern = "16-ak1",
+                KeyboardType = KeyboardType.PerKeyRgb,
+                PreferredMethod = KeyboardMethod.HidPerKey,
+                FallbackMethods = new[] { KeyboardMethod.NewWmi2023, KeyboardMethod.ColorTable2020 },
+                ModelYear = 2026,
+                UserVerified = false,
+                Notes = "GitHub #224 - Darfon 0D62:30BF. Same Dojo protocol family as 8D87's 0D62:54BF, but 0x30BF has " +
+                    "never been driven on hardware. Needs a reporter to confirm that colours change and which effects work."
+            });
+
             // ═══════════════════════════════════════════════════════════════════════════════════
             // OMEN Desktop PCs (25L, 30L, 40L, 45L series)
             // ═══════════════════════════════════════════════════════════════════════════════════

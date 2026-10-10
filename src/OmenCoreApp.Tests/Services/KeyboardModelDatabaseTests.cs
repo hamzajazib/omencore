@@ -146,6 +146,16 @@ namespace OmenCoreApp.Tests.Services
         }
 
         [Fact]
+        public void GetConfig_8E9F_RoutesToPerKeyAsUnverified()
+        {
+            var cfg = KeyboardModelDatabase.GetConfig("8E9F");
+
+            cfg.Should().NotBeNull();
+            cfg!.PreferredMethod.Should().Be(KeyboardMethod.HidPerKey);
+            cfg.UserVerified.Should().BeFalse("0x30BF has not been driven on hardware");
+        }
+
+        [Fact]
         public void GetConfig_ReturnsConfig_For_ProductId_8D87()
         {
             var cfg = KeyboardModelDatabase.GetConfig("8D87");

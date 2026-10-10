@@ -8,8 +8,7 @@ namespace NvpwrControlBlackwell
     internal static class VbiosResolver
     {
         private static readonly string CachePath = Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory,
-            "prophecy-state",
+            StatePaths.Dir,
             "vbios-resolver-cache-v3.txt");
 
         private sealed class RomImage
@@ -261,7 +260,7 @@ namespace NvpwrControlBlackwell
                     return false;
                 }
 
-                string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "prophecy-state", "rom-cache");
+                string dir = Path.Combine(StatePaths.Dir, "rom-cache");
                 Directory.CreateDirectory(dir);
                 string path = Path.Combine(dir, "auto-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".rom");
 
