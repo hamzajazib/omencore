@@ -62,7 +62,7 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
   diagnostics export. It never wakes a sleeping dGPU. Tests: `NvmlPowerPolicyTests`.
 
 - **Board entries from field exports** (all unverified until a reporter confirms): `8E9F` HyperX OMEN MAX
-  16-ak1xxx (#224) and `8EEC` HyperX OMEN 15-gb0xxx (#223). Each records only what the export measured (thermal
+  16-ak1xxx (#224), `8EEC` HyperX OMEN 15-gb0xxx (#223) and `8A13` OMEN 16-b1xxx (#225). Each records only what the export measured (thermal
   policy, fan count, keyboard topology) and leaves curves, undervolt and RGB off.
 
 - **Linux: keyboard backlight suspend/resume hook** (`scripts/linux/omencore-kbd-suspend.sh`, optional,

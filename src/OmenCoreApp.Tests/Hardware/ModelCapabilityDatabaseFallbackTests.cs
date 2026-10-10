@@ -216,6 +216,23 @@ namespace OmenCoreApp.Tests.Hardware
         }
 
         [Fact]
+        public void GetPreferredCapabilities_8A13_Omen16B1_IsExactAndConservative()
+        {
+            // GitHub #225: OMEN 16-b1xxx previously fell to the unverified OMEN16 family default.
+            var caps = ModelCapabilityDatabase.GetPreferredCapabilities(
+                "8A13", "OMEN by HP Laptop 16-b1xxx", CpuUndervoltProviderFactory.CpuVendor.Intel);
+
+            caps.Should().NotBeNull();
+            caps!.ProductId.Should().Be("8A13");
+            caps.FanZoneCount.Should().Be(2);
+            caps.SupportsGpuPowerBoost.Should().BeTrue();
+            caps.HasFourZoneRgb.Should().BeTrue();
+            caps.SupportsFanCurves.Should().BeFalse("curves are unconfirmed on this board");
+            caps.SupportsUndervolt.Should().BeFalse();
+            caps.UserVerified.Should().BeFalse();
+        }
+
+        [Fact]
         public void GetPreferredCapabilities_8EEC_HyperxOmen15_IsExactAndConservative()
         {
             // GitHub #223: HyperX OMEN 15-gb0xxx previously fell to the unverified family default.

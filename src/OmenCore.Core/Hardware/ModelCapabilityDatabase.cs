@@ -2267,6 +2267,33 @@ namespace OmenCore.Hardware
                 Notes = "GitHub #224 (2026-10-08) - HyperX OMEN MAX 16-ak1xxx, Ryzen AI 7 450 / RTX 5070 Ti, BIOS F.03. Thermal policy V1, 2 fans and WMI GPU Power Boost (Maximum) read live; keyboard reports RgbPerKey (0x03) but no Primax HID device was found, so colour control is not claimed. Fan curves, RPM readback, MUX, undervolt and RGB are unconfirmed and left off."
             });
 
+            // GitHub #225 (2026-10-10): OMEN by HP Laptop 16-b1xxx, i7-12700H / RTX 3060, BIOS F.25.
+            // Measured in the export: thermal policy V1, firmware fan count 2, max fan level 55, WMI GPU power
+            // set and read back (Medium, CustomTgp), keyboard topology FourZoneWithoutNumpad (0x02) with ColorSet
+            // accepted. Not measured: real fan RPM (estimated only), a visual RGB confirmation, MUX use (the probe
+            // says available but it was never switched), undervolt (MSR driver state inconsistent in the logs).
+            AddModel(new ModelCapabilities
+            {
+                ProductId = "8A13",
+                ModelName = "OMEN by HP Laptop 16-b1xxx",
+                ModelNamePattern = "16-b1",
+                ModelYear = 2022,
+                Family = OmenModelFamily.OMEN16,
+                SupportsFanControlWmi = true,
+                SupportsFanControlEc = false,
+                SupportsFanCurves = false,
+                SupportsRpmReadback = false,
+                FanZoneCount = 2,
+                SupportsPerformanceModes = true,
+                SupportsGpuPowerBoost = true,
+                HasMuxSwitch = false,
+                SupportsUndervolt = false,
+                HasFourZoneRgb = true,
+                HasKeyboardBacklight = true,
+                UserVerified = false,
+                Notes = "GitHub #225 (2026-10-10) - OMEN 16-b1xxx, i7-12700H / RTX 3060 Laptop, BIOS F.25. Thermal policy V1, 2 fans, max fan level 55, WMI GPU power set and verified (Medium) and a four-zone keyboard topology (0x02) read live. Fan RPM is estimated only, MUX was reported available but never exercised, undervolt state is unclear, and no visual RGB confirmation yet, so curves, MUX and undervolt stay off until a Guided Fan Verification and RGB check come back."
+            });
+
             AddModel(new ModelCapabilities
             {
                 ProductId = "88DB",
