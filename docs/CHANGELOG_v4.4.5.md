@@ -56,11 +56,19 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
   documented in the Linux guide). From saikiranworks' fork. Its world-writable fan PWM udev rule was left out
   on purpose: it would let any local user stop the fans.
 
+- **NVIDIA laptop GPU power unlock** (Tuning, **off by default**). MAX is stored in the NVIDIA driver's
+  `romOverride` registry value (restart needed); CURRENT is applied live through the driver's internal call and
+  resets on reboot. Safety checks come from the backend: supported GPU and trusted driver build only, registry
+  backup, readback with rollback, idle-only CURRENT writes, CURRENT never above the live MAX. OmenCore adds an
+  enable switch, a confirmation before every write, and on Victus laptops sets HP performance mode and pauses
+  the fan engine around the CURRENT write (Fan Max is preserved); if that preparation fails the write is not
+  sent. Backend by timmyy123 (nvidia-power-control) and bobshmo (OmenCore-Prophecy), included with their
+  permission; see `THIRD-PARTY-NOTICES.md`. *Pending hardware confirmation in OmenCore itself* (its author
+  reported it working on an RTX 5060 laptop at 140 W). Tests: `NvidiaPowerServiceTests`.
+
 ## Planned for this release (see the roadmap)
 
-- NVIDIA laptop power unlock (MAX/CURRENT), opt-in and gated, with the permission of the original authors.
-  Read-only telemetry and the HP-side controls land first.
-- 8BD4 single-zone keyboard (#212), 8E35 fan latency and SMU table (#222), new boards 8E9F, 8E9A and
+- 8BD4 single-zone keyboard (#212), 8E35 SMU table (#222), new boards 8E9A and
   HyperX OMEN 15, per-key keyboard routing for 8D41/8D87, automatic fan curve (#189, default off).
 - Linux reliability and keyboard work from saikiranworks' fork.
 

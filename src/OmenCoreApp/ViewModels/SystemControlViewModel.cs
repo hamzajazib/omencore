@@ -25,6 +25,7 @@ namespace OmenCore.ViewModels
         /// GPU-OC write paths the rest of this class is built around.
         /// </summary>
         public SystemMaintenanceViewModel Maintenance { get; }
+        public NvidiaPowerViewModel NvidiaPower { get; }
 
         // Read once and cached: how the last session ended cannot change while this one is running,
         // and the answer gates an unattended overclock reapply that happens seconds after launch.
@@ -2630,6 +2631,7 @@ namespace OmenCore.ViewModels
             _configService = configService;
             _wmiBios = wmiBios;
             Maintenance = new SystemMaintenanceViewModel(gpuSwitchService, cleanupService, restoreService, logging, wmiBios);
+            NvidiaPower = new NvidiaPowerViewModel(configService, new NvidiaPowerService(fanService, logging), logging);
             _oghProxy = oghProxy;
             _systemInfoService = systemInfoService;
             _nvapiService = nvapiService;

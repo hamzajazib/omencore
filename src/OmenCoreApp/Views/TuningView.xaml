@@ -900,6 +900,32 @@
                 </StackPanel>
             </Border>
 
+            <!-- NVIDIA laptop GPU power unlock (opt-in) -->
+            <Border Style="{StaticResource SurfaceCard}" Padding="20,14" Margin="0,0,0,16"
+                    Visibility="{Binding SystemControl.GpuPowerPolicyAvailable, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="NVIDIA POWER UNLOCK (advanced, off by default)" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8"
+                               Text="Raises the GPU's power limit above the laptop maker's setting. MAX is stored in the NVIDIA driver's registry and needs a restart; CURRENT is applied live and resets on reboot. More power means more heat. Based on timmyy123's nvidia-power-control and bobshmo's OmenCore-Prophecy, used with their permission."/>
+                    <CheckBox Content="Enable NVIDIA power unlock" IsChecked="{Binding SystemControl.NvidiaPower.Enabled}"
+                              Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8"/>
+                    <StackPanel Visibility="{Binding SystemControl.NvidiaPower.Enabled, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="{Binding SystemControl.NvidiaPower.StatusText}" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Target (W)" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,8,0"/>
+                            <ComboBox ItemsSource="{Binding SystemControl.NvidiaPower.Targets}" SelectedItem="{Binding SystemControl.NvidiaPower.SelectedTarget}" MinWidth="80"/>
+                        </StackPanel>
+                        <WrapPanel>
+                            <Button Content="Apply MAX (restart)" Command="{Binding SystemControl.NvidiaPower.ApplyMaxCommand}" Style="{StaticResource ModernButton}" Padding="16,8" Margin="0,0,8,4"/>
+                            <Button Content="Apply CURRENT" Command="{Binding SystemControl.NvidiaPower.ApplyCurrentCommand}" Style="{StaticResource ModernButton}" Padding="16,8" Margin="0,0,8,4"/>
+                            <Button Content="Remove MAX override" Command="{Binding SystemControl.NvidiaPower.RemoveMaxCommand}" Style="{StaticResource ModernButton}" Padding="16,8" Margin="0,0,8,4"/>
+                            <Button Content="Refresh" Command="{Binding SystemControl.NvidiaPower.RefreshCommand}" Style="{StaticResource ModernButton}" Padding="16,8" Margin="0,0,8,4"/>
+                        </WrapPanel>
+                        <TextBlock Text="{Binding SystemControl.NvidiaPower.ResultText}" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <!-- GPU Overclocking Section - MSI Afterburner Inspired -->
             <Border Style="{StaticResource SurfaceCard}" Padding="0" Margin="0,0,0,16"
                     Visibility="{Binding SystemControl.GpuOcSectionVisible, Converter={StaticResource BooleanToVisibilityConverter}}">

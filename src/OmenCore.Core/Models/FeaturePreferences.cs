@@ -92,6 +92,12 @@ namespace OmenCore.Models
         /// Options: "ToggleOmenCore", "CyclePerformance", "CycleFanMode", "ToggleMaxCooling", "LaunchExternalApp", "DoNothing"
         /// </summary>
         public string OmenKeyAction { get; set; } = "ToggleOmenCore";
+
+        /// <summary>
+        /// Shows the NVIDIA laptop GPU power unlock panel in Tuning. Off by default: it writes the NVIDIA driver's
+        /// romOverride registry value and calls an internal driver function, so it is opt-in.
+        /// </summary>
+        public bool NvidiaPowerUnlockEnabled { get; set; } = false;
         
         /// <summary>
         /// Show CPU temperature on the system tray icon.
