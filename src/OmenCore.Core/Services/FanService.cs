@@ -1912,7 +1912,8 @@ namespace OmenCore.Services
                     
                     // Apply fan curve if enabled and enough time has passed
                     await ApplyCurveIfNeededAsync(cpuTemp, gpuTemp, immediate: false);
-                    
+                    RunAutomaticFanCurve(cpuTemp, gpuTemp);
+
                     // Read fan speeds (less frequently to reduce ACPI overhead)
                     var fanSpeeds = _fanController.ReadFanSpeeds().ToList();
 
@@ -3232,6 +3233,58 @@ namespace OmenCore.Services
         /// <summary>
         /// Force-set fan speed directly on controller (used for restoration/diagnostics).
         /// </summary>
+        private AutomaticFanCurveController? _automaticCurve;
+        private Func<bool>? _automaticCurveWanted;
+
+        /// <summary>
+        /// Installs HP's factory fan curve (GitHub #189). <paramref name="wanted"/> is polled every loop pass and says
+        /// whether the user has it switched on and the machine is in the mode it applies to; it is not a one-off.
+        /// Pass null to remove the controller and give the fans back to firmware Auto if it held them.
+        /// </summary>
+        public void SetAutomaticFanCurve(AutomaticFanCurveController? controller, Func<bool>? wanted = null)
+        {
+            var previous = _automaticCurve;
+            _automaticCurve = controller;
+            _automaticCurveWanted = wanted;
+            previous?.Disengage();
+        }
+
+        /// <summary>Hands the fans back to firmware Auto for the automatic curve, leaving the active preset alone.</summary>
+        public void ReleaseAutomaticCurveHold()
+        {
+            try { RestoreAutoControlSerialized(); }
+            catch (InvalidOperationException ex) { _logging.Warn($"Automatic fan curve release failed: {ex.Message}"); }
+        }
+
+        /// <summary>Writes percent levels for the automatic curve through the normal serialized, coordinated path.</summary>
+        public bool ApplyAutomaticCurveLevels(int cpuPercent, int gpuPercent)
+        {
+            if (!FanWritesAvailable || !ManualFanControlAvailable) return false;
+            var ok = SetFanSpeedsSerialized(cpuPercent, gpuPercent);
+            if (ok) NoteExternalManualFanWrite(); // so the release runs the V1 handoff instead of leaving the level latched
+            RecordFanCommand("AutomaticFanCurve", $"CPU {cpuPercent}% / GPU {gpuPercent}%", ok, ok ? "Controller returned success" : "Controller returned false");
+            return ok;
+        }
+
+        internal void RunAutomaticFanCurve(double cpuTemp, double gpuTemp)
+        {
+            var controller = _automaticCurve;
+            if (controller == null) return;
+
+            // Somebody else is driving the fans: stand down without touching them.
+            var otherModeInControl = _diagnosticModeActive || _thermalProtectionActive || _systemSuspendActive ||
+                                     IsCurveActive || (_activePreset != null && _activePreset.Mode != FanMode.Auto);
+            if (otherModeInControl)
+            {
+                controller.Abandon();
+                return;
+            }
+
+            // Firmware Auto is selected. Run the curve only if the user wants it and the mode applies; otherwise hand back.
+            if (_automaticCurveWanted?.Invoke() == true) controller.Tick(cpuTemp, gpuTemp);
+            else controller.Disengage();
+        }
+
         public void ForceSetFanSpeed(int percent)
         {
             if (!FanWritesAvailable)

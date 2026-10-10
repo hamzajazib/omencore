@@ -6,6 +6,7 @@
 
 using FluentAssertions;
 using OmenCore.Hardware;
+using OmenCore.Models;
 using Xunit;
 
 namespace OmenCoreApp.Tests.Hardware
@@ -213,6 +214,22 @@ namespace OmenCoreApp.Tests.Hardware
             caps.SupportsGpuPowerBoost.Should().BeTrue();
             caps.SupportsFanCurves.Should().BeFalse("curves are unconfirmed on this board");
             caps.UserVerified.Should().BeFalse();
+        }
+
+        [Fact]
+        public void AutomaticFanCurve_IsOnlyOfferedOn8D87_AndOffByDefaultInConfig()
+        {
+            ModelCapabilityDatabase.GetPreferredCapabilities(
+                    "8D87", "OMEN MAX Gaming Laptop 16-ak0xxx", CpuUndervoltProviderFactory.CpuVendor.AMD)!
+                .SupportsAutomaticFanCurve.Should().BeTrue();
+
+            foreach (var other in new[] { "8E9F", "8A13", "8EEC", "8BD4" })
+            {
+                ModelCapabilityDatabase.GetPreferredCapabilities(other, "", CpuUndervoltProviderFactory.CpuVendor.AMD)
+                    ?.SupportsAutomaticFanCurve.Should().NotBe(true, other);
+            }
+
+            new FeaturePreferences().AutomaticFanCurveEnabled.Should().BeFalse();
         }
 
         [Fact]

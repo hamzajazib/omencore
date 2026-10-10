@@ -52,6 +52,8 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
 
 ## Added
 
+- **Factory fan curve in Performance mode, 8D87 only, experimental and off by default** (#189). On the OMEN MAX 16-ak0xxx the firmware's own Auto parks the fans at ~3,400/3,600 RPM with the CPU at 92-99 C. HP's Gaming Hub covers this with a software curve; mbilykov extracted its tables and validated a standalone version. OmenCore now has that curve (CPU, GPU and the IR chassis sensor, highest wins, CPU-to-GPU level pairing from the board's own `0x2F` table, 92 C emergency to 100%). Turn it on in Settings > Startup Hardware Restore. It runs only while Performance mode is active and the fans are on Auto; a user preset, Max, fan diagnostics, thermal protection or sleep make it stand down without touching the fans, and switching it off (or leaving Performance mode) hands the fans back to BIOS Auto. Three failed writes in a row also hand them back. *Implemented from the reporter's numbers; not yet run by OmenCore on an 8D87.* Tests: `FactoryFanCurveTests`, `AutomaticFanCurveControllerTests`, `FanServiceSuspendTests`.
+
 - **Linux: single fan writer.** The daemon and `omencore-cli fan` set/curve/boost commands now share one lock (`/run/omencore/writer.lock`, or the temp folder when not root), so a CLI command no longer races the daemon's curve engine and gets overwritten seconds later. The second caller is refused with who holds it; the kernel drops the lock if the owner crashes. `omencore-cli diagnose` shows "Fan writer: free / held by ...". Idea from saikiranworks' fork, written fresh. Tests: `WriterLockTests`.
 
 - **RGB payload probe** (Diagnostics > Keyboard, advanced) for boards whose keyboard ignores the standard colour command (#212, 8BD4). It sends five candidate single-zone colour tables one at a time (pure red, 4 s apart), logs each with the firmware readback, and the owner reports which numbered step lit the keyboard. Step 1 is the control (what 4.4.1 sends). These are hypotheses to test, not fixes. Tests: `ColorTableProbeTests`.
@@ -93,10 +95,7 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
 
 - 8BD4 single-zone keyboard (#212: the RGB payload probe is in, the fix waits on the owner's result), 8E35 SMU
   table (#222, needs a PM-table dump), board 8E9A (waiting on its export).
-- Automatic fan curve for 8D87 (#189, default off): the curve engine and the `0x2F` fan-mapping parser are written and
-  tested against the numbers in the issue (`FactoryFanCurveTests`). Not yet wired into the fan loop: it still needs a
-  live IR sensor reading, the `0x2C`/`0x2F` queries, a `SupportsAutomaticFanCurve` flag and a Settings switch, and then
-  the reporter to try it on an 8D87.
+- Widening the automatic fan curve beyond 8D87 needs that board's own tables and a hardware check.
 - Linux per-key RGB for the 2025 MAX boards (#179, #151, #87): Windows already drives these; the Linux port waits on a tester.
 
 ## Contributors

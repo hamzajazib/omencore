@@ -1370,6 +1370,24 @@ namespace OmenCore.ViewModels
             _fanService.ThermalProtectionEnabled = _config.FanHysteresis?.ThermalProtectionEnabled ?? true;
             // Configure smoothing/transition settings for fan ramping
             _fanService.SetSmoothingSettings(_config.FanTransition);
+
+            // HP's factory Performance-mode fan curve, for boards whose firmware Auto under-cools there (GitHub #189).
+            // Opt-in (Settings) and limited to Performance mode; the tables are 8D87's, so it is that board only for now.
+            if (capabilities.ModelConfig is { SupportsAutomaticFanCurve: true, ProductId: "8D87" } curveModel)
+            {
+                var wmiForIr = _wmiBios;
+                if (wmiForIr?.IsAvailable == true)
+                {
+                    var curveController = new AutomaticFanCurveController(
+                        FactoryFanCurve.Performance8D87(), FanMappingTable.Captured8D87(), curveModel.MaxFanLevel ?? 60,
+                        _fanService.ApplyAutomaticCurveLevels, _fanService.ReleaseAutomaticCurveHold,
+                        () => wmiForIr.GetIrSensorTemperature(), message => _logging.Warn(message));
+                    _fanService.SetAutomaticFanCurve(curveController, () =>
+                        _configService.Config.Features?.AutomaticFanCurveEnabled == true &&
+                        string.Equals(_performanceModeService?.GetCurrentMode(), "Performance", StringComparison.OrdinalIgnoreCase));
+                    _logging.Info("Automatic factory fan curve available for this board (off unless enabled in Settings).");
+                }
+            }
             ThermalSamples = _fanService.ThermalSamples;
             FanTelemetry = _fanService.FanTelemetry;
             var powerPlanService = new PowerPlanService(_logging);

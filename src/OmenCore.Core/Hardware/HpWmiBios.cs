@@ -1317,6 +1317,29 @@ namespace OmenCore.Hardware
         }
         
         /// <summary>
+        /// The IR / chassis temperature Gaming Hub feeds its own fan curve (0x23, index 0 on 8D87, per GitHub #189).
+        /// Read-only; not the CPU reading <see cref="GetTemperature"/> returns.
+        /// </summary>
+        public double? GetIrSensorTemperature()
+        {
+            if (!_isAvailable) return null;
+
+            try
+            {
+                var result = SendBiosCommand(BiosCmd.Default, CMD_TEMP_GET, new byte[4] { 0x00, 0x00, 0x00, 0x00 }, 4);
+                if (result != null && result.Length >= 1 && result[0] > 0 && result[0] < 110)
+                {
+                    return (double)result[0];
+                }
+            }
+            catch (Exception ex)
+            {
+                _logging?.Debug($"Failed to get IR sensor temperature: {ex.Message}");
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Get GPU temperature from BIOS.
         /// OmenMon: Cmd.Default, 0x23, {0x02, 0, 0, 0}
         /// v2.6.0: Added GPU temperature support.

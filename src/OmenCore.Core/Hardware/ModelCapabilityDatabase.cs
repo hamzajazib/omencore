@@ -146,6 +146,13 @@ namespace OmenCore.Hardware
         
         /// <summary>Whether GPU Power Boost control is available via WMI.</summary>
         public bool SupportsGpuPowerBoost { get; set; } = true;
+
+        /// <summary>
+        /// The board's firmware Auto under-cools in Performance mode and HP's own software supplies the missing curve
+        /// (GitHub #189), so OmenCore may offer to run that curve. Default false: a board needs its factory tables
+        /// (<see cref="FactoryFanCurve"/>) and a real-hardware check first. Still opt-in per user even where true.
+        /// </summary>
+        public bool SupportsAutomaticFanCurve { get; set; } = false;
         
         /// <summary>Whether GPU can be disabled entirely.</summary>
         public bool SupportsGpuDisable { get; set; } = false;
@@ -1246,6 +1253,10 @@ namespace OmenCore.Hardware
                 // returns before the V2 branch, so it is what actually takes effect.
                 // Same defect class as GetCapabilities_8C77_Wf1xxx_UsesExactV1WmiProfileNotV2Mismatch.
                 MaxFanLevel = 60,
+                // GitHub #189: firmware Auto parks at ~3,400/3,600 RPM with the CPU at 92-99 C in Performance mode;
+                // Gaming Hub's userspace curve (tables in FactoryFanCurve) holds ~85 C. Implemented from the
+                // reporter's extracted tables, NOT yet run by OmenCore on an 8D87 - hence opt-in and unverified.
+                SupportsAutomaticFanCurve = true,
                 MaxModeDropChecksBeforeReapply = 1,
                 SupportsPerformanceModes = true,
                 // Measured in watts, not return codes. SetFanMode (Default 0x1A) writes NPCF.MODE,

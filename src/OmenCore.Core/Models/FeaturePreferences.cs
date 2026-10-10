@@ -98,6 +98,12 @@ namespace OmenCore.Models
         /// romOverride registry value and calls an internal driver function, so it is opt-in.
         /// </summary>
         public bool NvidiaPowerUnlockEnabled { get; set; } = false;
+
+        /// <summary>
+        /// Runs HP's factory Performance-mode fan curve in OmenCore on boards whose firmware Auto under-cools there
+        /// (see <c>SupportsAutomaticFanCurve</c>, GitHub #189). Off by default, even on a supported board.
+        /// </summary>
+        public bool AutomaticFanCurveEnabled { get; set; } = false;
         
         /// <summary>
         /// Show CPU temperature on the system tray icon.

@@ -1269,6 +1269,21 @@
                                                   AutomationProperties.Name="Restore saved Fan Max"/>
                                 </Grid>
 
+                                <Grid Margin="0,0,0,8" Visibility="{Binding AutomaticFanCurveAvailable, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Factory fan curve in Performance mode (experimental)" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="On this board the firmware's own Auto parks the fans too low under heavy load. This runs HP's own Performance-mode curve instead, only while Performance mode is active and fans are on Auto. Not yet confirmed on hardware; fans return to BIOS Auto when turned off. Off by default."
+                                                   FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="1" Style="{StaticResource ModernToggleButton}"
+                                                  IsChecked="{Binding AutomaticFanCurveEnabled, Mode=TwoWay}"
+                                                  AutomationProperties.Name="Factory fan curve in Performance mode"/>
+                                </Grid>
+
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>

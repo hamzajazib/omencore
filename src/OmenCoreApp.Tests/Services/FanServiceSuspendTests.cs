@@ -45,6 +45,83 @@ namespace OmenCoreApp.Tests.Services
             controller.AppliedPresetNames.Should().ContainSingle().Which.Should().Be(expected);
         }
 
+        // GitHub #189: the factory curve must only ever drive fans that are on firmware Auto.
+        private static (AutomaticFanCurveController Curve, List<(int, int)> Writes) AttachCurve(FanService service, Func<bool> wanted)
+        {
+            var writes = new List<(int, int)>();
+            var curve = new AutomaticFanCurveController(
+                FactoryFanCurve.Performance8D87(), FanMappingTable.Captured8D87(), 60,
+                (c, g) => { writes.Add((c, g)); return true; }, () => { }, () => null);
+            service.SetAutomaticFanCurve(curve, wanted);
+            return (curve, writes);
+        }
+
+        [Fact]
+        public void AutomaticCurve_DrivesTheFans_OnFirmwareAuto()
+        {
+            using var service = CreateFanService(new TrackingFanController());
+            var (curve, writes) = AttachCurve(service, () => true);
+
+            service.RunAutomaticFanCurve(85, 50);
+
+            writes.Should().Equal((79, 82));
+            curve.Engaged.Should().BeTrue();
+        }
+
+        [Fact]
+        public void AutomaticCurve_StandsDown_WhenAUserPresetIsActive()
+        {
+            using var service = CreateFanService(new TrackingFanController());
+            service.ApplyPreset(new FanPreset { Name = "Max", Mode = FanMode.Max });
+            var (curve, writes) = AttachCurve(service, () => true);
+
+            service.RunAutomaticFanCurve(85, 50);
+
+            writes.Should().BeEmpty("Max was chosen by the user");
+            curve.Engaged.Should().BeFalse();
+        }
+
+        [Fact]
+        public void AutomaticCurve_StandsDown_DuringFanDiagnostics()
+        {
+            using var service = CreateFanService(new TrackingFanController());
+            service.EnterDiagnosticMode();
+            try
+            {
+                var (_, writes) = AttachCurve(service, () => true);
+                service.RunAutomaticFanCurve(85, 50);
+                writes.Should().BeEmpty();
+            }
+            finally { service.ExitDiagnosticMode(); }
+        }
+
+        [Fact]
+        public void AutomaticCurve_IsInert_WhenTheUserHasNotSwitchedItOn()
+        {
+            using var service = CreateFanService(new TrackingFanController());
+            var (curve, writes) = AttachCurve(service, () => false);
+
+            service.RunAutomaticFanCurve(95, 80);
+
+            writes.Should().BeEmpty();
+            curve.Engaged.Should().BeFalse();
+        }
+
+        [Fact]
+        public void AutomaticCurve_HandsTheFansBack_WhenSwitchedOff()
+        {
+            using var service = CreateFanService(new TrackingFanController());
+            var on = true;
+            var (curve, _) = AttachCurve(service, () => on);
+            service.RunAutomaticFanCurve(85, 50);
+            curve.Engaged.Should().BeTrue();
+
+            on = false;
+            service.RunAutomaticFanCurve(85, 50);
+
+            curve.Engaged.Should().BeFalse();
+        }
+
         private static FanService CreateFanService(TrackingFanController controller)
         {
             var logging = new LoggingService();

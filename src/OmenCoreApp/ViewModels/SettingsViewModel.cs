@@ -431,6 +431,24 @@ namespace OmenCore.ViewModels
             set { if (_restoreMaxFanOnStartup != value) { _restoreMaxFanOnStartup = value; OnPropertyChanged(); } }
         }
 
+        /// <summary>The board has HP's factory curve built in (GitHub #189) and can offer to run it.</summary>
+        public bool AutomaticFanCurveAvailable =>
+            _detectedCapabilities?.ModelConfig is { SupportsAutomaticFanCurve: true, ProductId: "8D87" };
+
+        /// <summary>Saved immediately: the fan loop reads the config on every pass, so no restart or Apply is needed.</summary>
+        public bool AutomaticFanCurveEnabled
+        {
+            get => _config.Features?.AutomaticFanCurveEnabled == true;
+            set
+            {
+                if (AutomaticFanCurveEnabled == value) return;
+                _config.Features ??= new FeaturePreferences();
+                _config.Features.AutomaticFanCurveEnabled = value;
+                _configService.Save(_config);
+                OnPropertyChanged();
+            }
+        }
+
         public bool StartupRestoreFansEnabled
         {
             get => _startupRestoreFansEnabled;

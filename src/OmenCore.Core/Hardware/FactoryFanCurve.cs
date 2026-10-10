@@ -114,6 +114,20 @@ namespace OmenCore.Hardware
 
         private FanMappingTable(IReadOnlyList<Record> records) => Records = records;
 
+        /// <summary>
+        /// The 0x2F response captured from an 8D87 on BIOS F.07 (GitHub #189, SHA-256 c9770ef1...a0e2f). It is a firmware
+        /// constant, so the 8D87 curve uses it directly instead of querying the board.
+        /// </summary>
+        public static FanMappingTable Captured8D87()
+        {
+            const string hex = "02 3c 13 15 17 14 16 19 16 17 1c 18 1a 1f 1c 1e 23 1e 20 25 22 24 28 24 26 2a 25 27 2b 2b " +
+                               "2d 2e 2f 31 30 32 34 32 35 37 33 38 3a 34 3c 3a 35 00";
+            var bytes = new byte[128];
+            var parts = hex.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            for (var i = 0; i < parts.Length; i++) bytes[i] = Convert.ToByte(parts[i], 16);
+            return Parse(bytes)!;
+        }
+
         /// <summary>Parses the 128-byte payload of a two-fan response. Returns null if it is not that shape.</summary>
         public static FanMappingTable? Parse(byte[] payload)
         {
