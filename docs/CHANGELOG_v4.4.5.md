@@ -17,7 +17,9 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
   *Pending hardware confirmation.* Tests: `StartupRestorePolicyTests`, `FanServiceSuspendTests`.
 - **In-app update now reopens OmenCore.** The installer's launch entry was skipped for silent installs, so
   an update from inside the app left it closed even though the message promised a restart. The updater now
-  passes `/RELAUNCH=1` and the installer starts the new version. *Pending a real end-to-end update.* A UAC
+  passes `/RELAUNCH=1` and the installer starts the new version. **This takes effect from the update after 4.4.5:** 
+  4.4.1's updater does not send the flag, so updating 4.4.1 to 4.4.5 from inside the app will still leave OmenCore closed 
+  (start it again by hand). *Pending a real end-to-end update.* A UAC
   prompt on relaunch is expected (the app requires administrator rights). Reported by Yak on Discord.
 
 - **OMEN key action now applies immediately.** The action was read once at startup, so picking a different
