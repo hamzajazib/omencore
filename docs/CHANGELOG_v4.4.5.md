@@ -35,6 +35,14 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
   no longer than the tick no longer costs an extra tick. Ramp-down, the dead-zone and long custom delays are
   unchanged. *Pending confirmation on the reporter's 8E35.* Tests: `FanCurveResponseTests`.
 
+## Performance
+
+- **GPU load fallback reads one counter set instead of ~290.** When NVAPI has no GPU load (a hybrid laptop with the
+  dGPU asleep, or Afterburner shared memory), OmenCore read Windows' "GPU Engine" utilisation through one
+  `PerformanceCounter` per process and engine: 292 on an idle desktop, about 144 ms per poll in a benchmark. It now
+  uses a single `ReadCategory` call (about 2 ms) with the same maths, in both the main monitor and the hardware
+  worker. Output is unchanged. Found from the footprint in #221's export. Tests: `GpuEngineLoadSamplerTests`.
+
 ## Added
 
 - **Reversible HP telemetry switch** (Advanced). Stops and disables HP's analytics and diagnostics

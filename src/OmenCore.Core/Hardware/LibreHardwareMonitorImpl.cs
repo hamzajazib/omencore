@@ -103,10 +103,7 @@ namespace OmenCore.Hardware
         private GpuPowerStateProbe? _gpuSleepProbe;
         private PerformanceCounter? _cpuLoadCounter;
         private bool _cpuLoadCounterPrimed;
-        private readonly Dictionary<string, PerformanceCounter> _gpuEngineCounters = new(StringComparer.OrdinalIgnoreCase);
-        private bool _gpuEngineCountersPrimed;
-        private DateTime _lastGpuEngineCounterRefresh = DateTime.MinValue;
-        private static readonly TimeSpan _gpuEngineCounterRefreshInterval = TimeSpan.FromSeconds(15);
+        private readonly GpuEngineLoadSampler _gpuEngineLoad = new();
         private int _consecutiveZeroTempReadings = 0;
         private const int MaxZeroTempReadingsBeforeReinit = 6;
         private bool _noFanSensorsLogged = false;
@@ -718,96 +715,8 @@ namespace OmenCore.Hardware
             }
         }
 
-        private double TryReadGpuLoadFallback()
-        {
-            try
-            {
-                RefreshGpuEngineCountersIfNeeded();
+        private double TryReadGpuLoadFallback() => _gpuEngineLoad.ReadLoadPercent();
 
-                if (_gpuEngineCounters.Count == 0)
-                {
-                    return 0;
-                }
-
-                if (!_gpuEngineCountersPrimed)
-                {
-                    foreach (var counter in _gpuEngineCounters.Values)
-                    {
-                        _ = counter.NextValue();
-                    }
-
-                    _gpuEngineCountersPrimed = true;
-                    return 0;
-                }
-
-                double totalLoad = 0;
-                double preferredEnginePeak = 0;
-                foreach (var kvp in _gpuEngineCounters)
-                {
-                    var instanceName = kvp.Key;
-                    var value = kvp.Value.NextValue();
-                    if (double.IsFinite(value) && value > 0)
-                    {
-                        totalLoad += value;
-
-                        if (instanceName.Contains("engtype_3D", StringComparison.OrdinalIgnoreCase) ||
-                            instanceName.Contains("engtype_Compute", StringComparison.OrdinalIgnoreCase) ||
-                            instanceName.Contains("engtype_Cuda", StringComparison.OrdinalIgnoreCase))
-                        {
-                            preferredEnginePeak = Math.Max(preferredEnginePeak, value);
-                        }
-                    }
-                }
-
-                var effectiveLoad = preferredEnginePeak > 0 ? preferredEnginePeak : totalLoad;
-                return Math.Round(Math.Clamp(effectiveLoad, 0, 100), 1);
-            }
-            catch (Exception ex)
-            {
-                _logger?.Invoke($"[Monitor] GPU load fallback failed: {ex.Message}");
-                return 0;
-            }
-        }
-
-        private void RefreshGpuEngineCountersIfNeeded()
-        {
-            if (DateTime.Now - _lastGpuEngineCounterRefresh < _gpuEngineCounterRefreshInterval && _gpuEngineCounters.Count > 0)
-            {
-                return;
-            }
-
-            var category = new PerformanceCounterCategory("GPU Engine");
-            var instanceNames = category.GetInstanceNames()
-                .Where(name =>
-                    name.Contains("engtype_3D", StringComparison.OrdinalIgnoreCase) ||
-                    name.Contains("engtype_Compute", StringComparison.OrdinalIgnoreCase) ||
-                    name.Contains("engtype_Cuda", StringComparison.OrdinalIgnoreCase) ||
-                    name.Contains("engtype_Copy", StringComparison.OrdinalIgnoreCase) ||
-                    name.Contains("engtype_VideoDecode", StringComparison.OrdinalIgnoreCase) ||
-                    name.Contains("engtype_VideoProcessing", StringComparison.OrdinalIgnoreCase))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            var staleInstances = _gpuEngineCounters.Keys.Except(instanceNames, StringComparer.OrdinalIgnoreCase).ToList();
-            foreach (var stale in staleInstances)
-            {
-                _gpuEngineCounters[stale].Dispose();
-                _gpuEngineCounters.Remove(stale);
-            }
-
-            foreach (var instanceName in instanceNames)
-            {
-                if (_gpuEngineCounters.ContainsKey(instanceName))
-                {
-                    continue;
-                }
-
-                _gpuEngineCounters[instanceName] = new PerformanceCounter("GPU Engine", "Utilization Percentage", instanceName, true);
-                _gpuEngineCountersPrimed = false;
-            }
-
-            _lastGpuEngineCounterRefresh = DateTime.Now;
-        }
 
         // Track consecutive NVML failures to avoid spam
         private int _nvmlFailures = 0;
@@ -2177,13 +2086,6 @@ namespace OmenCore.Hardware
             {
                 _cpuLoadCounter?.Dispose();
                 _cpuLoadCounter = null;
-
-                foreach (var counter in _gpuEngineCounters.Values)
-                {
-                    counter.Dispose();
-                }
-
-                _gpuEngineCounters.Clear();
             }
             catch
             {
