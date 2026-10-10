@@ -962,6 +962,19 @@ sudo rm -f /etc/modprobe.d/omencore.conf
 
 ---
 
+## Keyboard backlight across suspend (optional)
+
+Some keyboards stay lit or come back at the wrong colour after sleep. This hook switches the four-zone
+colour and single-zone backlight off before suspend and restores them on resume:
+
+```bash
+sudo install -m 0755 scripts/linux/omencore-kbd-suspend.sh /lib/systemd/system-sleep/omencore-kbd-suspend.sh
+```
+
+It only touches the keyboard sysfs files and does nothing on boards that don't have them. Adapted from
+saikiranworks' fork. That fork also ships a udev rule making the hp-wmi fan PWM files world-writable; it is
+deliberately not included here, because it would let any local user set the fans to zero.
+
 ## Additional Resources
 
 - [Main Documentation](../README.md) — Full feature overview

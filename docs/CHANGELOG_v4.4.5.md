@@ -45,6 +45,10 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
   16-ak1xxx (#224) and `8EEC` HyperX OMEN 15-gb0xxx (#223). Each records only what the export measured (thermal
   policy, fan count, keyboard topology) and leaves curves, undervolt and RGB off.
 
+- **Linux: keyboard backlight suspend/resume hook** (`scripts/linux/omencore-kbd-suspend.sh`, optional,
+  documented in the Linux guide). From saikiranworks' fork. Its world-writable fan PWM udev rule was left out
+  on purpose: it would let any local user stop the fans.
+
 ## Planned for this release (see the roadmap)
 
 - NVIDIA laptop power unlock (MAX/CURRENT), opt-in and gated, with the permission of the original authors.
