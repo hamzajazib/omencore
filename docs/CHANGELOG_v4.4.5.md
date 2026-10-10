@@ -42,6 +42,8 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
   left free so it still pops up. Requested on Reddit (Mega_duck_duck). *Pending confirmation on an auto-hide setup.*
   Tests: `TaskbarAutoHideTests` (geometry only).
 
+- **Quieter log with RTSS running.** The "conflicting application" warning was repeated every minute for as long as RivaTuner was open; it is now logged once per change.
+
 ## Performance
 
 - **Diagnostics export shows where the memory sits.** `resource-footprint.txt` gains a "[Memory Breakdown]" block: GC heap by generation (with fragmentation), committed and pinned counts, private bytes minus the managed heap (a native estimate), loaded assemblies and the eight largest modules. Prompted by #221, where the main app held ~280 MB private. Tests: `MemoryBreakdownTests`.

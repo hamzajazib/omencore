@@ -89,6 +89,7 @@ namespace OmenCore.ViewModels
         private readonly CancellationTokenSource _conflictMonitorCts = new();
         private int _conflictMonitoringStarted;
         private HpWmiBios? _wmiBios;
+        private string? _lastLoggedConflictSummary;
         private WmiBiosMonitor? _wmiBiosMonitor;
         private OghServiceProxy? _oghProxy;
         private ThermalMonitoringService? _thermalMonitoringService;
@@ -1551,7 +1552,13 @@ namespace OmenCore.ViewModels
             {
                 if (conflicts.Count > 0)
                 {
-                    _logging.Warn($"Detected {conflicts.Count} conflicting application(s): {_conflictDetectionService.GetConflictSummary()}");
+                    // The monitor rescans every minute; say it once per change, not once per scan.
+                    var summary = _conflictDetectionService.GetConflictSummary();
+                    if (summary != _lastLoggedConflictSummary)
+                    {
+                        _lastLoggedConflictSummary = summary;
+                        _logging.Warn($"Detected {conflicts.Count} conflicting application(s): {summary}");
+                    }
                 }
             };
             _logging.Info("Conflict detection monitor deferred until Monitoring/OMEN/Tuning/Optimizer is opened");
