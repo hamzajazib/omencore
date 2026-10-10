@@ -1429,8 +1429,8 @@ namespace OmenCore.ViewModels
             _gpuSwitchService = gpuSwitchService ?? new GpuSwitchService(_logging, _wmiBios);
             
             // Keyboard diagnostics (must be after _keyboardLightingService is created)
-            KeyboardDiagnostics = new KeyboardDiagnosticsViewModel(_corsairDeviceService, _logitechDeviceService, _keyboardLightingService, _razerService, _logging);
-            
+            KeyboardDiagnostics = new KeyboardDiagnosticsViewModel(_corsairDeviceService, _logitechDeviceService, _keyboardLightingService, _razerService, _logging, _wmiBios);
+
             // NVAPI already initialized earlier for self-sustaining monitoring
             // _nvapiService is ready for GPU OC use by SystemControlViewModel
             

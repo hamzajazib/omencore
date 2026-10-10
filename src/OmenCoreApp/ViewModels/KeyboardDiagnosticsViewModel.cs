@@ -16,6 +16,7 @@ namespace OmenCore.ViewModels
         private readonly KeyboardLightingService? _keyboardLightingService;
         private readonly RazerService? _razerService;
         private readonly LoggingService _logging;
+        private readonly OmenCore.Hardware.HpWmiBios? _wmiBios;
 
         public ObservableCollection<LightingDeviceInfo> DetectedDevices { get; } = new();
         public ObservableCollection<string> DiagnosticLogs { get; } = new();
@@ -56,14 +57,19 @@ namespace OmenCore.ViewModels
         public ICommand RunTestPatternCommand { get; }
         public ICommand ClearTestPatternCommand { get; }
         public ICommand CollectLogsCommand { get; }
+        public ICommand RunColorTableProbeCommand { get; }
+        public bool ColorTableProbeAvailable => _wmiBios?.IsAvailable == true;
 
         public KeyboardDiagnosticsViewModel(
             CorsairDeviceService? corsairService,
             LogitechDeviceService? logitechService,
             KeyboardLightingService? keyboardLightingService,
             RazerService? razerService,
-            LoggingService logging)
+            LoggingService logging,
+            OmenCore.Hardware.HpWmiBios? wmiBios = null)
         {
+            _wmiBios = wmiBios;
+            RunColorTableProbeCommand = new AsyncRelayCommand(_ => RunColorTableProbeAsync(), _ => ColorTableProbeAvailable && !IsRunningTest);
             _corsairService = corsairService;
             _logitechService = logitechService;
             _keyboardLightingService = keyboardLightingService;
@@ -157,6 +163,45 @@ namespace OmenCore.ViewModels
             {
                 DiagnosticStatus = $"Detection failed: {ex.Message}";
                 _logging.Error("Device detection failed", ex);
+            }
+        }
+
+        /// <summary>
+        /// #212: sends each candidate single-zone colour table in turn (pure red, 4 s apart) and logs it with the
+        /// firmware's readback, so the owner can say which numbered step lit the keyboard. See <see cref="OmenCore.Hardware.ColorTableProbe"/>.
+        /// </summary>
+        public async Task RunColorTableProbeAsync()
+        {
+            if (_wmiBios == null) return;
+            var confirm = System.Windows.MessageBox.Show(
+                "This sends 5 experimental keyboard colour commands, one every 4 seconds, each in red.\n\n" +
+                "Watch the keyboard and note the NUMBER of the step during which it turns red, then report it on the GitHub issue. " +
+                "Afterwards, set your usual colour on the Lighting page to put things back.",
+                "RGB payload probe", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Information);
+            if (confirm != System.Windows.MessageBoxResult.OK) return;
+
+            IsRunningTest = true;
+            try
+            {
+                var variants = OmenCore.Hardware.ColorTableProbe.Variants;
+                for (var i = 0; i < variants.Count; i++)
+                {
+                    var v = variants[i];
+                    var ok = await Task.Run(() => _wmiBios.SendColorTablePayload(v.Build(0xFF, 0x00, 0x00)));
+                    await Task.Delay(500);
+                    var readback = await Task.Run(() => _wmiBios.GetColorTable());
+                    var rb = readback == null || readback.Length < 28 ? "none" : $"{readback[25]:X2}{readback[26]:X2}{readback[27]:X2}";
+                    var line = $"PROBE {i + 1}/{variants.Count} {v.Id}: sent={(ok ? "ok" : "refused")}, readback@25=#{rb} - {v.Description}";
+                    _logging.Info(line);
+                    DiagnosticLogs.Insert(0, $"{DateTime.Now:HH:mm:ss} - {line}");
+                    DiagnosticStatus = $"Probe step {i + 1} of {variants.Count}: is the keyboard red now?";
+                    await Task.Delay(3500);
+                }
+                DiagnosticStatus = "Probe finished. Report which step number (if any) turned the keyboard red.";
+            }
+            finally
+            {
+                IsRunningTest = false;
             }
         }
 

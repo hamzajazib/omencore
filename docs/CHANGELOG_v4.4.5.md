@@ -52,6 +52,8 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
 
 ## Added
 
+- **RGB payload probe** (Diagnostics > Keyboard, advanced) for boards whose keyboard ignores the standard colour command (#212, 8BD4). It sends five candidate single-zone colour tables one at a time (pure red, 4 s apart), logs each with the firmware readback, and the owner reports which numbered step lit the keyboard. Step 1 is the control (what 4.4.1 sends). These are hypotheses to test, not fixes. Tests: `ColorTableProbeTests`.
+
 - **Reversible HP telemetry switch** (Advanced). Stops and disables HP's analytics and diagnostics
   services (`HpTouchpointAnalyticsService`, `HPDiagsCap`, `HPAppHelperCap`, `HPSysInfoCap`,
   `HPNetworkCap`), saving each service's original start type so **Restore** puts it back exactly. Services

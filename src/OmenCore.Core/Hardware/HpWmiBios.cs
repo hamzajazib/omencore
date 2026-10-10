@@ -2094,6 +2094,21 @@ namespace OmenCore.Hardware
         }
         
         /// <summary>
+        /// Sends a prebuilt 128-byte colour table as-is. For the #212 payload probe (<see cref="ColorTableProbe"/>)
+        /// only: it does not build, validate or retry anything.
+        /// </summary>
+        public bool SendColorTablePayload(byte[] table128)
+        {
+            if (!_isAvailable || table128.Length != 128) return false;
+            try { return SendBiosCommand(BiosCmd.Keyboard, CMD_COLOR_SET, table128, 0) != null; }
+            catch (Exception ex)
+            {
+                _logging?.Warn($"Raw colour table send failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Set a single keyboard zone color.
         /// Uses the same 128-byte ColorTable format as SetColorTable.
         /// </summary>

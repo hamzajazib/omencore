@@ -15,6 +15,8 @@
                 <Button Content="Run Test Pattern" Command="{Binding RunTestPatternCommand}" Margin="8,0,0,0" Style="{StaticResource PrimaryButton}" />
                 <Button Content="Clear Test Pattern" Command="{Binding ClearTestPatternCommand}" Margin="8,0,0,0" Style="{StaticResource SecondaryButton}" />
                 <Button Content="Collect Logs" Command="{Binding CollectLogsCommand}" Margin="8,0,0,0" Style="{StaticResource SecondaryButton}" />
+                <Button Content="RGB Payload Probe (advanced)" Command="{Binding RunColorTableProbeCommand}" Margin="8,0,0,0" Style="{StaticResource SecondaryButton}"
+                        ToolTip="Experimental: tries 5 colour-command layouts for keyboards that ignore colour (GitHub #212)." />
             </StackPanel>
 
             <TextBlock Text="Detected Devices" Style="{StaticResource Heading3}" Margin="0,8,0,8" />
