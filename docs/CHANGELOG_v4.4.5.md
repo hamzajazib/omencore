@@ -42,6 +42,8 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
 
 ## Performance
 
+- **Diagnostics export shows where the memory sits.** `resource-footprint.txt` gains a "[Memory Breakdown]" block: GC heap by generation (with fragmentation), committed and pinned counts, private bytes minus the managed heap (a native estimate), loaded assemblies and the eight largest modules. Prompted by #221, where the main app held ~280 MB private. Tests: `MemoryBreakdownTests`.
+
 - **GPU load fallback reads one counter set instead of ~290.** When NVAPI has no GPU load (a hybrid laptop with the
   dGPU asleep, or Afterburner shared memory), OmenCore read Windows' "GPU Engine" utilisation through one
   `PerformanceCounter` per process and engine: 292 on an idle desktop, about 144 ms per poll in a benchmark. It now

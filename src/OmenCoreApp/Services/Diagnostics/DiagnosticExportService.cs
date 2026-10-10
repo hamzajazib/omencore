@@ -220,6 +220,7 @@ namespace OmenCore.Services.Diagnostics
                 var gcInfo = GC.GetGCMemoryInfo();
                 sb.AppendLine($"HeapSizeMB: {gcInfo.HeapSizeBytes / 1024d / 1024d:F1}");
                 sb.AppendLine($"MemoryLoadMB: {gcInfo.MemoryLoadBytes / 1024d / 1024d:F1}");
+                AppendMemoryBreakdown(sb);
 
                 sb.AppendLine();
                 sb.AppendLine("[Optional Subsystem Load Hints]");
@@ -2164,6 +2165,44 @@ namespace OmenCore.Services.Diagnostics
             }
 
             return string.Join("; ", findings);
+        }
+
+        /// <summary>
+        /// Where the process memory sits: GC heap by generation (managed), private bytes minus the heap (native,
+        /// including WPF/GDI surfaces and driver libraries), and the biggest loaded modules. Read-only and does not force a GC.
+        /// </summary>
+        internal static void AppendMemoryBreakdown(StringBuilder sb)
+        {
+            sb.AppendLine();
+            sb.AppendLine("[Memory Breakdown]");
+            try
+            {
+                var gc = GC.GetGCMemoryInfo();
+                var names = new[] { "Gen0", "Gen1", "Gen2", "LOH", "POH" };
+                for (var i = 0; i < gc.GenerationInfo.Length && i < names.Length; i++)
+                {
+                    var g = gc.GenerationInfo[i];
+                    sb.AppendLine($"  {names[i]}: size={g.SizeAfterBytes / 1048576d:F1}MB fragmentation={g.FragmentationAfterBytes / 1048576d:F1}MB");
+                }
+                sb.AppendLine($"  CommittedMB: {gc.TotalCommittedBytes / 1048576d:F1}");
+                sb.AppendLine($"  PinnedObjects: {gc.PinnedObjectsCount}");
+
+                using var process = Process.GetCurrentProcess();
+                var privateMb = process.PrivateMemorySize64 / 1048576d;
+                var heapMb = gc.HeapSizeBytes / 1048576d;
+                sb.AppendLine($"  PrivateMB: {privateMb:F1}  ManagedHeapMB: {heapMb:F1}  NativeEstimateMB: {Math.Max(0, privateMb - heapMb):F1}");
+                sb.AppendLine($"  LoadedAssemblies: {AppDomain.CurrentDomain.GetAssemblies().Length}");
+
+                var top = process.Modules.Cast<ProcessModule>()
+                    .OrderByDescending(m => m.ModuleMemorySize)
+                    .Take(8)
+                    .Select(m => $"{m.ModuleName} {m.ModuleMemorySize / 1048576d:F1}MB");
+                sb.AppendLine("  LargestModules: " + string.Join(", ", top));
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
+            {
+                sb.AppendLine($"  Unavailable: {ex.Message}");
+            }
         }
 
         private static void AppendAssemblyLoadHint(StringBuilder sb, string token)
