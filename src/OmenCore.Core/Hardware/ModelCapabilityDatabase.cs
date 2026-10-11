@@ -2302,7 +2302,7 @@ namespace OmenCore.Hardware
                 HasFourZoneRgb = false,
                 HasKeyboardBacklight = true,
                 UserVerified = false,
-                Notes = "GitHub #142 - HyperX OMEN MAX 16t-ah100 (290HX Plus / RTX 5090, BIOS F.05). Thermal policy V1, firmware fan count 3, WMI GPU power verified (Extended3) and a per-key keyboard topology read live; Guided Fan Verification 6/6 passed but RPM is estimated from level only. Only the CPU and GPU fan levels are evidenced - the third fan's control and speed are not. Undervolt writes failed (PawnIO MSR 0x80070002) and the WMI colour table was not verified, so curves, undervolt, MUX and RGB colour stay off until proven."
+                Notes = "GitHub #142 - HyperX OMEN MAX 16t-ah100 (290HX Plus / RTX 5090, BIOS F.05). Thermal policy V1, firmware fan count 3, WMI GPU power verified (Extended3) and a per-key keyboard topology read live; Guided Fan Verification 6/6 passed but RPM is estimated from level only. Only the CPU and GPU fan levels are evidenced - the third fan's control and speed are not. Undervolt writes failed (PawnIO MSR 0x80070002) and the WMI colour table was not verified, so curves, undervolt, MUX and RGB colour stay off until proven. Sensor note from the same export: the BIOS CPU reading (0x23 index 1) sat at a constant ~28 C (frozen 150-336 readings at idle) while the worker's LibreHardwareMonitor sensor read 38-39 C, so on this board index 1 is not the CPU die (it fits the Ambient index in GitHub #189); the existing OMEN MAX model override already makes the worker sensor the CPU authority, and fan decisions used it."
             });
 
             // GitHub #225 (2026-10-10): OMEN by HP Laptop 16-b1xxx, i7-12700H / RTX 3060, BIOS F.25.
