@@ -1,6 +1,6 @@
 # OmenCore v4.4.5
 
-**Release Date:** TBD (release candidate, built and tested, not yet tagged)
+**Release Date:** 2026-10-11
 **Type:** Feature and field-report release. Folds in field evidence, fork contributions and user requests received after v4.4.1.
 **Roadmap:** `docs/ROADMAP_v4.4.5.md`
 
