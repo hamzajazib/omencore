@@ -233,6 +233,22 @@ namespace OmenCoreApp.Tests.Hardware
         }
 
         [Fact]
+        public void GetPreferredCapabilities_8E9A_MaxAh100_IsExactAndConservative()
+        {
+            // GitHub #142: HyperX OMEN MAX 16t-ah100 previously fell to the unverified OMEN16 family default.
+            var caps = ModelCapabilityDatabase.GetPreferredCapabilities(
+                "8E9A", "HyperX OMEN MAX Gaming Laptop 16t-ah100", CpuUndervoltProviderFactory.CpuVendor.Intel);
+
+            caps.Should().NotBeNull();
+            caps!.ProductId.Should().Be("8E9A");
+            caps.FanZoneCount.Should().Be(3, "the firmware reported three fans in the export");
+            caps.SupportsGpuPowerBoost.Should().BeTrue();
+            caps.SupportsUndervolt.Should().BeFalse("the PawnIO MSR write failed on this board");
+            caps.SupportsFanCurves.Should().BeFalse();
+            caps.UserVerified.Should().BeFalse();
+        }
+
+        [Fact]
         public void GetPreferredCapabilities_8A13_Omen16B1_IsExactAndConservative()
         {
             // GitHub #225: OMEN 16-b1xxx previously fell to the unverified OMEN16 family default.

@@ -74,7 +74,7 @@ Nothing below is called confirmed unless a reporter has verified it on real hard
   diagnostics export. It never wakes a sleeping dGPU. Tests: `NvmlPowerPolicyTests`.
 
 - **Board entries from field exports** (all unverified until a reporter confirms): `8E9F` HyperX OMEN MAX
-  16-ak1xxx (#224), `8EEC` HyperX OMEN 15-gb0xxx (#223) and `8A13` OMEN 16-b1xxx (#225; four-zone colour confirmed by eye). `8E9F` keyboard (Darfon `0D62:30BF`) now
+  16-ak1xxx (#224), `8E9A` HyperX OMEN MAX 16t-ah100 (#142; firmware reports 3 fans, GPU power verified, per-key keyboard routed as a guess), `8EEC` HyperX OMEN 15-gb0xxx (#223) and `8A13` OMEN 16-b1xxx (#225; four-zone colour confirmed by eye). `8E9F` keyboard (Darfon `0D62:30BF`) now
   routes to the per-key backend as an unverified guess (#224). Each records only what the export measured (thermal
   policy, fan count, keyboard topology) and leaves curves, undervolt and RGB off.
 
@@ -102,6 +102,7 @@ Everything here is implemented and tested in software. Please report what you se
 - **8BD4 owners (#212):** run Diagnostics > Keyboard > RGB Payload Probe and say which numbered step lit the keyboard.
 - **8E9F owners (#224):** try the Lighting page; the Darfon `0D62:30BF` route is a guess from HP's device list.
 - **8D87 owners (#189):** try the factory fan curve in Performance mode and compare temperatures with firmware Auto.
+- **8E9A owners (#142):** try the Lighting page (the keyboard route is a guess) and tell us the keyboard's HID ids (Device Manager).
 - **8A13 owners (#225):** MUX is still off for this board; a later build will offer a test.
 - **NVIDIA laptops:** the power unlock has been run by its authors, not yet through OmenCore. MAX needs a restart; CURRENT resets on reboot.
 - **Everyone:** an in-app update from 4.4.1 should reopen OmenCore (a UAC prompt is expected); an auto-hidden taskbar should
@@ -110,7 +111,7 @@ Everything here is implemented and tested in software. Please report what you se
 ## Not in this release
 
 - 8BD4 single-zone keyboard fix (#212): waits on the probe result.
-- 8E35 SMU table (#222): needs a PM-table dump. Board 8E9A (#142): waiting on its export. 8BB3 (OMEN Transcend 16): needs an export.
+- 8E35 SMU table (#222): needs a PM-table dump. 8BB3 (OMEN Transcend 16): needs an export.
 - Linux per-key RGB for the 2025 MAX boards (#179, #151, #87): Windows already drives these; the Linux port waits on a tester.
 - The automatic fan curve for boards other than 8D87 needs each board's own tables and a hardware check.
 

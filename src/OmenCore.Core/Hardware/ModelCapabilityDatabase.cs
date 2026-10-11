@@ -2278,6 +2278,33 @@ namespace OmenCore.Hardware
                 Notes = "GitHub #224 (2026-10-08) - HyperX OMEN MAX 16-ak1xxx, Ryzen AI 7 450 / RTX 5070 Ti, BIOS F.03. Thermal policy V1, 2 fans and WMI GPU Power Boost (Maximum) read live; keyboard reports RgbPerKey (0x03) but no Primax HID device was found, so colour control is not claimed. Fan curves, RPM readback, MUX, undervolt and RGB are unconfirmed and left off."
             });
 
+            // GitHub #142 (export 2026-10-11, session 2026-10-05): HyperX OMEN MAX 16t-ah100, Core Ultra 9 290HX Plus /
+            // RTX 5090, BIOS F.05. Measured: thermal policy V1 (V2 commands refused), firmware fan count 3, fan level
+            // readback Fan1/Fan2 only, WMI GPU power set and verified at Extended3 (CustomTgp=1, PPAB=2), keyboard topology
+            // RgbPerKey (0x03). The undervolt write failed (PawnIO MSR write, HRESULT 0x80070002) and the WMI colour table
+            // was accepted but never verified (the reporter saw only static red). Not measured: real RPM, the third fan.
+            AddModel(new ModelCapabilities
+            {
+                ProductId = "8E9A",
+                ModelName = "HyperX OMEN MAX 16t-ah100",
+                ModelNamePattern = "16t-ah1",
+                ModelYear = 2026,
+                Family = OmenModelFamily.OMEN2024Plus,
+                SupportsFanControlWmi = true,
+                SupportsFanControlEc = false,
+                SupportsFanCurves = false,
+                SupportsRpmReadback = false,
+                FanZoneCount = 3,
+                SupportsPerformanceModes = true,
+                SupportsGpuPowerBoost = true,
+                HasMuxSwitch = false,
+                SupportsUndervolt = false,
+                HasFourZoneRgb = false,
+                HasKeyboardBacklight = true,
+                UserVerified = false,
+                Notes = "GitHub #142 - HyperX OMEN MAX 16t-ah100 (290HX Plus / RTX 5090, BIOS F.05). Thermal policy V1, firmware fan count 3, WMI GPU power verified (Extended3) and a per-key keyboard topology read live; Guided Fan Verification 6/6 passed but RPM is estimated from level only. Only the CPU and GPU fan levels are evidenced - the third fan's control and speed are not. Undervolt writes failed (PawnIO MSR 0x80070002) and the WMI colour table was not verified, so curves, undervolt, MUX and RGB colour stay off until proven."
+            });
+
             // GitHub #225 (2026-10-10): OMEN by HP Laptop 16-b1xxx, i7-12700H / RTX 3060, BIOS F.25.
             // Measured in the export: thermal policy V1, firmware fan count 2, max fan level 55, WMI GPU power
             // set and read back (Medium, CustomTgp), keyboard topology FourZoneWithoutNumpad (0x02) with ColorSet

@@ -146,6 +146,16 @@ namespace OmenCoreApp.Tests.Services
         }
 
         [Fact]
+        public void GetConfig_8E9A_RoutesToPerKeyAsUnverified()
+        {
+            var cfg = KeyboardModelDatabase.GetConfig("8E9A");
+
+            cfg.Should().NotBeNull();
+            cfg!.PreferredMethod.Should().Be(KeyboardMethod.HidPerKey);
+            cfg.UserVerified.Should().BeFalse();
+        }
+
+        [Fact]
         public void GetConfig_8E9F_RoutesToPerKeyAsUnverified()
         {
             var cfg = KeyboardModelDatabase.GetConfig("8E9F");

@@ -576,6 +576,23 @@ namespace OmenCore.Services.KeyboardLighting
                     "never been driven on hardware. Needs a reporter to confirm that colours change and which effects work."
             });
 
+            // HyperX OMEN MAX 16t-ah100 (GitHub #142). Firmware reports RgbPerKey (0x03) and the WMI colour table is accepted
+            // but never verifies (the reporter could only get static red). No HID device ids in the export, so this routes to
+            // the per-key backends like its 8E9F / 8D87 siblings; each declines cleanly if its keyboard is absent and the WMI
+            // fallbacks still apply.
+            AddModel(new KeyboardModelConfig
+            {
+                ProductId = "8E9A",
+                ModelName = "HyperX OMEN MAX 16t-ah100",
+                ModelNamePattern = "16t-ah1",
+                KeyboardType = KeyboardType.PerKeyRgb,
+                PreferredMethod = KeyboardMethod.HidPerKey,
+                FallbackMethods = new[] { KeyboardMethod.NewWmi2023, KeyboardMethod.ColorTable2020 },
+                ModelYear = 2026,
+                UserVerified = false,
+                Notes = "GitHub #142 - per-key topology; keyboard controller unknown (no HID ids yet). A guess from the sibling boards."
+            });
+
             // ═══════════════════════════════════════════════════════════════════════════════════
             // OMEN Desktop PCs (25L, 30L, 40L, 45L series)
             // ═══════════════════════════════════════════════════════════════════════════════════
