@@ -7,7 +7,7 @@
 ### Lightweight local control for HP OMEN and Victus gaming laptops
 
 [![Website](https://img.shields.io/badge/omencore.info-Visit-0aa1dd.svg?style=for-the-badge)](https://omencore.info)
-[![Version](https://img.shields.io/badge/version-4.4.1-red.svg?style=for-the-badge)](docs/CHANGELOG_v4.4.1.md)
+[![Version](https://img.shields.io/badge/version-4.4.5-red.svg?style=for-the-badge)](docs/CHANGELOG_v4.4.5.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg?style=for-the-badge)](https://dotnet.microsoft.com/download/dotnet/8.0)
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/9WhJdabGk8)
@@ -54,17 +54,29 @@ It runs without ads, account prompts, cloud telemetry, or OMEN Gaming Hub. Hardw
 
 ## Current Release
 
-**Version:** 4.4.1<br>
-**Released:** 2026-10-03<br>
-**Status:** Test-verified (1773/1773 app tests and 63/63 Linux tests, 0 build warnings). A field-report follow-up to 4.4.0: fans no longer left at full speed after the fan test or fan cleaning, boards with two fans no longer cut to one, backlight-only keyboards no longer offered colour controls, a cleaner Tuning page, evidence when the app exits unexpectedly, and new or corrected entries for nine boards. Several fixes still need confirmation on the reporters' hardware; they are listed in the changelog's *Needs Field Confirmation*.<br>
-**Upgrade note:** from the republished 4.4.0, update from inside the app (the update button in the header, or F5). From 4.3.1 or earlier, or from a 4.4.0 installed before the same-day republish, download the installer once; settings are kept.<br>
-**Release notes:** [docs/CHANGELOG_v4.4.1.md](docs/CHANGELOG_v4.4.1.md)<br>
-**Roadmap:** [docs/ROADMAP_v4.4.1.md](docs/ROADMAP_v4.4.1.md)<br>
-**Implementation status:** [docs/V4.4.1_IMPLEMENTATION_STATUS.md](docs/V4.4.1_IMPLEMENTATION_STATUS.md)
+**Version:** 4.4.5<br>
+**Released:** 2026-10-11<br>
+**Status:** Test-verified (1861/1861 app tests and 66/66 Linux tests, 0 build warnings). A feature and field-report release: an opt-in NVIDIA laptop GPU power unlock, an opt-in factory fan curve for the OMEN MAX 16 (`8D87`), OMEN key and HP-telemetry controls, faster fan response to a temperature spike, a fix for a stale saved Fan Max, an auto-hidden taskbar fix, cheaper GPU load polling, a Linux single-fan-writer lock, and new entries for four boards. **Much of it is implemented and tested in software only, and is labelled pending hardware confirmation in the release notes.**<br>
+**Upgrade note:** from 4.4.1, update from inside the app (the update button in the header, or F5). OmenCore will not reopen by itself after that one update, because 4.4.1's updater predates the relaunch fix; start it again by hand. Later updates will relaunch it. Settings are kept.<br>
+**Release notes:** [docs/CHANGELOG_v4.4.5.md](docs/CHANGELOG_v4.4.5.md)<br>
+**Roadmap:** [docs/ROADMAP_v4.4.5.md](docs/ROADMAP_v4.4.5.md)
 
-SHA256 hashes are computed by the release workflow from the exact files attached to the release and are published in the [release notes](https://github.com/theantipopau/omencore/releases/tag/v4.4.1).
+SHA256 hashes are computed by the release workflow from the exact files attached to the release and are published in the [release notes](https://github.com/theantipopau/omencore/releases/tag/v4.4.5).
 
-### v4.4.1 Highlights
+### v4.4.5 Highlights
+
+- **Added (opt-in, off by default):** NVIDIA laptop GPU power unlock in Tuning (Resolve VBIOS, Apply MAX, restart, Apply CURRENT), from timmyy123's `nvidia-power-control` and bobshmo's OmenCore-Prophecy, used with their permission. Backs up the registry, reads every write back, rolls back on a mismatch, and on Victus laptops prepares HP performance mode and the fan engine first. Run by its authors, not yet through OmenCore.
+- **Added (opt-in, experimental):** HP's factory Performance-mode fan curve for the OMEN MAX 16 `8D87`, where firmware Auto parks the fans at ~3,400/3,600 RPM with the CPU at 92-99 C ([#189](https://github.com/theantipopau/omencore/issues/189), research by mbilykov). Runs only in Performance mode with fans on Auto and hands the fans back on any other mode, on diagnostics, on thermal protection and after three failed writes.
+- **Added:** a reversible switch for HP's analytics and diagnostics services (Advanced); the OMEN key can run every action the app supports, including your own program or script, and applies changes immediately; a read-only GPU power policy line in Tuning and the diagnostics export; a memory breakdown in the diagnostics export.
+- **Added:** an RGB payload probe (Diagnostics > Keyboard) that tries five candidate single-zone colour tables, for the 8BD4 keyboard that still ignores colour ([#212](https://github.com/theantipopau/omencore/issues/212)).
+- **Fixed:** a saved Fan Max no longer comes back at startup or after sleep unless you opt in; a rise of 8 C or more is answered at once instead of 5-10 s late ([#222](https://github.com/theantipopau/omencore/issues/222)); a maximised window no longer covers an auto-hidden taskbar; the RTSS conflict warning is logged once instead of every minute.
+- **Performance:** the GPU load fallback reads one counter set instead of about 290 (about 144 ms per poll down to about 2 ms in a benchmark).
+- **Linux:** the daemon and `omencore-cli fan` commands share one fan-writer lock; an optional keyboard backlight suspend hook ([`scripts/linux/omencore-kbd-suspend.sh`](scripts/linux/omencore-kbd-suspend.sh)).
+- **Model database:** new unverified entries for `8E9F`, `8E9A`, `8EEC` and `8A13`; `8E9F` and `8E9A` keyboards routed to the per-key backends as a guess.
+
+Full detail on every item, and what still needs field confirmation, in [docs/CHANGELOG_v4.4.5.md](docs/CHANGELOG_v4.4.5.md). Third-party code is credited in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and contributors in [CONTRIBUTORS.md](CONTRIBUTORS.md).
+
+### v4.4.1 Highlights (previous release)
 
 - **Fixed:** Guided Fan Verification and Fan Cleaning could leave the fans at full speed afterwards ([#198](https://github.com/theantipopau/omencore/issues/198), [#220](https://github.com/theantipopau/omencore/issues/220)). Both now release the firmware's Max flag with the controller's own exit sequence, and the controller is told about direct fan writes so "restore auto" hands the fans back (PR #216).
 - **Fixed:** boards that report two fans were treated as having one, because the model database overwrote the firmware's count (`8C30`, `88F8`, `8C2D`). A firmware count that was actually read now beats an unverified entry that says fewer.
@@ -263,17 +275,15 @@ Older release notes ([v3.8.0](docs/CHANGELOG_v3.8.0.md) and earlier) are kept in
 
 ## Current Development Focus
 
-**v4.4.1 is the field-report follow-up to 4.4.0**, built from the diagnostics exports, issues, forks and PRs that arrived in the week after it shipped. It is the first release delivered by the repaired in-app updater. The reconciliation of every item to its code, tests and confirmation state is in [docs/V4.4.1_IMPLEMENTATION_STATUS.md](docs/V4.4.1_IMPLEMENTATION_STATUS.md).
+**v4.4.5 is released and is waiting on field confirmation.** Most of what it adds was built from reporters' exports and from fork and research contributions, and has run only in software tests so far. The "Needs field confirmation" list in [docs/CHANGELOG_v4.4.5.md](docs/CHANGELOG_v4.4.5.md) says exactly what to try on which board.
 
-**v4.4.5 is the next release and is built, tested and waiting on field confirmation** (not yet tagged; the downloads below stay on 4.4.1 until it is). It adds an opt-in NVIDIA laptop GPU power unlock, a Linux single-fan-writer lock, an opt-in factory fan curve for the OMEN MAX 16 (`8D87`, [#189](https://github.com/theantipopau/omencore/issues/189)), OMEN key and telemetry-switch improvements, faster fan response to a temperature spike, fixes for the in-app updater relaunch and a stale saved Fan Max, and boards `8A13`, `8E9F`, `8EEC`. Everything that is not yet confirmed on real hardware is marked so in [docs/CHANGELOG_v4.4.5.md](docs/CHANGELOG_v4.4.5.md).
-
-**Next:** the most-reported gap is firmware Auto under-cooling during games ([#189](https://github.com/theantipopau/omencore/issues/189) has a design doc for an opt-in automatic fan curve). The OMEN MAX 16 (`8D87`) GPU power unlock is written but off until an owner can validate its EC writes. Several 4.4.1 fixes are waiting on their reporters to confirm them on real hardware.
+**Still open:** the 8BD4 single-zone keyboard ([#212](https://github.com/theantipopau/omencore/issues/212), waiting on the RGB probe result), the 8E35 AMD power table ([#222](https://github.com/theantipopau/omencore/issues/222), needs a PM-table dump), per-key RGB on Linux for the 2025 MAX boards ([#179](https://github.com/theantipopau/omencore/issues/179)), and the OMEN Transcend 16 (`8BB3`).
 
 The active work is tracked in:
 
-- [docs/CHANGELOG_v4.4.5.md](docs/CHANGELOG_v4.4.5.md) / [docs/ROADMAP_v4.4.5.md](docs/ROADMAP_v4.4.5.md) - the next release (unreleased).
-- [docs/CHANGELOG_v4.4.1.md](docs/CHANGELOG_v4.4.1.md) - the current released notes.
-- [docs/ROADMAP_v4.4.1.md](docs/ROADMAP_v4.4.1.md) - the full scope, investigations, and evidence trails for this cycle.
+- [docs/CHANGELOG_v4.4.5.md](docs/CHANGELOG_v4.4.5.md) - the current release notes.
+- [docs/ROADMAP_v4.4.5.md](docs/ROADMAP_v4.4.5.md) - the full scope, investigations, and evidence trails for this cycle.
+- [docs/CHANGELOG_v4.4.1.md](docs/CHANGELOG_v4.4.1.md) / [docs/ROADMAP_v4.4.1.md](docs/ROADMAP_v4.4.1.md) - the previous cycle.
 - [docs/CHANGELOG_v4.4.0.md](docs/CHANGELOG_v4.4.0.md) / [docs/ROADMAP_v4.4.0.md](docs/ROADMAP_v4.4.0.md) - the previous cycle.
 
 Prior-release work is kept for historical reference:
@@ -290,9 +300,9 @@ Release artifacts are published on the [GitHub Releases](https://github.com/thea
 
 | Artifact | Platform | Recommended For |
 |---|---|---|
-| `OmenCoreSetup-4.4.1.exe` | Windows | Most users. Installs app and can install PawnIO. |
-| `OmenCore-4.4.1-win-x64.zip` | Windows | Portable use, testing, or no installer preference. |
-| `OmenCore-4.4.1-linux-x64.zip` | Linux | CLI plus Avalonia GUI, self-contained runtime. |
+| `OmenCoreSetup-4.4.5.exe` | Windows | Most users. Installs app and can install PawnIO. |
+| `OmenCore-4.4.5-win-x64.zip` | Windows | Portable use, testing, or no installer preference. |
+| `OmenCore-4.4.5-linux-x64.zip` | Linux | CLI plus Avalonia GUI, self-contained runtime. |
 
 Final GitHub release notes must include SHA256 hashes for every artifact. The in-app updater requires release hashes before it will install an update.
 
@@ -300,20 +310,20 @@ Final GitHub release notes must include SHA256 hashes for every artifact. The in
 
 ### Windows
 
-1. Download `OmenCoreSetup-4.4.1.exe` from [Releases](https://github.com/theantipopau/omencore/releases/latest).
+1. Download `OmenCoreSetup-4.4.5.exe` from [Releases](https://github.com/theantipopau/omencore/releases/latest).
 2. Verify the SHA256 hash from the release notes.
 3. Run the installer as Administrator.
 4. Keep PawnIO selected unless you only want monitoring and WMI-only features.
 5. Launch OmenCore from the Start Menu.
 
-Portable users can download `OmenCore-4.4.1-win-x64.zip`, extract it to a normal folder, and run `OmenCore.exe` as Administrator.
+Portable users can download `OmenCore-4.4.5-win-x64.zip`, extract it to a normal folder, and run `OmenCore.exe` as Administrator.
 
 See [INSTALL.md](INSTALL.md) for the full Windows guide.
 
 ### Linux
 
 ```bash
-VERSION=4.4.1
+VERSION=4.4.5
 wget "https://github.com/theantipopau/omencore/releases/download/v${VERSION}/OmenCore-${VERSION}-linux-x64.zip"
 mkdir -p OmenCore-linux-x64
 unzip "OmenCore-${VERSION}-linux-x64.zip" -d OmenCore-linux-x64
@@ -438,16 +448,19 @@ New this cycle (4.4.0):
 
 - **Updating from 4.3.1 inside the app doesn't work** — 4.3.1's updater misdetects installed copies as portable and fails with "Downloaded file is not a valid Windows executable". Download the installer from [Releases](https://github.com/theantipopau/omencore/releases/latest) instead; settings are kept. 4.4.0's own updater is fixed.
 - **The OMEN MAX 16 (`8D87`) GPU power unlock is not enabled.** The code exists, but pre-release review found its EC write path unproven on real hardware, so it refuses to run and is hidden. Until then the GPU on that board stays at the firmware's 80-105 W instead of 175 W unless OMEN Gaming Hub is holding it open.
-- **Firmware Auto can under-cool during sustained load** on some boards (reported on `8D87` and `8BA9`) — OmenCore's Auto mode hands fans to the firmware and doesn't steer them. Use a custom curve or a Performance/Gaming preset for heavy workloads; [#189](https://github.com/theantipopau/omencore/issues/189) tracks an opt-in automatic curve.
+- **Firmware Auto can under-cool during sustained load** on some boards (reported on `8D87` and `8BA9`) — OmenCore's Auto mode hands fans to the firmware and doesn't steer them. 4.4.5 adds an opt-in factory curve for `8D87` only (Settings > Startup Hardware Restore), not yet confirmed on that hardware. Use a custom curve or a Performance/Gaming preset for heavy workloads; [#189](https://github.com/theantipopau/omencore/issues/189) tracks an opt-in automatic curve.
 - **The performance-mode label can disagree between the sidebar and the dashboard** when startup restore is off ([#199](https://github.com/theantipopau/omencore/issues/199)). Fixed in 4.4.1; display only.
 - **Whether HP's WMI temperature command (`0x23`) means what this codebase assumes for its sensor-index parameter is still unconfirmed.** Diagnostics exports now capture all four indices to settle it from real data.
-- **Zone-colour RGB doesn't apply on keyboards whose firmware reports a single zone** (confirmed on `8BD4`, [#212](https://github.com/theantipopau/omencore/issues/212)) — the write is accepted but nothing changes. A candidate fix ships in 4.4.1, pending the reporter's test.
+- **Zone-colour RGB doesn't apply on keyboards whose firmware reports a single zone** (confirmed on `8BD4`, [#212](https://github.com/theantipopau/omencore/issues/212)) — the write is accepted but nothing changes. Still open in 4.4.5: the 4.4.1 zone-count change reaches the hardware but the keyboard stays dark; 4.4.5 adds an RGB payload probe to find the right layout.
 - **Victus boards may show a GPU Power Boost option in the tray that does nothing** — the backend refuses it on every Victus without a database opt-in. Hidden in 4.4.1.
 - **4.4.0: Guided Fan Verification (and Fan Cleaning) can leave the fans at full speed afterwards** ([#198](https://github.com/theantipopau/omencore/issues/198), [#220](https://github.com/theantipopau/omencore/issues/220)). Until 4.4.1, pick any fan mode (or **Restore OEM Auto**) after the test to bring them back down. Fixed in 4.4.1.
 - **4.4.0: some boards that report two fans were treated as having one** (database overwrote the firmware's count; seen on `8C30`, `88F8`, `8C2D`). Fixed in 4.4.1.
 - **4.4.0: the GPU-mode "Apply" button can look dead** on BIOSes that don't expose GPU mode switching ([#215](https://github.com/theantipopau/omencore/issues/215)) — it was logging the reason without showing it. Fixed in 4.4.1.
 - **4.4.1: the Primax per-key keyboard path (2021-2024 OMEN 16/17) is experimental** and sets one colour across the whole keyboard only; no per-key or per-zone colours or effects yet, and it hasn't been confirmed on real hardware.
 - **4.4.1: Linux support for the DKMS four-zone keyboard nodes** (`fourzone_color` / `fourzone_brightness`) is untested on real hardware; the wire format is unit-tested.
+- **4.4.5: the NVIDIA laptop power unlock is opt-in and has not been run through OmenCore on real hardware**; its authors ran the backend. It writes the NVIDIA driver's `romOverride` value (MAX, restart needed) and calls an internal driver function (CURRENT, resets on reboot). The automatic VBIOS read needs an `nvflash64.exe` you supply, or a ROM file. Do not use it on a machine you cannot reboot.
+- **4.4.5: the in-app update from 4.4.1 will not reopen OmenCore** (4.4.1's updater does not send the relaunch flag); later updates will.
+- **4.4.5: `8E9F`, `8E9A` and `8A13` are unverified board entries.** The `8E9F` and `8E9A` per-key keyboard routes are guesses from a sibling board, and none of the three reports real fan RPM (it is estimated from the fan level).
 - **Board `8C9C`'s database entry has real field confirmation for fan control only** — GPU Power Boost, undervolt, and RGB stay conservative.
 
 Carried forward from 4.1.7-4.3.1 (untouched by 4.4.0's work unless noted — all still gated on field evidence):
@@ -561,7 +574,7 @@ dotnet build OmenCore.sln --configuration Release
 dotnet test OmenCore.sln
 ```
 
-**What "N/N tests passing" actually means:** the suite is a real xUnit test project (`src/OmenCoreApp.Tests`, 1773+ tests as of v4.4.1) that runs in CI on every push (`.github/workflows/ci.yml`) and locally before every release. It exercises hardware-abstraction logic in isolation — capability-database resolution (which model resolves to which `ProductId`/`ModelNamePattern` entry), fan-curve and safety-clamp math, the diagnostics-export pipeline, view-model state transitions, and regression tests pinned to specific field-reported bugs (reflection-driven against private methods/fields where the codebase's existing pattern calls for it, real mock SDK interfaces like `ICorsairSdkProvider` where one exists). **What it does not do:** verify that a given real board's EC/WMI actually responds the way the code assumes — that's a structurally different problem no unit test can cover, which is why this project has a separate, explicit "evidence-gate" convention (see the roadmap and changelogs) requiring field confirmation from real hardware before shipping any fan/thermal/OC/UV *behavior* change, independent of what the test suite says. A green test suite means the logic is provably self-consistent and regression-free; it is not a substitute for a real user confirming a fix works on their actual laptop, and this project's own docs never claim otherwise.
+**What "N/N tests passing" actually means:** the suite is a real xUnit test project (`src/OmenCoreApp.Tests`, 1861+ tests as of v4.4.5) that runs in CI on every push (`.github/workflows/ci.yml`) and locally before every release. It exercises hardware-abstraction logic in isolation — capability-database resolution (which model resolves to which `ProductId`/`ModelNamePattern` entry), fan-curve and safety-clamp math, the diagnostics-export pipeline, view-model state transitions, and regression tests pinned to specific field-reported bugs (reflection-driven against private methods/fields where the codebase's existing pattern calls for it, real mock SDK interfaces like `ICorsairSdkProvider` where one exists). **What it does not do:** verify that a given real board's EC/WMI actually responds the way the code assumes — that's a structurally different problem no unit test can cover, which is why this project has a separate, explicit "evidence-gate" convention (see the roadmap and changelogs) requiring field confirmation from real hardware before shipping any fan/thermal/OC/UV *behavior* change, independent of what the test suite says. A green test suite means the logic is provably self-consistent and regression-free; it is not a substitute for a real user confirming a fix works on their actual laptop, and this project's own docs never claim otherwise.
 
 ### Build Windows Artifacts
 
@@ -571,8 +584,8 @@ pwsh ./build-installer.ps1
 
 Expected outputs:
 
-- `artifacts/OmenCoreSetup-4.4.1.exe` and `artifacts/OmenCoreSetup-4.4.1.exe.sha256`
-- `artifacts/OmenCore-4.4.1-win-x64.zip` and `artifacts/OmenCore-4.4.1-win-x64.zip.sha256`
+- `artifacts/OmenCoreSetup-4.4.5.exe` and `artifacts/OmenCoreSetup-4.4.5.exe.sha256`
+- `artifacts/OmenCore-4.4.5-win-x64.zip` and `artifacts/OmenCore-4.4.5-win-x64.zip.sha256`
 
 ### Build Linux Artifact
 
@@ -582,10 +595,10 @@ pwsh ./build-linux-package.ps1
 
 Expected outputs:
 
-- `artifacts/OmenCore-4.4.1-linux-x64.zip`
-- `artifacts/OmenCore-4.4.1-linux-x64.zip.sha256`
+- `artifacts/OmenCore-4.4.5-linux-x64.zip`
+- `artifacts/OmenCore-4.4.5-linux-x64.zip.sha256`
 - `artifacts/version.json`
-- `artifacts/linux-version-verification-4.4.1-linux-x64.json`
+- `artifacts/linux-version-verification-4.4.5-linux-x64.json`
 
 ## Release Checklist
 
@@ -620,9 +633,10 @@ Windows logs are stored under `%LOCALAPPDATA%\OmenCore\`. Linux diagnostics can 
 ## Documentation
 
 - [INSTALL.md](INSTALL.md) - installation, upgrade, portable use, Linux setup, uninstall.
-- [docs/CHANGELOG_v4.4.1.md](docs/CHANGELOG_v4.4.1.md) - current release notes.
-- [docs/ROADMAP_v4.4.1.md](docs/ROADMAP_v4.4.1.md) - current roadmap, investigations, and evidence trails.
-- [docs/V4.4.1_IMPLEMENTATION_STATUS.md](docs/V4.4.1_IMPLEMENTATION_STATUS.md) - every 4.4.1 item mapped to its code, tests and confirmation state.
+- [docs/CHANGELOG_v4.4.5.md](docs/CHANGELOG_v4.4.5.md) - current release notes.
+- [docs/ROADMAP_v4.4.5.md](docs/ROADMAP_v4.4.5.md) - current roadmap, investigations, and evidence trails.
+- [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) - credits and licences for included third-party code.
+- [docs/CHANGELOG_v4.4.1.md](docs/CHANGELOG_v4.4.1.md) / [docs/V4.4.1_IMPLEMENTATION_STATUS.md](docs/V4.4.1_IMPLEMENTATION_STATUS.md) - the previous release, with every item mapped to its code, tests and confirmation state.
 - [docs/CHANGELOG_v4.3.1.md](docs/CHANGELOG_v4.3.1.md) - previous release notes.
 - [docs/CHANGELOG_v4.3.0.md](docs/CHANGELOG_v4.3.0.md) - previous release notes.
 - [docs/CHANGELOG_v4.2.0.md](docs/CHANGELOG_v4.2.0.md) - earlier release notes.
@@ -647,6 +661,7 @@ Windows logs are stored under `%LOCALAPPDATA%\OmenCore\`. Linux diagnostics can 
 
 | Version | Summary |
 |---|---|
+| 4.4.5 | Feature and field-report release: opt-in NVIDIA laptop GPU power unlock (from timmyy123 and bobshmo, with permission), opt-in factory fan curve for the OMEN MAX 16 `8D87` (#189), reversible HP telemetry switch, OMEN key actions and program launch, faster fan response to a temperature spike (#222), stale saved Fan Max fixed, auto-hidden taskbar fix, cheaper GPU load polling, Linux single-fan-writer lock, RGB payload probe for 8BD4 (#212), and new entries for `8E9F`, `8E9A`, `8EEC` and `8A13`. Much of it is pending hardware confirmation. |
 | 4.4.1 | Field-report follow-up to 4.4.0 and the first release delivered by the repaired updater: fans no longer left at full speed after the fan test or fan cleaning, two-fan boards no longer cut to one, the firmware's own Max ceiling accepted by the 100% step, backlight-only keyboards no longer offered colour controls, a cleaner Tuning page with crash-safe test rollback, evidence for unexpected exits, RAM-optimizer and cleaner fixes, Linux CPU-sensor ranking and DKMS four-zone keyboard support, experimental Primax per-key colour, and exact entries for `8BBE`, `88F8`, `88F7`, `8C2D` and `878A`. |
 | 4.4.0 | Fix release for 4.3.1 (no separate 4.3.2): three 4.3.1 regressions fixed — fan control disabled on older-firmware boards, a false "monitoring frozen" failsafe forcing fans to 90% every ~2 minutes, and a monitor loop that couldn't be woken — plus a hardware-worker crash on USB drive hotplug, a background worker that failed to start on installed builds, WMI game-detection overhead cut from ~14% to ~2.6% of a core, ignored-Max and quick-exit Max fixes, docked refresh-rate targeting, and hotkey/game-exit fixes. Community PRs #176 (8D87 keyboard, AMD power limits) and #196 (diagnostics) merged. New/corrected entries for `8CC0`, `8DD0`, `88ED`, `8E35`, `8BB1`. In-app updater fixed. 53 stale issues closed. 1635/1635 tests. |
 | 4.3.1 | Patch release grown into a broader maintenance cycle: a real, provable config-persistence data-loss bug where several disconnected in-memory config copies silently clobbered each other's saves (#191); a broken auto-updater SHA256 check that had been matching nothing since the release-notes hash-table format changed (#192); the release-process bug behind it, where past release-notes hashes were hand-copied from a local build instead of the CI-published one (#194, this release's own hashes prove the fix); an OMEN-key WMI event bug on boards where the keyboard hook never sees the physical key (#193); two rounds of cross-project review against a similar tool ("Ohman") producing a GPU-idle-polling backoff and a firmware-aware fix for unverified boards' fan-control assumptions; further `MainViewModel`/`SystemControlViewModel` decomposition; three board database entries. 1455/1455 tests. |

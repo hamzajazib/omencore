@@ -33,7 +33,7 @@
     <a href="#top" class="brand">
       <img src="assets/icon-256.png" alt="" width="30" height="30" />
       OmenCore
-      <small>v4.4.1</small>
+      <small>v4.4.5</small>
     </a>
 
     <nav class="nav-links" aria-label="Primary">
@@ -88,7 +88,7 @@
 
     <span class="hero-pill">
       <span class="dot-live"></span>
-      v4.4.1 is out now — fans no longer left at full speed after the fan test, boards with two fans no longer cut to one, backlight-only keyboards no longer offered colour controls, and a cleaner, crash-safe Tuning page
+      v4.4.5 is out now — an opt-in NVIDIA laptop GPU power unlock, a factory fan curve for the OMEN MAX 16, OMEN key and HP-telemetry controls, faster fan response to a heat spike, and four new boards
     </span>
 
     <h1>Take full control of your <span class="text-gradient">HP OMEN &amp; Victus</span> laptop</h1>
@@ -322,7 +322,7 @@
   <div class="container">
     <div class="download-card reveal">
       <div>
-        <div class="download-version">Latest release <b id="latestVersion">v4.4.1</b></div>
+        <div class="download-version">Latest release <b id="latestVersion">v4.4.5</b></div>
         <h3>Get OmenCore</h3>
         <p>Free and open source. Requires a 2022+ HP OMEN or Victus laptop. Windows builds run elevated for direct hardware access.</p>
 
@@ -378,8 +378,25 @@
     <div class="timeline reveal">
       <div class="timeline-item is-current">
         <div class="timeline-head">
-          <span class="v">v4.4.1</span>
+          <span class="v">v4.4.5</span>
           <span class="timeline-badge">Current stable</span>
+        </div>
+        <p>A feature and field-report release built from diagnostics exports, issues, forks and research from the community. Much of it is implemented and tested in software and is marked as waiting for hardware confirmation in the release notes.</p>
+        <ul>
+          <li>Opt-in NVIDIA laptop GPU power unlock (resolve the VBIOS, set MAX, restart, set CURRENT), based on work by timmyy123 and bobshmo and used with their permission. Off by default, with a registry backup, read-back and rollback</li>
+          <li>Opt-in factory fan curve for the OMEN MAX 16 (8D87), where firmware Auto parks the fans too low under load. Research by mbilykov. Runs only in Performance mode and hands the fans back on any other mode</li>
+          <li>A reversible switch for HP's analytics services, and an OMEN key that can run any action, including your own program or script, and applies changes immediately</li>
+          <li>A saved Max fan preset no longer comes back by itself after a restart or sleep, and a sudden temperature rise is answered at once instead of 5-10 seconds late</li>
+          <li>OmenCore no longer covers an auto-hidden taskbar when maximised, and GPU load polling is far cheaper (about 144 ms down to about 2 ms per poll in a benchmark)</li>
+          <li>Linux: one fan writer at a time between the daemon and the CLI, plus an optional keyboard backlight suspend hook</li>
+          <li>New unverified entries for four boards: 8E9F, 8E9A, 8EEC and 8A13, and an RGB probe to help find the right colour layout for the 8BD4 keyboard</li>
+        </ul>
+        <a class="timeline-link" href="https://github.com/theantipopau/omencore/blob/main/docs/CHANGELOG_v4.4.5.md" target="_blank" rel="noopener">Full v4.4.5 changelog →</a>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-head">
+          <span class="v">v4.4.1</span>
+          <span class="timeline-badge muted">Previous</span>
         </div>
         <p>A field-report follow-up to 4.4.0, built from the diagnostics exports, issues, forks and pull requests that arrived in the week after it shipped. It is the first release delivered by the repaired in-app updater.</p>
         <ul>
@@ -398,7 +415,7 @@
       <div class="timeline-item">
         <div class="timeline-head">
           <span class="v">v4.4.0</span>
-          <span class="timeline-badge muted">Previous</span>
+          <span class="timeline-badge muted">Fix release</span>
         </div>
         <p>The fix release for 4.3.1. Diagnostics bundles from users showed three 4.3.1 changes were wrong and hit at least seven boards; those are fixed, along with a batch of bugs found in the same logs and two large community contributions.</p>
         <ul>
@@ -621,7 +638,7 @@
           <li><a href="#features">Features</a></li>
           <li><a href="#compare">Compare to Gaming Hub</a></li>
           <li><a href="#download">Download</a></li>
-          <li><a href="https://github.com/theantipopau/omencore/blob/main/docs/ROADMAP_v4.4.1.md" target="_blank" rel="noopener">Roadmap</a></li>
+          <li><a href="https://github.com/theantipopau/omencore/blob/main/docs/ROADMAP_v4.4.5.md" target="_blank" rel="noopener">Roadmap</a></li>
         </ul>
       </div>
 
